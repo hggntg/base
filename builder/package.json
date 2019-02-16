@@ -1,0 +1,30 @@
+{
+  "name": "@base/builder",
+  "version": "1.0.0",
+  "description": "",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Uncle Hung",
+  "license": "ISC",
+  "dependencies": {
+    "config": "^3.0.1",
+    "inversify": "^5.0.1",
+    "object-path": "^0.11.4",
+    "reflect-metadata": "^0.1.13"
+  },
+  "devDependencies": {
+    "@base/class": "file:../backend/class",
+    "@base/interfaces": "file:../interfaces",
+    "@base/utilities": "file:../utilities",
+    "@types/config": "0.0.34",
+    "@types/dotenv": "^6.1.0",
+    "@types/inversify": "^2.0.33",
+    "@types/lodash": "^4.14.120",
+    "@types/node": "^10.12.24",
+    "@types/object-path": "^0.11.0",
+    "dotenv": "^6.2.0"
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts"
+}

@@ -1,0 +1,23 @@
+{
+  "name": "@base/database",
+  "version": "1.0.0",
+  "description": "",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@base/utilities": "file:../../utilities",
+    "mongoose": "^5.4.11"
+  },
+  "devDependencies": {
+    "@base/class": "file:../class",
+    "@base/interfaces": "file:../../interfaces",
+    "@types/mongodb": "^3.1.19",
+    "@types/mongoose": "^5.3.12",
+    "reflect-metadata": "^0.1.13"
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts"
+}
