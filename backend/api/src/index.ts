@@ -1,18 +1,18 @@
 import { App, UnitOfWork } from "@base/interfaces";
-import { extendApi } from "./internal";
+import { IExtendApi } from "./internal";
 import express from "express";
 import morgan from "morgan";
 import { urlencoded, json } from "body-parser";
 import { v1 } from "uuid";
 import { getController, IController } from "./main/controller";
 
-declare const app: App & extendApi;
+declare const app: App & IExtendApi;
 
 app.server = express();
 
 export * from "./main/controller";
 
-export function startServer(port: number, unitOfWorkInstance: UnitOfWork, controllers: {[key: string]: { new(unitOfWorkInstance: UnitOfWork) : IController} }) {
+app.startServer =  function (port: number, unitOfWorkInstance: UnitOfWork, controllers: {[key: string]: { new(unitOfWorkInstance: UnitOfWork) : IController} }) : Promise<boolean> {
     let namespace = app.context.create("dbContext");
     app.server.use(json({}));
     app.server.use(urlencoded({ extended: true }));
@@ -35,16 +35,16 @@ export function startServer(port: number, unitOfWorkInstance: UnitOfWork, contro
         let controllerProperty = getController(classImp);
         app.server.use(controllerProperty.routeBase, controller.subApp);
     });
-    app.use(new Promise((resolve, reject) => {
+    return new Promise((resolve, reject) => {
         app.server.listen(port, () => {
             resolve(true);
         })
         .once("error", (err) => {
             reject(err);
-        })
-    }), true);
+        });
+    });
 }
-
+export * from "./internal";
 
 // registerController(controllers){
 //     if(this.type === "WebAPI"){

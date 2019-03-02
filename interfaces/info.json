@@ -1,0 +1,6 @@
+{
+	"type": "module",
+	"dependencies": {
+		"@base/utilities": "E:\\repo\\base\\store\\utilities"
+	}
+}

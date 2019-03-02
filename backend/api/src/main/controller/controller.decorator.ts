@@ -1,10 +1,10 @@
 import express from "express";
 import { CONTROLLER_KEY } from "../../shared/constant";
-import { Property, getProperties, getMetadata, getClass } from "@base/class";
+import { Property, getProperties, getMetadata, defineMetadata, getClass } from "@base/class";
 import { UnitOfWork, App } from "@base/interfaces";
-import { extendApi } from "../../internal";
+import { IExtendApi } from "../../internal";
 
-declare const app: App & extendApi;
+declare const app: App & IExtendApi;
 
 interface Route {
     name: string;
@@ -72,7 +72,7 @@ export function Controller(routeBase: string) {
         }
         controllerProperty.name = classImp.name;
         controllerProperty.routeBase = routeBase;
-        Reflect.defineMetadata(CONTROLLER_KEY, controllerProperty, target.constructor);
+        defineMetadata(CONTROLLER_KEY, controllerProperty, target.constructor);
     }
 }
 
@@ -93,7 +93,7 @@ export function Route(routeConfig: Route) {
             routeConfig.url = "/" + routeConfig.url;
         }
         controllerProperty.routes[propertyKey] = routeConfig;
-        Reflect.defineMetadata(CONTROLLER_KEY, controllerProperty, target.constructor);
+        defineMetadata(CONTROLLER_KEY, controllerProperty, target.constructor);
     }
 }
 

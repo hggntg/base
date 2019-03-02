@@ -1,4 +1,4 @@
-import { INamespace } from "@base/utilities/dist/namespace";
+import { INamespace } from "@base/utilities/namespace";
 
 export interface Config {
     setConfig(config: any);
@@ -11,8 +11,9 @@ export interface App{
 	type: "Worker" | "API";
     loadConfig(path: string);
     serveAs(type: "Worker" | "API");
-	use(plugin: Function | Promise<boolean>, preStartApp: boolean): App;
+	use(plugin: Promise<boolean>, preStartApp: boolean): App;
 	once(event: "preStartApp" | "startAppDone", cb);
+	start();
 }
 
 export interface IBaseEntity{

@@ -1,0 +1,8 @@
+{
+	"type": "module",
+	"dependencies": {
+		"@base/class": "E:\\repo\\base\\store\\class",
+		"@base/utilities": "E:\\repo\\base\\store\\utilities",
+		"@base/interfaces": "E:\\repo\\base\\store\\interfaces"
+	}
+}
