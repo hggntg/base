@@ -41,13 +41,13 @@ export class ControllerImp implements IController {
                 let result = this[property](checkInput(req, res));
                 if(typeof result.then === "function" && typeof result.catch === "function"){
                     result.then((value) => {
-                        res.send(value);
+                        res.json(value);
                     }).catch(err => {
-                        res.send(err);
+                        res.json(err);
                     });
                 }
                 else{
-                    res.send(result);
+                    res.json(result);
                 }
             });
         });

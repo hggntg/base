@@ -2,6 +2,7 @@ import { Property, getMetadata, getClass, defineMetadata } from "@base/class";
 import { SCHEMA_KEY } from "../../infrastructure/constant";
 import { IEntitySchema, ensureEntitySchemaInitiate } from "./entity-schema";
 import mongoose from "mongoose";
+import { IBaseEntity } from "@base/interfaces";
 
 
 export function Id() {
@@ -33,8 +34,16 @@ export function Field(name?: string | mongoose.SchemaTypeOpts<any>, entitySchema
 		defineMetadata(SCHEMA_KEY, schema, getClass(target));
 	}
 }
-export function RelatedField(target: object, propertyKey: string) {
-
+export function RelatedField(name: string | IBaseEntity, relatedEntity?: IBaseEntity) {
+	return function(target: object, propertyKey: string){
+		Property(target, propertyKey);
+		let schema: IEntitySchema = getMetadata(SCHEMA_KEY, getClass(target));
+		schema = ensureEntitySchemaInitiate(schema);
+		if(typeof name !== "string"){
+			relatedEntity = name;
+			name = propertyKey;
+		}
+	}
 }
 
 export function Entity(name?: string | mongoose.SchemaOptions, options?: mongoose.SchemaOptions) {
