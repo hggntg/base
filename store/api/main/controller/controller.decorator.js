@@ -22,13 +22,13 @@ var ControllerImp = (function () {
                 var result = _this[property](checkInput(req, res));
                 if (typeof result.then === "function" && typeof result.catch === "function") {
                     result.then(function (value) {
-                        res.send(value);
+                        res.json(value);
                     }).catch(function (err) {
-                        res.send(err);
+                        res.json(err);
                     });
                 }
                 else {
-                    res.send(result);
+                    res.json(result);
                 }
             });
         });

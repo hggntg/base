@@ -1,3 +1,4 @@
+/// <reference types="node" />
 import "reflect-metadata";
 import { App, Config } from "@base/interfaces";
 import { INamespace } from "@base/utilities/namespace";

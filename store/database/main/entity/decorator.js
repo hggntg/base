@@ -37,7 +37,16 @@ function Field(name, entitySchemaField) {
     };
 }
 exports.Field = Field;
-function RelatedField(target, propertyKey) {
+function RelatedField(name, relatedEntity) {
+    return function (target, propertyKey) {
+        class_1.Property(target, propertyKey);
+        var schema = class_1.getMetadata(constant_1.SCHEMA_KEY, class_1.getClass(target));
+        schema = entity_schema_1.ensureEntitySchemaInitiate(schema);
+        if (typeof name !== "string") {
+            relatedEntity = name;
+            name = propertyKey;
+        }
+    };
 }
 exports.RelatedField = RelatedField;
 function Entity(name, options) {
