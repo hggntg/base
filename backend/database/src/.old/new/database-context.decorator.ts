@@ -93,7 +93,6 @@ export class DbContextImp implements IDbContext{
 		let properties = getProperties(this);
 		let dbContext = getDbContext(app.dbContext);
 		properties.map(property => {
-			console.log(property);
 			let classImp = dbContext.classes[property];
 			this[property] = new CollectionImp(classImp);
 		});

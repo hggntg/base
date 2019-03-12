@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 import { IBaseEntity } from "@base/interfaces";
-interface IFakeSchemaPreFunction {
+export interface IFakeSchemaPreFunction {
     pre(method: "aggregate", fn: mongoose.HookSyncCallback<mongoose.Aggregate<any>>, errorCb?: mongoose.HookErrorCallback): IFakeSchemaPreFunction;
     pre(method: "init" | "validate" | "save" | "remove", fn: mongoose.HookSyncCallback<mongoose.Document>, errorCb?: mongoose.HookErrorCallback): IFakeSchemaPreFunction;
     pre(method: "insertMany", fn: mongoose.HookSyncCallback<mongoose.Model<mongoose.Document, {}>>, errorCb?: mongoose.HookErrorCallback): IFakeSchemaPreFunction;

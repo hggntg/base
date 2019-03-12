@@ -41,6 +41,10 @@ var EntitySchema = (function () {
         class_1.Property,
         __metadata("design:type", mongoose_1.default.Schema)
     ], EntitySchema.prototype, "schema", void 0);
+    __decorate([
+        class_1.Property,
+        __metadata("design:type", Array)
+    ], EntitySchema.prototype, "preFunction", void 0);
     return EntitySchema;
 }());
 exports.EntitySchema = EntitySchema;

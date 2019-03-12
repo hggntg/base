@@ -9,8 +9,6 @@ var BaseEntity = (function () {
     }
     BaseEntity.prototype.getInstance = function () {
         var entitySchema = entity_schema_1.getEntitySchema(this);
-        console.log("=================================entitySchema");
-        console.log(entitySchema);
         return entitySchema.model;
     };
     return BaseEntity;

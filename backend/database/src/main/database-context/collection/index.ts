@@ -166,7 +166,6 @@ export class Collection<T extends IBaseEntity> implements ICollection<T>{
 	constructor(classImp: {new() : T}) {
 		let dbContext = getDbContextMetadata(app.dbContext);
 		let _model = (new classImp()).getInstance();
-		console.log(_model);
 		this.model = _model;
 		this.connection = dbContext.connection;
 	}
