@@ -83,10 +83,18 @@ export class Namespace{
 
     remove(key){
         const eid = asyncHooks.executionAsyncId();
-        this.context[eid][key] = defaultValue(this.get(key));
+        let value = this.get(key);
+        let valueType : "string" | "number" | "object" | "array" | "boolean" = (typeof value === "string" ? "string" : 
+        (typeof value === "number" ? "number" : 
+        (typeof value === "object" ? "object" : 
+        (typeof value === "boolean" ? "boolean" : null))));
+        if(valueType === "object" && Array.isArray(value)){
+            valueType = "array";
+        }
+        this.context[eid][key] = defaultValue(this.get(key), valueType);
     }
 
     dispose(){
-        this.context = defaultValue(this.context);
+        this.context = {};
     }
 }

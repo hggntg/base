@@ -82,8 +82,6 @@ export class DatabaseContext implements IDatabaseContext{
 	constructor(){
 		let properties = getProperties(this);
 		let dbContext = getDbContextMetadata(app.dbContext);
-		console.log("=================================");
-		console.log(dbContext);
 		properties.map(property => {
 			let classImp = dbContext.classes[property];
 			this[property] = new Collection(classImp);

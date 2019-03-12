@@ -1,0 +1,21 @@
+{
+  "name": "@base/test",
+  "version": "1.0.5",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "mocha -r ts-node/register test/*"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "assert": "^1.4.1",
+    "mocha": "^6.0.2",
+    "ts-node": "^8.0.3"
+  },
+  "devDependencies": {
+    "@types/mocha": "^5.2.6",
+    "@types/node": "^11.11.0",
+    "typescript": "^3.3.3333"
+  }
+}
