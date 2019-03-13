@@ -19,64 +19,77 @@ function getNumberOfArgument(list: Array<any>) {
     return num;
 }
 
-function mapSchemaPreHook(schema: mongoose.Schema, preFunction: IFakePreAggregate | IFakePreDocument | IFakePreModel | IFakePreQuery) {
-    let numOfArgument = getNumberOfArgument([preFunction.arg0, preFunction.arg1, preFunction.arg2]);
-    if (numOfArgument === 1) {
-        if (preFunction.hook === "aggregate") {
-            schema.pre(preFunction.hook, preFunction.arg0 as mongoose.HookSyncCallback<mongoose.Aggregate<any>>);
+function mapSchemaMiddleware(schema: mongoose.Schema, middleware: IFakePreAggregate | IFakePreDocument | IFakePreModel | IFakePreQuery | IFakePlugin) {
+    if(middleware.type === "plugin"){
+        let tempMiddleware = (middleware as IFakePlugin);
+        let numOfArgument = getNumberOfArgument([tempMiddleware.plugin, tempMiddleware.options]);
+        if(numOfArgument === 1){
+            schema.plugin(tempMiddleware.plugin as (schema: mongoose.Schema<any>) => void);
         }
-        else if (preFunction.hook === "insertMany") {
-            schema.pre(preFunction.hook, preFunction.arg0 as mongoose.HookSyncCallback<mongoose.Model<mongoose.Document, {}>>);
-        }
-        else if (preFunction.hook === "init" || preFunction.hook === "save" || preFunction.hook === "validate" || preFunction.hook === "remove") {
-            schema.pre(preFunction.hook, preFunction.arg0 as mongoose.HookSyncCallback<mongoose.Document>);
-        }
-        else {
-            schema.pre(preFunction.hook, preFunction.arg0 as mongoose.HookSyncCallback<mongoose.Query<any>>);
+        else{
+            schema.plugin(tempMiddleware.plugin, tempMiddleware.options);
         }
     }
-    else if (numOfArgument === 2) {
-        if (typeof preFunction.arg0 === "boolean") {
-            if (preFunction.hook === "aggregate") {
-                schema.pre(preFunction.hook, preFunction.arg0 as boolean, preFunction.arg1 as mongoose.HookAsyncCallback<mongoose.Aggregate<any>>);
+    else{
+        let tempMiddleware = (middleware as (IFakePreAggregate | IFakePreDocument | IFakePreModel | IFakePreQuery));
+        let numOfArgument = getNumberOfArgument([tempMiddleware.arg0, tempMiddleware.arg1, tempMiddleware.arg2]);
+        if (numOfArgument === 1) {
+            if (tempMiddleware.type === "preAggregate") {
+                schema.pre(tempMiddleware.hook, tempMiddleware.arg0 as mongoose.HookSyncCallback<mongoose.Aggregate<any>>);
             }
-            else if (preFunction.hook === "insertMany") {
-                schema.pre(preFunction.hook, preFunction.arg0 as boolean, preFunction.arg1 as mongoose.HookAsyncCallback<mongoose.Model<mongoose.Document, {}>>);
+            else if (tempMiddleware.type === "preModel") {
+                schema.pre(tempMiddleware.hook, tempMiddleware.arg0 as mongoose.HookSyncCallback<mongoose.Model<mongoose.Document, {}>>);
             }
-            else if (preFunction.hook === "init" || preFunction.hook === "save" || preFunction.hook === "validate" || preFunction.hook === "remove") {
-                schema.pre(preFunction.hook, preFunction.arg0 as boolean, preFunction.arg1 as mongoose.HookAsyncCallback<mongoose.Document>);
+            else if (tempMiddleware.type === "preDocument") {
+                schema.pre(tempMiddleware.hook, tempMiddleware.arg0 as mongoose.HookSyncCallback<mongoose.Document>);
             }
             else {
-                schema.pre(preFunction.hook, preFunction.arg0 as boolean, preFunction.arg1 as mongoose.HookAsyncCallback<mongoose.Query<any>>);
+                schema.pre(tempMiddleware.hook, tempMiddleware.arg0 as mongoose.HookSyncCallback<mongoose.Query<any>>);
+            }
+        }
+        else if (numOfArgument === 2) {
+            if (typeof tempMiddleware.arg0 === "boolean") {
+                if (tempMiddleware.type === "preAggregate") {
+                    schema.pre(tempMiddleware.hook, tempMiddleware.arg0 as boolean, tempMiddleware.arg1 as mongoose.HookAsyncCallback<mongoose.Aggregate<any>>);
+                }
+                else if (tempMiddleware.type === "preModel") {
+                    schema.pre(tempMiddleware.hook, tempMiddleware.arg0 as boolean, tempMiddleware.arg1 as mongoose.HookAsyncCallback<mongoose.Model<mongoose.Document, {}>>);
+                }
+                else if (tempMiddleware.type === "preDocument") {
+                    schema.pre(tempMiddleware.hook, tempMiddleware.arg0 as boolean, tempMiddleware.arg1 as mongoose.HookAsyncCallback<mongoose.Document>);
+                }
+                else {
+                    schema.pre(tempMiddleware.hook, tempMiddleware.arg0 as boolean, tempMiddleware.arg1 as mongoose.HookAsyncCallback<mongoose.Query<any>>);
+                }
+            }
+            else {
+                if (tempMiddleware.type === "preAggregate") {
+                    schema.pre(tempMiddleware.hook, tempMiddleware.arg0 as mongoose.HookSyncCallback<mongoose.Aggregate<any>>, tempMiddleware.arg1 as mongoose.HookErrorCallback);
+                }
+                else if (tempMiddleware.type === "preModel") {
+                    schema.pre(tempMiddleware.hook, tempMiddleware.arg0 as mongoose.HookSyncCallback<mongoose.Model<mongoose.Document, {}>>, tempMiddleware.arg1 as mongoose.HookErrorCallback);
+                }
+                else if (tempMiddleware.type === "preDocument") {
+                    schema.pre(tempMiddleware.hook, tempMiddleware.arg0 as mongoose.HookSyncCallback<mongoose.Document>, tempMiddleware.arg1 as mongoose.HookErrorCallback);
+                }
+                else {
+                    schema.pre(tempMiddleware.hook, tempMiddleware.arg0 as mongoose.HookSyncCallback<mongoose.Query<any>>, tempMiddleware.arg1 as mongoose.HookErrorCallback);
+                }
             }
         }
         else {
-            if (preFunction.hook === "aggregate") {
-                schema.pre(preFunction.hook, preFunction.arg0 as mongoose.HookSyncCallback<mongoose.Aggregate<any>>, preFunction.arg1 as mongoose.HookErrorCallback);
+            if (tempMiddleware.type === "preAggregate") {
+                schema.pre(tempMiddleware.hook, tempMiddleware.arg0 as boolean, tempMiddleware.arg1 as mongoose.HookAsyncCallback<mongoose.Aggregate<any>>, tempMiddleware.arg2 as mongoose.HookErrorCallback);
             }
-            else if (preFunction.hook === "insertMany") {
-                schema.pre(preFunction.hook, preFunction.arg0 as mongoose.HookSyncCallback<mongoose.Model<mongoose.Document, {}>>, preFunction.arg1 as mongoose.HookErrorCallback);
+            else if (tempMiddleware.type === "preModel") {
+                schema.pre(tempMiddleware.hook, tempMiddleware.arg0 as boolean, tempMiddleware.arg1 as mongoose.HookAsyncCallback<mongoose.Model<mongoose.Document, {}>>, tempMiddleware.arg2 as mongoose.HookErrorCallback);
             }
-            else if (preFunction.hook === "init" || preFunction.hook === "save" || preFunction.hook === "validate" || preFunction.hook === "remove") {
-                schema.pre(preFunction.hook, preFunction.arg0 as mongoose.HookSyncCallback<mongoose.Document>, preFunction.arg1 as mongoose.HookErrorCallback);
+            else if (tempMiddleware.type === "preDocument") {
+                schema.pre(tempMiddleware.hook, tempMiddleware.arg0 as boolean, tempMiddleware.arg1 as mongoose.HookAsyncCallback<mongoose.Document>, tempMiddleware.arg2 as mongoose.HookErrorCallback);
             }
             else {
-                schema.pre(preFunction.hook, preFunction.arg0 as mongoose.HookSyncCallback<mongoose.Query<any>>, preFunction.arg1 as mongoose.HookErrorCallback);
+                schema.pre(tempMiddleware.hook, tempMiddleware.arg0 as boolean, tempMiddleware.arg1 as mongoose.HookAsyncCallback<mongoose.Query<any>>, tempMiddleware.arg2 as mongoose.HookErrorCallback);
             }
-        }
-    }
-    else {
-        if (preFunction.hook === "aggregate") {
-            schema.pre(preFunction.hook, preFunction.arg0 as boolean, preFunction.arg1 as mongoose.HookAsyncCallback<mongoose.Aggregate<any>>, preFunction.arg2 as mongoose.HookErrorCallback);
-        }
-        else if (preFunction.hook === "insertMany") {
-            schema.pre(preFunction.hook, preFunction.arg0 as boolean, preFunction.arg1 as mongoose.HookAsyncCallback<mongoose.Model<mongoose.Document, {}>>, preFunction.arg2 as mongoose.HookErrorCallback);
-        }
-        else if (preFunction.hook === "init" || preFunction.hook === "save" || preFunction.hook === "validate" || preFunction.hook === "remove") {
-            schema.pre(preFunction.hook, preFunction.arg0 as boolean, preFunction.arg1 as mongoose.HookAsyncCallback<mongoose.Document>, preFunction.arg2 as mongoose.HookErrorCallback);
-        }
-        else {
-            schema.pre(preFunction.hook, preFunction.arg0 as boolean, preFunction.arg1 as mongoose.HookAsyncCallback<mongoose.Query<any>>, preFunction.arg2 as mongoose.HookErrorCallback);
         }
     }
 }
@@ -104,11 +117,8 @@ app.connectDatabase = function (entities: { [key: string]: { new(): IBaseEntity 
                 Object.keys(entities).map(entityKey => {
                     let schemaEntity: IEntitySchema = getEntitySchema(entities[entityKey]);
                     schemaEntity.model = connection.model(schemaEntity.name, schemaEntity.schema);
-                    schemaEntity.preFunction.map(preFunction => {
-                        mapSchemaPreHook(schemaEntity.schema, preFunction);
-                    });
-                    schemaEntity.plugins.map(plugin => {
-                        mapSchemaPlugin(schemaEntity.schema, plugin);
+                    schemaEntity.middleware.map(middleware => {
+                        mapSchemaMiddleware(schemaEntity.schema, middleware);
                     });
                     defineMetadata(SCHEMA_KEY, schemaEntity, getClass(entities[entityKey]));
                 });

@@ -13,7 +13,9 @@ import mongoose from "mongoose";
         console.log("save");
         next();
     });
+    this.plugin(function a1123(){
 
+    });
     this.pre("update", (next) => {
         console.log("update");
         next();

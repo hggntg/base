@@ -66,8 +66,7 @@ export interface IFakeSchemaFunction{
 }
 
 class FakeSchemaFunction implements IFakeSchemaFunction{
-	private preFunction: Array<IFakePreAggregate | IFakePreModel | IFakePreDocument | IFakePreQuery> = new Array();
-	private plugins: Array<IFakePlugin> = new Array();
+	private middleware: Array<IFakePreAggregate | IFakePreModel | IFakePreDocument | IFakePreQuery | IFakePlugin> = new Array();
 	pre(method: HookAggregateType, fn: mongoose.HookSyncCallback<mongoose.Aggregate<any>>, errorCb?: mongoose.HookErrorCallback): IFakeSchemaFunction;
 	pre(method: HookAggregateType, paralel: boolean, fn: mongoose.HookAsyncCallback<mongoose.Aggregate<any>>, errorCb?: mongoose.HookErrorCallback): IFakeSchemaFunction;
 	pre(method: HookDocumentType, fn: mongoose.HookSyncCallback<mongoose.Document>, errorCb?: mongoose.HookErrorCallback): IFakeSchemaFunction;
@@ -88,31 +87,36 @@ class FakeSchemaFunction implements IFakeSchemaFunction{
 				arg2: arg2
 			};
 			if(hook === "aggregate"){
-				this.preFunction.push(preFunction as IFakePreAggregate);
+				(preFunction as IFakePreAggregate).type = "preAggregate";
+				this.middleware.push(preFunction as IFakePreAggregate);
 			}
 			else if(hook === "insertMany"){
-				this.preFunction.push(preFunction as IFakePreModel);
+				(preFunction as IFakePreModel).type = "preModel";
+				this.middleware.push(preFunction as IFakePreModel);
 			}
 			else if(hook === "init" || hook === "save" || hook === "remove" || hook === "validate"){
-				this.preFunction.push(preFunction as IFakePreDocument);
+				(preFunction as IFakePreDocument).type = "preDocument";
+				this.middleware.push(preFunction as IFakePreDocument);
 			}
 			else{
-				this.preFunction.push(preFunction as IFakePreQuery);
+				(preFunction as IFakePreQuery).type = "preQuery";
+				this.middleware.push(preFunction as IFakePreQuery);
 			}
 			return this;
 	}
 	plugin(plugin: (schema: mongoose.Schema<any>) => void): IFakeSchemaFunction;
 	plugin<T>(plugin: (schema: mongoose.Schema<any>, options: T) => void, opts: T): IFakeSchemaFunction;
 	plugin<T = any>(plugin: ((schema: mongoose.Schema<any>) => void) | ((schema: mongoose.Schema<any>, options: T) => void), options?: T): IFakeSchemaFunction {
-		this.plugins.push({
+		let pluginFunction = {
+			type: "plugin",
 			plugin: plugin,
 			options: options
-		});
+		}
+		this.middleware.push(pluginFunction as IFakePlugin);
 		return this;
 	}
-	constructor(_preFunction: Array<IFakePreAggregate | IFakePreModel | IFakePreDocument | IFakePreQuery> = new Array(), _plugins: Array<IFakePlugin> = new Array()){
-		this.preFunction = _preFunction;
-		this.plugins = _plugins;
+	constructor(_middleware: Array<IFakePreAggregate | IFakePreModel | IFakePreDocument | IFakePreQuery | IFakePlugin> = new Array()){
+		this.middleware = _middleware;
 	}
 }
 
@@ -132,8 +136,8 @@ export function Entity(arg0: string | mongoose.SchemaOptions, arg1?: mongoose.Sc
 	return function (target: any) {
 		let schema: IEntitySchema = getMetadata(SCHEMA_KEY, getClass(target));	
 		schema = ensureEntitySchemaInitiate(schema);
-		schema.preFunction = [];
-		let hook : IFakeSchemaFunction = new FakeSchemaFunction(schema.preFunction);
+		schema.middleware = [];
+		let hook : IFakeSchemaFunction = new FakeSchemaFunction(schema.middleware);
 		if(typeof arg0 === "string" && isSchemaOptions(arg1) && typeof arg2 === "function"){
 			schema.name = arg0;
 			schema.schemaOptions = arg1;

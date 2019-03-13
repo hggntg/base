@@ -13,17 +13,21 @@ export type HookQueryType = "count" | "find" | "findOne" | "findOneAndRemove" | 
 
 type IFakeArg2 = mongoose.HookErrorCallback;
 
-export interface IFakePreAggregate {
+interface IFakeMiddleware{
+	type: "plugin" | "preAggregate" | "preModel" | "preDocument" | "preQuery"
+}
+
+export interface IFakePreAggregate extends IFakeMiddleware {
 	hook: HookAggregateType;
-	arg0: mongoose.HookSyncCallback<mongoose.Aggregate<any>> | boolean;
-	arg1?: mongoose.HookAsyncCallback<mongoose.Aggregate<any>> | mongoose.HookErrorCallback;
+	arg0: IFakeAggregateArg0;
+	arg1?: IFakeAggregateArg1;
 	arg2?: IFakeArg2;
 }
 
 type IFakeAggregateArg0 = mongoose.HookSyncCallback<mongoose.Aggregate<any>> | boolean;
 type IFakeAggregateArg1 = mongoose.HookAsyncCallback<mongoose.Aggregate<any>> | mongoose.HookErrorCallback;
 
-export interface IFakePreModel{
+export interface IFakePreModel extends IFakeMiddleware {
 	hook: HookModelType;
 	arg0: IFakeModelArg0;
 	arg1?: IFakeModelArg1;
@@ -34,7 +38,7 @@ type IFakeModelArg0 = mongoose.HookSyncCallback<mongoose.Model<mongoose.Document
 type IFakeModelArg1 = mongoose.HookAsyncCallback<mongoose.Model<mongoose.Document, {}>> | mongoose.HookErrorCallback;
 
 
-export interface IFakePreDocument{
+export interface IFakePreDocument extends IFakeMiddleware {
 	hook: HookDocumentType;
 	arg0: IFakeDocumentArg0;
 	arg1?: IFakeDocumentArg1;
@@ -44,17 +48,17 @@ export interface IFakePreDocument{
 type IFakeDocumentArg0 = mongoose.HookSyncCallback<mongoose.Document> | boolean;
 type IFakeDocumentArg1 = mongoose.HookAsyncCallback<mongoose.Document> | mongoose.HookErrorCallback;
 
-export interface IFakePreQuery{
+export interface IFakePreQuery extends IFakeMiddleware {
 	hook: HookQueryType;
-	arg0: mongoose.HookSyncCallback<mongoose.Query<any>>| boolean;
-	arg1?: mongoose.HookAsyncCallback<mongoose.Query<any>> | mongoose.HookErrorCallback;
+	arg0: IFakeQueryArg0;
+	arg1?: IFakeQueryArg1;
 	arg2?: IFakeArg2;
 }
 
 type IFakeQueryArg0 = mongoose.HookSyncCallback<mongoose.Query<any>>| boolean;
 type IFakeQueryArg1 = mongoose.HookAsyncCallback<mongoose.Query<any>> | mongoose.HookErrorCallback;
 
-export interface IFakePlugin<T = any>{
+export interface IFakePlugin<T = any> extends IFakeMiddleware {
 	plugin: ((schema: mongoose.Schema<any>) => void)  | ((schema: mongoose.Schema<any>, options: T) => void);
 	options?: T;
 }
@@ -65,8 +69,7 @@ export interface IEntitySchema {
 	schemaOptions?: mongoose.SchemaOptions;
 	model?: mongoose.Model<mongoose.Document>;
 	schema?: mongoose.Schema;
-	preFunction?: Array<IFakePreAggregate | IFakePreModel | IFakePreDocument | IFakePreQuery>;
-	plugins?:  Array<IFakePlugin>;
+	middleware?: Array<IFakePreAggregate | IFakePreModel | IFakePreDocument | IFakePreQuery | IFakePlugin>;
 }
 
 export class EntitySchema implements IEntitySchema {
@@ -87,10 +90,7 @@ export class EntitySchema implements IEntitySchema {
 	schema?: mongoose.Schema<any>;
 
 	@Property
-	preFunction?: Array<IFakePreAggregate | IFakePreModel | IFakePreDocument | IFakePreQuery> = new Array();
-
-	@Property
-	plugins?: Array<IFakePlugin> = new Array();
+	middleware?: Array<IFakePreAggregate | IFakePreModel | IFakePreDocument | IFakePreQuery | IFakePlugin> = new Array();
 
 	constructor() {
 		this.definition = {};
