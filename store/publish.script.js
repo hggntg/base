@@ -16,7 +16,8 @@ const modules =[
 ];
 
 modules.map(module => {
-    childProcess.execSync("cd " + path.join(basePath, module.path));
-    childProcess.execSync("tool build module --name ", module.name);
-    childProcess.execSync("tool publish " + module.name);
+    console.log(childProcess.execSync("tool build module --name " + module.name, {
+        cwd: path.join(basePath, module.path)
+    }).toString());
+    console.log(childProcess.execSync("tool publish " + module.name).toString());
 });
