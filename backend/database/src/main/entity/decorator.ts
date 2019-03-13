@@ -3,7 +3,7 @@ import { SCHEMA_KEY } from "../../infrastructure/constant";
 import { 
 	IEntitySchema, ensureEntitySchemaInitiate, IFakePreAggregate,
 	IFakePreDocument, HookDocumentType, HookModelType, IFakePreModel,
-	HookAggregateType, HookQueryType, IFakePreQuery
+	HookAggregateType, HookQueryType, IFakePreQuery, IFakePlugin
 } from "./entity-schema";
 import mongoose from "mongoose";
 import { IBaseEntity } from "@base/interfaces";
@@ -52,27 +52,30 @@ export function RelatedField(name: string | IBaseEntity, relatedEntity?: IBaseEn
 	}
 }
 
-export interface IFakeSchemaPreFunction{
-	pre(method: HookAggregateType, fn: mongoose.HookSyncCallback<mongoose.Aggregate<any>>, errorCb?: mongoose.HookErrorCallback): IFakeSchemaPreFunction;
-	pre(method: HookAggregateType, paralel : boolean, fn: mongoose.HookAsyncCallback<mongoose.Aggregate<any>>, errorCb?: mongoose.HookErrorCallback): IFakeSchemaPreFunction;
-	pre(method: HookDocumentType, fn: mongoose.HookSyncCallback<mongoose.Document>, errorCb?: mongoose.HookErrorCallback): IFakeSchemaPreFunction;
-	pre(method: HookDocumentType, paralel : boolean, fn: mongoose.HookAsyncCallback<mongoose.Document>, errorCb?: mongoose.HookErrorCallback): IFakeSchemaPreFunction;
-	pre(method: HookModelType, fn: mongoose.HookSyncCallback<mongoose.Model<mongoose.Document, {}>>, errorCb?: mongoose.HookErrorCallback): IFakeSchemaPreFunction;
-	pre(method: HookModelType, paralel : boolean, fn: mongoose.HookAsyncCallback<mongoose.Model<mongoose.Document, {}>>, errorCb?: mongoose.HookErrorCallback): IFakeSchemaPreFunction;
-	pre(method: HookQueryType, fn: mongoose.HookSyncCallback<mongoose.Query<any>>, errorCb?: mongoose.HookErrorCallback): IFakeSchemaPreFunction;
-	pre(method: HookQueryType, paralel : boolean, fn: mongoose.HookAsyncCallback<mongoose.Query<any>>, errorCb?: mongoose.HookErrorCallback): IFakeSchemaPreFunction;
+export interface IFakeSchemaFunction{
+	pre(method: HookAggregateType, fn: mongoose.HookSyncCallback<mongoose.Aggregate<any>>, errorCb?: mongoose.HookErrorCallback): IFakeSchemaFunction;
+	pre(method: HookAggregateType, paralel : boolean, fn: mongoose.HookAsyncCallback<mongoose.Aggregate<any>>, errorCb?: mongoose.HookErrorCallback): IFakeSchemaFunction;
+	pre(method: HookDocumentType, fn: mongoose.HookSyncCallback<mongoose.Document>, errorCb?: mongoose.HookErrorCallback): IFakeSchemaFunction;
+	pre(method: HookDocumentType, paralel : boolean, fn: mongoose.HookAsyncCallback<mongoose.Document>, errorCb?: mongoose.HookErrorCallback): IFakeSchemaFunction;
+	pre(method: HookModelType, fn: mongoose.HookSyncCallback<mongoose.Model<mongoose.Document, {}>>, errorCb?: mongoose.HookErrorCallback): IFakeSchemaFunction;
+	pre(method: HookModelType, paralel : boolean, fn: mongoose.HookAsyncCallback<mongoose.Model<mongoose.Document, {}>>, errorCb?: mongoose.HookErrorCallback): IFakeSchemaFunction;
+	pre(method: HookQueryType, fn: mongoose.HookSyncCallback<mongoose.Query<any>>, errorCb?: mongoose.HookErrorCallback): IFakeSchemaFunction;
+	pre(method: HookQueryType, paralel : boolean, fn: mongoose.HookAsyncCallback<mongoose.Query<any>>, errorCb?: mongoose.HookErrorCallback): IFakeSchemaFunction;
+	plugin(plugin: (schema: mongoose.Schema) => void): IFakeSchemaFunction;
+	plugin<T>(plugin: (schema: mongoose.Schema, options: T) => void, opts: T): IFakeSchemaFunction; 
 }
 
-class FakeSchemaPreFunction implements IFakeSchemaPreFunction{
+class FakeSchemaFunction implements IFakeSchemaFunction{
 	private preFunction: Array<IFakePreAggregate | IFakePreModel | IFakePreDocument | IFakePreQuery> = new Array();
-	pre(method: HookAggregateType, fn: mongoose.HookSyncCallback<mongoose.Aggregate<any>>, errorCb?: mongoose.HookErrorCallback): IFakeSchemaPreFunction;
-	pre(method: HookAggregateType, paralel: boolean, fn: mongoose.HookAsyncCallback<mongoose.Aggregate<any>>, errorCb?: mongoose.HookErrorCallback): IFakeSchemaPreFunction;
-	pre(method: HookDocumentType, fn: mongoose.HookSyncCallback<mongoose.Document>, errorCb?: mongoose.HookErrorCallback): IFakeSchemaPreFunction;
-	pre(method: HookDocumentType, paralel: boolean, fn: mongoose.HookAsyncCallback<mongoose.Document>, errorCb?: mongoose.HookErrorCallback): IFakeSchemaPreFunction;
-	pre(method: HookModelType, fn: mongoose.HookSyncCallback<mongoose.Model<mongoose.Document, {}>>, errorCb?: mongoose.HookErrorCallback): IFakeSchemaPreFunction;
-	pre(method: HookModelType, paralel: boolean, fn: mongoose.HookAsyncCallback<mongoose.Model<mongoose.Document, {}>>, errorCb?: mongoose.HookErrorCallback): IFakeSchemaPreFunction;
-	pre(method: HookQueryType, fn: mongoose.HookSyncCallback<mongoose.Query<any>>, errorCb?: mongoose.HookErrorCallback): IFakeSchemaPreFunction;
-	pre(method: HookQueryType, paralel: boolean, fn: mongoose.HookAsyncCallback<mongoose.Query<any>>, errorCb?: mongoose.HookErrorCallback): IFakeSchemaPreFunction;
+	private plugins: Array<IFakePlugin> = new Array();
+	pre(method: HookAggregateType, fn: mongoose.HookSyncCallback<mongoose.Aggregate<any>>, errorCb?: mongoose.HookErrorCallback): IFakeSchemaFunction;
+	pre(method: HookAggregateType, paralel: boolean, fn: mongoose.HookAsyncCallback<mongoose.Aggregate<any>>, errorCb?: mongoose.HookErrorCallback): IFakeSchemaFunction;
+	pre(method: HookDocumentType, fn: mongoose.HookSyncCallback<mongoose.Document>, errorCb?: mongoose.HookErrorCallback): IFakeSchemaFunction;
+	pre(method: HookDocumentType, paralel: boolean, fn: mongoose.HookAsyncCallback<mongoose.Document>, errorCb?: mongoose.HookErrorCallback): IFakeSchemaFunction;
+	pre(method: HookModelType, fn: mongoose.HookSyncCallback<mongoose.Model<mongoose.Document, {}>>, errorCb?: mongoose.HookErrorCallback): IFakeSchemaFunction;
+	pre(method: HookModelType, paralel: boolean, fn: mongoose.HookAsyncCallback<mongoose.Model<mongoose.Document, {}>>, errorCb?: mongoose.HookErrorCallback): IFakeSchemaFunction;
+	pre(method: HookQueryType, fn: mongoose.HookSyncCallback<mongoose.Query<any>>, errorCb?: mongoose.HookErrorCallback): IFakeSchemaFunction;
+	pre(method: HookQueryType, paralel: boolean, fn: mongoose.HookAsyncCallback<mongoose.Query<any>>, errorCb?: mongoose.HookErrorCallback): IFakeSchemaFunction;
 	pre(
 		hook: HookAggregateType | HookDocumentType | HookModelType | HookQueryType,
 		arg0: boolean | mongoose.HookSyncCallback<mongoose.Aggregate<any>> | mongoose.HookSyncCallback<mongoose.Document> | mongoose.HookSyncCallback<mongoose.Model<mongoose.Document, {}>> | mongoose.HookSyncCallback<mongoose.Query<any>>,
@@ -98,8 +101,18 @@ class FakeSchemaPreFunction implements IFakeSchemaPreFunction{
 			}
 			return this;
 	}
-	constructor(_preFunction: Array<IFakePreAggregate | IFakePreModel | IFakePreDocument | IFakePreQuery> = new Array()){
+	plugin(plugin: (schema: mongoose.Schema<any>) => void): IFakeSchemaFunction;
+	plugin<T>(plugin: (schema: mongoose.Schema<any>, options: T) => void, opts: T): IFakeSchemaFunction;
+	plugin<T = any>(plugin: ((schema: mongoose.Schema<any>) => void) | ((schema: mongoose.Schema<any>, options: T) => void), options?: T): IFakeSchemaFunction {
+		this.plugins.push({
+			plugin: plugin,
+			options: options
+		});
+		return this;
+	}
+	constructor(_preFunction: Array<IFakePreAggregate | IFakePreModel | IFakePreDocument | IFakePreQuery> = new Array(), _plugins: Array<IFakePlugin> = new Array()){
 		this.preFunction = _preFunction;
+		this.plugins = _plugins;
 	}
 }
 
@@ -113,14 +126,14 @@ function isSchemaOptions(input): input is mongoose.SchemaOptions{
 
 export function Entity(options: mongoose.SchemaOptions): (target: any) => void;
 export function Entity(name: string, options: mongoose.SchemaOptions): (target: any) => void;
-export function Entity(options: mongoose.SchemaOptions, hook: (this: IFakeSchemaPreFunction) => void): (target: any) => void;
-export function Entity(name: string, options: mongoose.SchemaOptions, hook: (this: IFakeSchemaPreFunction) => void): (target: any) => void;
-export function Entity(arg0: string | mongoose.SchemaOptions, arg1?: mongoose.SchemaOptions | ((this: IFakeSchemaPreFunction) => void), arg2?: (this: IFakeSchemaPreFunction) => void): (target: any) => void{
+export function Entity(options: mongoose.SchemaOptions, hook: (this: IFakeSchemaFunction) => void): (target: any) => void;
+export function Entity(name: string, options: mongoose.SchemaOptions, hook: (this: IFakeSchemaFunction) => void): (target: any) => void;
+export function Entity(arg0: string | mongoose.SchemaOptions, arg1?: mongoose.SchemaOptions | ((this: IFakeSchemaFunction) => void), arg2?: (this: IFakeSchemaFunction) => void): (target: any) => void{
 	return function (target: any) {
 		let schema: IEntitySchema = getMetadata(SCHEMA_KEY, getClass(target));	
 		schema = ensureEntitySchemaInitiate(schema);
 		schema.preFunction = [];
-		let hook : IFakeSchemaPreFunction = new FakeSchemaPreFunction(schema.preFunction);
+		let hook : IFakeSchemaFunction = new FakeSchemaFunction(schema.preFunction);
 		if(typeof arg0 === "string" && isSchemaOptions(arg1) && typeof arg2 === "function"){
 			schema.name = arg0;
 			schema.schemaOptions = arg1;

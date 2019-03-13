@@ -30,7 +30,6 @@ var Collection = (function () {
     function Collection(classImp) {
         var dbContext = decorator_1.getDbContextMetadata(app.dbContext);
         var _model = (new classImp()).getInstance();
-        console.log(_model);
         this.model = _model;
         this.connection = dbContext.connection;
     }

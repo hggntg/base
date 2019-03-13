@@ -54,6 +54,11 @@ export interface IFakePreQuery{
 type IFakeQueryArg0 = mongoose.HookSyncCallback<mongoose.Query<any>>| boolean;
 type IFakeQueryArg1 = mongoose.HookAsyncCallback<mongoose.Query<any>> | mongoose.HookErrorCallback;
 
+export interface IFakePlugin<T = any>{
+	plugin: ((schema: mongoose.Schema<any>) => void)  | ((schema: mongoose.Schema<any>, options: T) => void);
+	options?: T;
+}
+
 export interface IEntitySchema {
 	name: string;
 	definition?: EntitySchemaDefinition;
@@ -61,9 +66,11 @@ export interface IEntitySchema {
 	model?: mongoose.Model<mongoose.Document>;
 	schema?: mongoose.Schema;
 	preFunction?: Array<IFakePreAggregate | IFakePreModel | IFakePreDocument | IFakePreQuery>;
+	plugins?:  Array<IFakePlugin>;
 }
 
 export class EntitySchema implements IEntitySchema {
+
 	@Property
 	name: string;
 
@@ -80,7 +87,10 @@ export class EntitySchema implements IEntitySchema {
 	schema?: mongoose.Schema<any>;
 
 	@Property
-	preFunction?: Array<IFakePreAggregate | IFakePreModel | IFakePreDocument | IFakePreQuery> = new Array(); 
+	preFunction?: Array<IFakePreAggregate | IFakePreModel | IFakePreDocument | IFakePreQuery> = new Array();
+
+	@Property
+	plugins?: Array<IFakePlugin> = new Array();
 
 	constructor() {
 		this.definition = {};

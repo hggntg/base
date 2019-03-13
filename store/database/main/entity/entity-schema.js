@@ -18,6 +18,7 @@ var utilities_1 = require("../../infrastructure/utilities");
 var constant_1 = require("../../infrastructure/constant");
 var EntitySchema = (function () {
     function EntitySchema() {
+        this.preFunction = new Array();
         this.definition = {};
         this.schemaOptions = {};
     }

@@ -49,28 +49,66 @@ function RelatedField(name, relatedEntity) {
     };
 }
 exports.RelatedField = RelatedField;
-function Pre(method, fn, errorCb) {
+var FakeSchemaPreFunction = (function () {
+    function FakeSchemaPreFunction(_preFunction) {
+        if (_preFunction === void 0) { _preFunction = new Array(); }
+        this.preFunction = new Array();
+        this.preFunction = _preFunction;
+    }
+    FakeSchemaPreFunction.prototype.pre = function (hook, arg0, arg1, arg2) {
+        var preFunction = {
+            hook: hook,
+            arg0: arg0,
+            arg1: arg1,
+            arg2: arg2
+        };
+        if (hook === "aggregate") {
+            this.preFunction.push(preFunction);
+        }
+        else if (hook === "insertMany") {
+            this.preFunction.push(preFunction);
+        }
+        else if (hook === "init" || hook === "save" || hook === "remove" || hook === "validate") {
+            this.preFunction.push(preFunction);
+        }
+        else {
+            this.preFunction.push(preFunction);
+        }
+        return this;
+    };
+    return FakeSchemaPreFunction;
+}());
+function isSchemaOptions(input) {
+    var isSchemaOption = 1;
+    Object.keys(input).map(function (key) {
+        isSchemaOption *= input[key] !== undefined ? 1 : 0;
+    });
+    return !!isSchemaOption;
 }
-exports.Pre = Pre;
-function PreInit(target, propertyKey, descriptor) {
-    var schema = class_1.getMetadata(constant_1.SCHEMA_KEY, class_1.getClass(target));
-    schema = entity_schema_1.ensureEntitySchemaInitiate(schema);
-    console.log(descriptor);
-}
-exports.PreInit = PreInit;
-function Entity(name, options) {
+function Entity(arg0, arg1, arg2) {
     return function (target) {
         var schema = class_1.getMetadata(constant_1.SCHEMA_KEY, class_1.getClass(target));
         schema = entity_schema_1.ensureEntitySchemaInitiate(schema);
-        if (!name) {
-            name = target.name;
+        schema.preFunction = [];
+        var hook = new FakeSchemaPreFunction(schema.preFunction);
+        if (typeof arg0 === "string" && isSchemaOptions(arg1) && typeof arg2 === "function") {
+            schema.name = arg0;
+            schema.schemaOptions = arg1;
+            arg2.apply(hook);
         }
-        if (typeof name !== "string") {
-            options = name;
-            name = target.name;
+        else if (isSchemaOptions(arg0) && typeof arg2 === "function") {
+            schema.name = target.name;
+            schema.schemaOptions = arg0;
+            arg2.apply(hook);
         }
-        schema.name = name;
-        schema.schemaOptions = options;
+        else if (typeof arg0 === "string" && isSchemaOptions(arg1)) {
+            schema.name = arg0;
+            schema.schemaOptions = arg1;
+        }
+        else {
+            schema.name = target.name;
+            schema.schemaOptions = arg0;
+        }
         class_1.defineMetadata(constant_1.SCHEMA_KEY, schema, class_1.getClass(target));
     };
 }
