@@ -19,8 +19,6 @@ var DatabaseContext = (function () {
         var _this = this;
         var properties = class_1.getProperties(this);
         var dbContext = decorator_1.getDbContextMetadata(app.dbContext);
-        console.log("=================================");
-        console.log(dbContext);
         properties.map(function (property) {
             var classImp = dbContext.classes[property];
             _this[property] = new collection_1.Collection(classImp);

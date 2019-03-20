@@ -3,16 +3,18 @@
   "version": "1.0.1",
   "description": "",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "mocha -r ts-node/register test/* --recursive"
   },
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "@base/test": "^1.0.5",
     "@types/node": "^10.12.21",
     "mocha": "^5.2.0",
     "webpack": "^4.29.1"
   },
   "dependencies": {
-    "typescript": "^3.3.3333"
+    "typescript": "^3.3.3333",
+    "webpack": "^4.29.1"
   }
 }

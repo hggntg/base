@@ -1,15 +1,16 @@
 {
   "name": "@base/class",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
   "license": "ISC",
-  "devDependencies": {
-    "reflect-metadata": "^0.1.13"
-  },
+  "devDependencies": {},
   "main": "index.js",
-  "types": "index.d.ts"
+  "types": "index.d.ts",
+  "dependencies": {
+    "reflect-metadata": "^0.1.13"
+  }
 }
