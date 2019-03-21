@@ -1,6 +1,10 @@
 {
   "name": "@base/utilities",
+<<<<<<< HEAD
   "version": "1.0.1",
+=======
+  "version": "1.0.2",
+>>>>>>> 0c77e0b489a3f08d01aa21c0a18e6884efa20260
   "description": "",
   "scripts": {
     "test": "mocha -r ts-node/register test/* --recursive"
@@ -8,6 +12,7 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
+<<<<<<< HEAD
     "@base/test": "^1.0.5",
     "@types/node": "^10.12.21",
     "mocha": "^5.2.0",
@@ -17,4 +22,12 @@
     "typescript": "^3.3.3333",
     "webpack": "^4.29.1"
   }
+=======
+    "@base/test": "^1.0.6",
+    "@types/node": "^10.14.1",
+    "typescript": "^3.3.3333",
+    "webpack": "^4.29.6"
+  },
+  "dependencies": {}
+>>>>>>> 0c77e0b489a3f08d01aa21c0a18e6884efa20260
 }
