@@ -3,6 +3,7 @@ import { CONTROLLER_KEY } from "../../shared/constant";
 import { Property, getProperties, getMetadata, defineMetadata, getClass } from "@base/class";
 import { UnitOfWork, App } from "@base/interfaces";
 import { IExtendApi } from "../../internal";
+import { IncomingHttpHeaders } from "http";
 
 declare const app: App & IExtendApi;
 
@@ -38,7 +39,7 @@ export class ControllerImp implements IController {
         properties.map(property => {
             let routeConfig = controllerProperty.routes[property];
             this.subApp[routeConfig.method.toLowerCase()](routeConfig.url, (req: express.Request, res: express.Response) => {
-                let result = this[property](checkInput(req, res));
+                let result = this[property](checkInput(req));
                 if(typeof result.then === "function" && typeof result.catch === "function"){
                     result.then((value) => {
                         res.json(value);
@@ -103,11 +104,25 @@ export function getController(target: any): Controller {
     return controllerProperty;
 }
 
-function checkInput(req: express.Request, res: express.Response){
-    let input = {
+export interface IReqestParam{
+    query: {
+        [key in string]: any
+    };
+    params:{
+        [key in string]: any
+    };
+    body:{
+        [key in string]: any
+    },
+    headers: IncomingHttpHeaders
+}
+
+function checkInput(req: express.Request){
+    let input: IReqestParam = {
         query: req.query,
         params: req.params,
-        body: req.body
+        body: req.body,
+        headers: req.headers
     }
     return input;
 }

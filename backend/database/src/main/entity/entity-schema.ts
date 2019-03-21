@@ -27,26 +27,26 @@ export interface IFakePreAggregate extends IFakeMiddleware {
 type IFakeAggregateArg0 = mongoose.HookSyncCallback<mongoose.Aggregate<any>> | boolean;
 type IFakeAggregateArg1 = mongoose.HookAsyncCallback<mongoose.Aggregate<any>> | mongoose.HookErrorCallback;
 
-export interface IFakePreModel extends IFakeMiddleware {
+export interface IFakePreModel<T> extends IFakeMiddleware {
 	hook: HookModelType;
-	arg0: IFakeModelArg0;
-	arg1?: IFakeModelArg1;
+	arg0: IFakeModelArg0<T>;
+	arg1?: IFakeModelArg1<T>;
 	arg2?: IFakeArg2;
 }
 
-type IFakeModelArg0 = mongoose.HookSyncCallback<mongoose.Model<mongoose.Document, {}>> | boolean;
-type IFakeModelArg1 = mongoose.HookAsyncCallback<mongoose.Model<mongoose.Document, {}>> | mongoose.HookErrorCallback;
+type IFakeModelArg0<T> = mongoose.HookSyncCallback<mongoose.Model<mongoose.Document & T, {}>> | boolean;
+type IFakeModelArg1<T> = mongoose.HookAsyncCallback<mongoose.Model<mongoose.Document & T, {}>> | mongoose.HookErrorCallback;
 
 
-export interface IFakePreDocument extends IFakeMiddleware {
+export interface IFakePreDocument<T> extends IFakeMiddleware {
 	hook: HookDocumentType;
-	arg0: IFakeDocumentArg0;
-	arg1?: IFakeDocumentArg1;
+	arg0: IFakeDocumentArg0<T>;
+	arg1?: IFakeDocumentArg1<T>;
 	arg2?: IFakeArg2;
 }
 
-type IFakeDocumentArg0 = mongoose.HookSyncCallback<mongoose.Document> | boolean;
-type IFakeDocumentArg1 = mongoose.HookAsyncCallback<mongoose.Document> | mongoose.HookErrorCallback;
+type IFakeDocumentArg0<T> = mongoose.HookSyncCallback<mongoose.Document & T> | boolean;
+type IFakeDocumentArg1<T> = mongoose.HookAsyncCallback<mongoose.Document & T> | mongoose.HookErrorCallback;
 
 export interface IFakePreQuery extends IFakeMiddleware {
 	hook: HookQueryType;
@@ -63,16 +63,16 @@ export interface IFakePlugin<T = any> extends IFakeMiddleware {
 	options?: T;
 }
 
-export interface IEntitySchema {
+export interface IEntitySchema<T> {
 	name: string;
 	definition?: EntitySchemaDefinition;
 	schemaOptions?: mongoose.SchemaOptions;
 	model?: mongoose.Model<mongoose.Document>;
 	schema?: mongoose.Schema;
-	middleware?: Array<IFakePreAggregate | IFakePreModel | IFakePreDocument | IFakePreQuery | IFakePlugin>;
+	middleware?: Array<IFakePreAggregate | IFakePreModel<T> | IFakePreDocument<T> | IFakePreQuery | IFakePlugin>;
 }
 
-export class EntitySchema implements IEntitySchema {
+export class EntitySchema<T> implements IEntitySchema<T> {
 
 	@Property
 	name: string;
@@ -90,7 +90,7 @@ export class EntitySchema implements IEntitySchema {
 	schema?: mongoose.Schema<any>;
 
 	@Property
-	middleware?: Array<IFakePreAggregate | IFakePreModel | IFakePreDocument | IFakePreQuery | IFakePlugin> = new Array();
+	middleware?: Array<IFakePreAggregate | IFakePreModel<T> | IFakePreDocument<T> | IFakePreQuery | IFakePlugin> = new Array();
 
 	constructor() {
 		this.definition = {};
@@ -98,8 +98,8 @@ export class EntitySchema implements IEntitySchema {
 	}
 }
 
-export function ensureEntitySchemaInitiate(input: EntitySchema) {
-	let output = ensureNew<EntitySchema>(EntitySchema, input || new EntitySchema());
+export function ensureEntitySchemaInitiate<T>(input: EntitySchema<T>) {
+	let output = ensureNew<EntitySchema<T>>(EntitySchema, input || new EntitySchema());
 	return output;
 }
 

@@ -1,10 +1,11 @@
 import { App, UnitOfWork } from "@base/interfaces";
 import { IExtendApi } from "./internal";
-import express from "express";
+import express, { RequestHandler } from "express";
 import morgan from "morgan";
 import { urlencoded, json } from "body-parser";
 import { v1 } from "uuid";
 import { getController, IController } from "./main/controller";
+import { ApplicationRequestHandler, PathParams, RequestHandlerParams, Request } from "express-serve-static-core";
 
 declare const app: App & IExtendApi;
 
@@ -12,11 +13,12 @@ app.server = express();
 
 export * from "./main/controller";
 
-app.startServer =  function (port: number, unitOfWorkInstance: UnitOfWork, controllers: {[key: string]: { new(unitOfWorkInstance: UnitOfWork) : IController} }) : Promise<boolean> {
+app.startServer =  function (this: (App & IExtendApi), port: number, unitOfWorkInstance: UnitOfWork, controllers: {[key: string]: { new(unitOfWorkInstance: UnitOfWork) : IController} }) : Promise<boolean> {
     let namespace = app.context.create("dbContext");
     app.server.use(json({}));
+    app.server.use()
     app.server.use(urlencoded({ extended: true }));
-    app.server.use(morgan("combined"))
+    app.server.use(morgan("combined"));
     app.server.use((req, res, next) => {
         namespace.run(async () => {
             namespace.set("tid", v1());
@@ -44,6 +46,16 @@ app.startServer =  function (port: number, unitOfWorkInstance: UnitOfWork, contr
         });
     });
 }
+
+app.registerMiddleware = function(arg0: (RequestHandler[] | RequestHandlerParams[] | PathParams), arg1?: (RequestHandler[] | RequestHandlerParams[])){
+    if(arg0 instanceof Array){
+        return this.server.use(arg0 as RequestHandler[]);
+    }
+    else{
+        return this.server.use(arg0 as PathParams, arg1 as RequestHandler[]);
+    }
+}
+
 export * from "./internal";
 
 // registerController(controllers){
