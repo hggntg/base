@@ -1,5 +1,5 @@
 import { App, IBaseEntity, UnitOfWork } from "@base/interfaces";
-import { IExtendDatabase } from "./internal";
+import { IExtendDatabase, LogEvent } from "./internal";
 import { getEntitySchema, IEntitySchema, IFakePreAggregate, IFakePreDocument, IFakePreModel, IFakePreQuery, IFakePlugin, EntitySchema } from "./main/entity";
 import { IDatabaseContext } from "./main/database-context";
 import mongoose from "mongoose";
@@ -151,6 +151,15 @@ app.extendDatabase = function (plugins: Function | Array<Function>) {
         else {
             mongoose.plugin(plugins);
         }
+    }
+}
+
+app.setLog = function(this: App & IExtendDatabase, hasLog: boolean) {
+    if(hasLog){
+        this.log = new LogEvent();
+        mongoose.set("debug", (collectionName, method, query, doc) => {
+            this.log.pushLog([`${collectionName}.${method}`, JSON.stringify(query), doc]);
+        });
     }
 }
 

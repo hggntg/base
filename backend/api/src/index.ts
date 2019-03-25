@@ -5,7 +5,7 @@ import morgan from "morgan";
 import { urlencoded, json } from "body-parser";
 import { v1 } from "uuid";
 import { getController, IController } from "./main/controller";
-import { ApplicationRequestHandler, PathParams, RequestHandlerParams, Request } from "express-serve-static-core";
+import { PathParams, RequestHandlerParams } from "express-serve-static-core";
 
 declare const app: App & IExtendApi;
 
@@ -38,6 +38,13 @@ app.startServer =  function (this: (App & IExtendApi), port: number, unitOfWorkI
     });
     return new Promise((resolve, reject) => {
         app.server.listen(port, () => {
+            console.log(`
+            ---------------------------------------------------------------------
+            ---------------------------------------------------------------------
+            ------------------ Server started at port ${port} -------------------
+            ---------------------------------------------------------------------
+            ---------------------------------------------------------------------
+            `);
             resolve(true);
         })
         .once("error", (err) => {
