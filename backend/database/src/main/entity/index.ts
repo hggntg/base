@@ -4,7 +4,7 @@ import { IBaseEntity } from "@base/interfaces";
 
 export abstract class BaseEntity implements IBaseEntity{
 	public getInstance(): mongoose.Model<mongoose.Document>{
-		let entitySchema: IEntitySchema = getEntitySchema(this);
+		let entitySchema: IEntitySchema<this> = getEntitySchema(this);
 		return entitySchema.model;
 	}
 	constructor() {

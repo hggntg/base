@@ -1,11 +1,12 @@
 import { App, IBaseEntity, UnitOfWork } from "@base/interfaces";
 import { IExtendDatabase } from "./internal";
-import { getEntitySchema, IEntitySchema, IFakePreAggregate, IFakePreDocument, IFakePreModel, IFakePreQuery, IFakePlugin } from "./main/entity";
+import { getEntitySchema, IEntitySchema, IFakePreAggregate, IFakePreDocument, IFakePreModel, IFakePreQuery, IFakePlugin, EntitySchema } from "./main/entity";
 import { IDatabaseContext } from "./main/database-context";
-import mongoose, { plugin, mongo } from "mongoose";
+import mongoose from "mongoose";
 import { SCHEMA_KEY, DBCONTEXT_KEY } from "./infrastructure/constant";
-import { getClass, defineMetadata } from "@base/class";
+import { getClass, defineMetadata, getMetadata } from "@base/class";
 import { getDbContextMetadata } from "./main/database-context/decorator";
+import { ensureNew } from "./infrastructure/utilities";
 
 declare const app: App & IExtendDatabase;
 
@@ -94,6 +95,17 @@ function mapSchemaMiddleware<T>(schema: mongoose.Schema, middleware: IFakePreAgg
     }
 }
 
+function generateSchema<T>(schemaEntity: IEntitySchema<T>): IEntitySchema<T>{
+	let realSchema: IEntitySchema<T> = ensureNew(EntitySchema, schemaEntity);
+	Object.keys(schemaEntity.definition).map(definitionKey => {
+		let keySegments = definitionKey.split("::-::");
+		let key = keySegments[1];
+		realSchema.definition[key] = realSchema.definition[definitionKey];
+		delete realSchema.definition[definitionKey];
+	});
+	return realSchema;
+}
+
 app.connectDatabase = function (entities: { [key: string]: { new(): IBaseEntity } }, context: { new(): IDatabaseContext }, unitOfWork: { new(_context: IDatabaseContext): UnitOfWork }): Promise<boolean> {
     let dbContext = getDbContextMetadata(app.dbContext);
     let connectionInfo = dbContext.connectionInfo;
@@ -105,10 +117,14 @@ app.connectDatabase = function (entities: { [key: string]: { new(): IBaseEntity 
                 Object.keys(entities).map(entityKey => {
                     let entityClass = getClass(entities[entityKey]);
                     let schemaEntity: IEntitySchema<typeof entityClass> = getEntitySchema(entities[entityKey]);
+                    schemaEntity = generateSchema(schemaEntity);
+                    schemaEntity.schema = new mongoose.Schema(schemaEntity.definition);
                     schemaEntity.model = connection.model(schemaEntity.name, schemaEntity.schema);
-                    schemaEntity.middleware.map(middleware => {
-                        mapSchemaMiddleware(schemaEntity.schema, middleware);
-                    });
+                    if(Array.isArray(schemaEntity.middleware)){
+                        schemaEntity.middleware.map(middleware => {
+                            mapSchemaMiddleware(schemaEntity.schema, middleware);
+                        });
+                    }
                     defineMetadata(SCHEMA_KEY, schemaEntity, getClass(entities[entityKey]));
                 });
                 let dbContext = new context();

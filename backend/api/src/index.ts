@@ -16,7 +16,6 @@ export * from "./main/controller";
 app.startServer =  function (this: (App & IExtendApi), port: number, unitOfWorkInstance: UnitOfWork, controllers: {[key: string]: { new(unitOfWorkInstance: UnitOfWork) : IController} }) : Promise<boolean> {
     let namespace = app.context.create("dbContext");
     app.server.use(json({}));
-    app.server.use()
     app.server.use(urlencoded({ extended: true }));
     app.server.use(morgan("combined"));
     app.server.use((req, res, next) => {

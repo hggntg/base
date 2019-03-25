@@ -90,7 +90,7 @@ export class EntitySchema<T> implements IEntitySchema<T> {
 	schema?: mongoose.Schema<any>;
 
 	@Property
-	middleware?: Array<IFakePreAggregate | IFakePreModel<T> | IFakePreDocument<T> | IFakePreQuery | IFakePlugin> = new Array();
+	middleware?: Array<IFakePreAggregate | IFakePreModel<T> | IFakePreDocument<T> | IFakePreQuery | IFakePlugin> = [];
 
 	constructor() {
 		this.definition = {};
