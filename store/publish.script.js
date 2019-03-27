@@ -5,7 +5,7 @@ const childProcess = require("child_process");
 const basePath = path.join(__dirname, "../");
 
 const modules =[
-    {name: "tool", path: "tool"},
+    {name: "logger", path: "backend/logger"},
     {name: "test", path: "backend/test"},
     {name: "utilities", path: "utilities"},
     {name: "interfaces", path: "interfaces"},

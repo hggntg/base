@@ -48,20 +48,17 @@ export class AppImp implements App {
         this.preStartAppTasks = new Array();
         this.context = Namespace;
         this.once("preStartApp", () => {
-            console.log("App is initializing");
             let promiseList = [];
             this.preStartAppTasks.map(preTask => {
                 promiseList.push(preTask);
             });
             Promise.all(promiseList).then((sucess) => {
-                console.log(sucess);
                 this.event.emit("startAppDone", null);
             }).catch(err => {
                 throw new Error(err);
             });
         });
         this.once("startAppDone", () => {
-            console.log("App is started successfuly");
         });
     }
     loadConfig(path: string) {

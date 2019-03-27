@@ -1,5 +1,5 @@
 import { App, IBaseEntity, UnitOfWork } from "@base/interfaces";
-import { IExtendDatabase, LogEvent } from "./internal";
+import { IExtendDatabase } from "./internal";
 import { getEntitySchema, IEntitySchema, IFakePreAggregate, IFakePreDocument, IFakePreModel, IFakePreQuery, IFakePlugin, EntitySchema } from "./main/entity";
 import { IDatabaseContext } from "./main/database-context";
 import mongoose from "mongoose";
@@ -7,8 +7,9 @@ import { SCHEMA_KEY, DBCONTEXT_KEY } from "./infrastructure/constant";
 import { getClass, defineMetadata, getMetadata } from "@base/class";
 import { getDbContextMetadata } from "./main/database-context/decorator";
 import { ensureNew } from "./infrastructure/utilities";
+import { IExtendLogger } from "@base/logger";
 
-declare const app: App & IExtendDatabase;
+declare const app: App & IExtendDatabase & IExtendLogger;
 
 function getNumberOfArgument(list: Array<any>) {
     let num = 0;
@@ -21,17 +22,17 @@ function getNumberOfArgument(list: Array<any>) {
 }
 
 function mapSchemaMiddleware<T>(schema: mongoose.Schema, middleware: IFakePreAggregate | IFakePreDocument<T> | IFakePreModel<T> | IFakePreQuery | IFakePlugin) {
-    if(middleware.type === "plugin"){
+    if (middleware.type === "plugin") {
         let tempMiddleware = (middleware as IFakePlugin);
         let numOfArgument = getNumberOfArgument([tempMiddleware.plugin, tempMiddleware.options]);
-        if(numOfArgument === 1){
+        if (numOfArgument === 1) {
             schema.plugin(tempMiddleware.plugin as (schema: mongoose.Schema<any>) => void);
         }
-        else{
+        else {
             schema.plugin(tempMiddleware.plugin, tempMiddleware.options);
         }
     }
-    else{
+    else {
         let tempMiddleware = (middleware as (IFakePreAggregate | IFakePreDocument<T> | IFakePreModel<T> | IFakePreQuery));
         let numOfArgument = getNumberOfArgument([tempMiddleware.arg0, tempMiddleware.arg1, tempMiddleware.arg2]);
         if (numOfArgument === 1) {
@@ -95,15 +96,15 @@ function mapSchemaMiddleware<T>(schema: mongoose.Schema, middleware: IFakePreAgg
     }
 }
 
-function generateSchema<T>(schemaEntity: IEntitySchema<T>): IEntitySchema<T>{
-	let realSchema: IEntitySchema<T> = ensureNew(EntitySchema, schemaEntity);
-	Object.keys(schemaEntity.definition).map(definitionKey => {
-		let keySegments = definitionKey.split("::-::");
-		let key = keySegments[1];
-		realSchema.definition[key] = realSchema.definition[definitionKey];
-		delete realSchema.definition[definitionKey];
-	});
-	return realSchema;
+function generateSchema<T>(schemaEntity: IEntitySchema<T>): IEntitySchema<T> {
+    let realSchema: IEntitySchema<T> = ensureNew(EntitySchema, schemaEntity);
+    Object.keys(schemaEntity.definition).map(definitionKey => {
+        let keySegments = definitionKey.split("::-::");
+        let key = keySegments[1];
+        realSchema.definition[key] = realSchema.definition[definitionKey];
+        delete realSchema.definition[definitionKey];
+    });
+    return realSchema;
 }
 
 app.connectDatabase = function (entities: { [key: string]: { new(): IBaseEntity } }, context: { new(): IDatabaseContext }, unitOfWork: { new(_context: IDatabaseContext): UnitOfWork }): Promise<boolean> {
@@ -114,19 +115,24 @@ app.connectDatabase = function (entities: { [key: string]: { new(): IBaseEntity 
             dbContext.connection = connection;
             defineMetadata(DBCONTEXT_KEY, dbContext, getClass(app.dbContext));
             try {
-                Object.keys(entities).map(entityKey => {
-                    let entityClass = getClass(entities[entityKey]);
-                    let schemaEntity: IEntitySchema<typeof entityClass> = getEntitySchema(entities[entityKey]);
+                let entityKeys = Object.keys(entities);
+                let entityKeyLength = entityKeys.length;
+                for(let i = 0; i < entityKeyLength; i++){
+                    let entity = entities[entityKeys[i]];
+                    let entityClass = getClass(entity);
+                    let schemaEntity: IEntitySchema<typeof entityClass> = getEntitySchema(entity);
                     schemaEntity = generateSchema(schemaEntity);
                     schemaEntity.schema = new mongoose.Schema(schemaEntity.definition);
-                    schemaEntity.model = connection.model(schemaEntity.name, schemaEntity.schema);
-                    if(Array.isArray(schemaEntity.middleware)){
-                        schemaEntity.middleware.map(middleware => {
+                    if (Array.isArray(schemaEntity.middleware)) {
+                        let middlewareLength = schemaEntity.middleware.length;
+                        for(let j = 0; j < middlewareLength; j++){
+                            let middleware = schemaEntity.middleware[j];
                             mapSchemaMiddleware(schemaEntity.schema, middleware);
-                        });
+                        }
                     }
-                    defineMetadata(SCHEMA_KEY, schemaEntity, getClass(entities[entityKey]));
-                });
+                    schemaEntity.model = connection.model(schemaEntity.name, schemaEntity.schema);
+                    defineMetadata(SCHEMA_KEY, schemaEntity, getClass(entity));
+                }
                 let dbContext = new context();
                 app.db = new unitOfWork(dbContext);
                 resolve(true);
@@ -142,7 +148,7 @@ app.connectDatabase = function (entities: { [key: string]: { new(): IBaseEntity 
 
 app.extendDatabase = function (plugins: Function | Array<Function>) {
     let dbContext = getDbContextMetadata(app.dbContext);
-    if(!dbContext.connection || dbContext.connection.readyState === 2){
+    if (!dbContext.connection || dbContext.connection.readyState === 2) {
         if (Array.isArray(plugins)) {
             plugins.map(plugin => {
                 mongoose.plugin(plugin);
@@ -154,12 +160,46 @@ app.extendDatabase = function (plugins: Function | Array<Function>) {
     }
 }
 
-app.setLog = function(this: App & IExtendDatabase, hasLog: boolean) {
-    if(hasLog){
-        this.log = new LogEvent();
-        mongoose.set("debug", (collectionName, method, query, doc) => {
-            this.log.pushLog([`${collectionName}.${method}`, JSON.stringify(query), doc]);
-        });
+app.setLogForDatabase = function (this: App & IExtendDatabase & IExtendLogger, hasLog: boolean) {
+    if (hasLog) {
+        if (this.logger) {
+            mongoose.set("debug", (collectionName, method, query, doc) => {
+                this.logger.pushLog({
+                    level: "debug",
+                    message: {
+                        delimiter: " ",
+                        messages: [
+                            {
+                                text: "DATABASE",
+                                style: {
+                                    bold: true,
+                                    fontColor: { r: 100, g: 255, b: 218 }
+                                }
+                            },
+                            {
+                                text: `${collectionName}.${method}(${JSON.stringify(query)})`,
+                                style:{
+                                    fontColor :{r: 24, g: 255, b: 255},
+                                    underline: true
+                                }
+                            },
+                            {
+                                text: "=>",
+                                style: {
+                                    fontColor :{r: 255, g: 87, b: 34}
+                                }
+                            },
+                            {
+                                text: JSON.stringify(doc),
+                            }
+                        ]
+                    }
+                });
+            });
+        }
+        else {
+            throw new Error("Logger is undefined, must defined it on the top of your application");
+        }
     }
 }
 

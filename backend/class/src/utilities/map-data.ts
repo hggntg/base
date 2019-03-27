@@ -20,7 +20,10 @@ export function mapData<T>(ClassImp:{new() : T}, source: any): T{
             if (!result) {
                 result = new ClassImp();
             }
-            if(typeof source[property] === "object")
+            if(Array.isArray(source[property])){
+                result[property] = source[property].slice(0);
+            }
+            else if(typeof source[property] === "object")
             {
                 result[property] = Object.assign({}, source[property]);
             }

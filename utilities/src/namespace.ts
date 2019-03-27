@@ -78,7 +78,12 @@ export class Namespace{
 
     get<T>(key): T {
         const eid = asyncHooks.executionAsyncId();
-        return this.context[eid][key] as T;
+        if(this.context[eid]){
+            return this.context[eid][key] as T;
+        }
+        else{
+            return null;
+        }
     }
 
     remove(key){

@@ -44,13 +44,17 @@ export class DatabaseContext implements IDatabaseContext{
 				for(let i = 0; i < documentLength; i++){
 					let change = dbContextSession.documents[i];
 					let document = change.document;
+					let cmd = null;
 					if(change.type === "UPDATE"){
-						document.update(change.data);
+						cmd = document.update(change.data);
 					}
-					else{
-						document.remove();
+					else if(change.type === "REMOVE"){
+						cmd = document.remove();
 					}
-					promiseList.push(document.save());
+					if(!cmd){
+						cmd = document.save();
+					}
+					promiseList.push(cmd);
 				}
 				return Promise.all(promiseList);
 			}

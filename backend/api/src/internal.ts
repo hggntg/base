@@ -5,6 +5,7 @@ import { ApplicationRequestHandler, RequestHandlerParams, PathParams } from "exp
 
 export interface IExtendApi{
     server?: express.Express;
+    setLogForApi?(hasLog: boolean);
     startServer?(port: number, unitOfWorkInstance: UnitOfWork, controllers: {[key: string]: { new(unitOfWorkInstance: UnitOfWork) : IController} }): Promise<boolean>;
     setResponseTemplate?();
     registerMiddleware?(handlers: RequestHandler[]): express.Express;

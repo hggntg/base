@@ -6,13 +6,16 @@ export class BaseRepository<T extends IBaseEntity> implements IBaseRepository<T>
 	constructor(_collection: ICollection<T>){
 		this.collection = _collection;
 	}
-	find(conditions?: any): Promise<T[]> {
+	aggregate(conditions: any[]): Promise<Partial<T>[]> {
+		return this.collection.aggregate(conditions);
+	}
+	find(conditions?: any): Promise<Partial<T>[]> {
 		return this.collection.find(conditions);
 	}
-	findOne(conditions?: any): Promise<T> {
+	findOne(conditions?: any): Promise<Partial<T>> {
 		return this.collection.findOne(conditions);
 	}
-	findById(_id: string): Promise<T> {
+	findById(_id: string): Promise<Partial<T>> {
 		return this.collection.findById(_id);
 	}
 	insert(doc: Partial<T>) {
@@ -39,7 +42,7 @@ export class BaseRepository<T extends IBaseEntity> implements IBaseRepository<T>
 	updateMany(_ids: Array<string>, data: any) {
 		return this.collection.updateMany(_ids, data);
 	}
-	count() {
+	count(): Promise<T> {
 		return this.collection.count();
 	}	
 }

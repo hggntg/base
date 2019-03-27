@@ -1,11 +1,11 @@
 import { App, UnitOfWork } from "@base/interfaces";
 import { IExtendApi } from "./internal";
 import express, { RequestHandler } from "express";
-import morgan from "morgan";
 import { urlencoded, json } from "body-parser";
 import { v1 } from "uuid";
 import { getController, IController } from "./main/controller";
 import { PathParams, RequestHandlerParams } from "express-serve-static-core";
+import { IExtendLogger } from "@base/logger";
 
 declare const app: App & IExtendApi;
 
@@ -13,11 +13,10 @@ app.server = express();
 
 export * from "./main/controller";
 
-app.startServer =  function (this: (App & IExtendApi), port: number, unitOfWorkInstance: UnitOfWork, controllers: {[key: string]: { new(unitOfWorkInstance: UnitOfWork) : IController} }) : Promise<boolean> {
+app.startServer =  function (this: (App & IExtendApi & IExtendLogger), port: number, unitOfWorkInstance: UnitOfWork, controllers: {[key: string]: { new(unitOfWorkInstance: UnitOfWork) : IController} }) : Promise<boolean> {
     let namespace = app.context.create("dbContext");
     app.server.use(json({}));
     app.server.use(urlencoded({ extended: true }));
-    app.server.use(morgan("combined"));
     app.server.use((req, res, next) => {
         namespace.run(async () => {
             namespace.set("tid", v1());
@@ -38,19 +37,80 @@ app.startServer =  function (this: (App & IExtendApi), port: number, unitOfWorkI
     });
     return new Promise((resolve, reject) => {
         app.server.listen(port, () => {
-            console.log(`
-            ---------------------------------------------------------------------
-            ---------------------------------------------------------------------
-            ------------------ Server started at port ${port} -------------------
-            ---------------------------------------------------------------------
-            ---------------------------------------------------------------------
-            `);
+            if(this.logger){
+                this.logger.pushLog({
+                    level: "info",
+                    message: {
+                        delimiter: " ",
+                        messages: [
+                            {
+                                text: `
+                                ---------------------------------------------------------------------
+                                ---------------------------------------------------------------------
+                                ------------------ Server started at port ${port} -------------------
+                                ---------------------------------------------------------------------
+                                ---------------------------------------------------------------------
+                                `
+                            }
+                        ]
+                    }
+                })
+            }
             resolve(true);
         })
         .once("error", (err) => {
             reject(err);
         });
     });
+}
+
+app.setLogForApi = function(this: App & IExtendApi & IExtendLogger, hasLog: boolean = false){
+    if(hasLog){
+        if(this.logger){
+            this.server.use((req, res, next) => {
+                this.logger.pushLog({
+                    level: "info",
+                    message: {
+                        delimiter: " ",
+                        messages: [
+                            {
+                                text: "API",
+                                style: {
+                                    bold: true,
+                                    fontColor: { r: 100, g: 255, b: 218 }
+                                }
+                            },
+                            {
+                                text: (req.headers["x-forwarded-for"]? req.headers["x-forwarded-for"].toString() : null) || req.connection.remoteAddress,
+                                style: {
+                                    fontColor: {r: 216, g: 27, b: 96}
+                                }
+                            },
+                            {
+                                text: req.method,
+                                style: {
+                                    fontColor: {r: 76, g: 175, b: 80}
+                                }
+                            },
+                            {
+                                text: req.url + " HTTP/" + req.httpVersion
+                            },
+                            {
+                                text: res.statusCode.toString(),
+                                style: {
+                                    fontColor: {r: 255, g: 61, b: 0}
+                                }
+                            },
+                            {
+                                text: req.headers["user-agent"],
+                            }
+                        ]
+                    }
+                });
+                next();
+            });
+        }
+    }
 }
 
 app.registerMiddleware = function(arg0: (RequestHandler[] | RequestHandlerParams[] | PathParams), arg1?: (RequestHandler[] | RequestHandlerParams[])){

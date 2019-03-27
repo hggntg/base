@@ -1,53 +1,78 @@
 import { IBaseEntity, App } from "@base/interfaces";
-import mongoose from "mongoose";
+import mongoose, { mongo, MongooseDocument, Mongoose, model } from "mongoose";
 import { IExtendDatabase } from "../../../internal";
 import { getDbContextMetadata } from "../decorator";
 
 declare const app: App & IExtendDatabase;
 
 function toSinglePromise<T>(fn: mongoose.DocumentQuery<mongoose.Document, mongoose.Document>){
-	return new Promise<mongoose.Document>((resolve, reject) => {
+	return new Promise<Partial<T>>((resolve, reject) => {
 		fn.then(res => {
-			resolve(res);
+			let document = res.toObject();
+			resolve(document as Partial<T>);
 		}).catch(err => {
 			reject(err);
 		})
 	});
 }
 
-function toListPromise<T>(fn: mongoose.DocumentQuery<mongoose.Document[], mongoose.Document>){
-	return new Promise<mongoose.Document[]>((resolve, reject) => {
-		fn.then(res => {
-			resolve(res);
-		}).catch(err => {
-			reject(err);
-		})
+function toListPromise<T>(type: "query", fn: mongoose.DocumentQuery<mongoose.Document[], mongoose.Document>);
+function toListPromise<T>(type: "aggregate", fn: mongoose.Aggregate<any[]>);
+function toListPromise<T>(type: "query" | "aggregate", fn: mongoose.DocumentQuery<mongoose.Document[], mongoose.Document> | mongoose.Aggregate<any[]>){
+	return new Promise<Partial<T>[]>((resolve, reject) => {
+		if(type === "query"){
+			(fn as mongoose.DocumentQuery<mongoose.Document[], mongoose.Document>).then(res => {
+				let documents = [];
+				res.map(r => {
+					documents.push(r.toObject());
+				});
+				resolve(documents as Partial<T>[]);
+			}).catch(err => {
+				reject(err);
+			});
+		}
+		else{
+			(fn as mongoose.Aggregate<any[]>).then(res => {
+				let documents = [];
+				res.map(r => {
+					documents.push(r.toObject());
+				});
+				resolve(documents as Partial<T>[]);
+			}).catch(err => {
+				reject(err);
+			});
+		}
 	});
 }
 
 export interface ICollection<T extends IBaseEntity> {
-	find(conditions: any);
-	findOne(conditions: any);
-	findById(_id: string);
-	findByIds(_ids: Array<string>);
+	aggregate(conditions: any[]): Promise<Partial<T>[]>;
 
-	insert(doc: Partial<T>);
-	insertMany(docs: Array<Partial<T>>);
+	find(conditions: any): Promise<Partial<T>[]>;
+	findOne(conditions: any): Promise<Partial<T>>;
+	findById(_id: string): Promise<Partial<T>>;
+	findByIds(_ids: Array<string>): Promise<Partial<T>[]>;
 
-	remove(conditions: any);
-	removeById(_id: string);
-	removeMany(_ids: Array<string>);
+	insert(doc: Partial<T>): Promise<Partial<T>>;
+	insertMany(docs: Array<Partial<T>>): Promise<Partial<T>[]>;
 
-	update(conditions: any, data: Partial<T>);
-	updateById(_id: string, data: any);
-	updateMany(_ids: Array<string>, data: any);
+	remove(conditions: any): Promise<Partial<T>[]>;
+	removeById(_id: string): Promise<Partial<T>>;
+	removeMany(_ids: Array<string>): Promise<Partial<T>[]>;
+
+	update(conditions: any, data: Partial<T>): Promise<Partial<T>[]>;
+	updateById(_id: string, data: any): Promise<Partial<T>>;
+	updateMany(_ids: Array<string>, data: any): Promise<Partial<T>[]>;
 
 	count();
 }
 
 export class Collection<T extends IBaseEntity> implements ICollection<T>{
+	aggregate(conditions: any[]): Promise<Partial<T>[]> {
+		return toListPromise<T>("aggregate", this.model.aggregate(conditions));
+	}
 	find(conditions: any = {}) {
-		return toListPromise<T>(this.model.find(conditions));
+		return toListPromise<T>("query", this.model.find(conditions));
 	}
 	findOne(conditions: any = {}) {
 		return toSinglePromise<T>(this.model.findOne(conditions));
@@ -81,53 +106,108 @@ export class Collection<T extends IBaseEntity> implements ICollection<T>{
 		}
 	}
 	insert(doc: Partial<T>) {
-		let model = this.model;
-		let document = new model(doc);
-		this.setChanges("INSERT", document);
+		return new Promise<Partial<T>>((resolve, reject) => {
+			try{
+				let model = this.model;
+				let document = new model(doc);
+				this.setChanges("INSERT", document);
+				resolve(document.toObject() as Partial<T>);
+			}
+			catch(e){
+				reject(e);
+			}
+		});
 	}
 	insertMany(docs: Array<T>) {
-		let model = this.model;
-		docs.map(doc => {
-			let document = new model(doc);
-			this.setChanges("INSERT", document);
+		return new Promise<Partial<T>[]>((resolve, reject) =>{
+			try{
+				let model = this.model;
+				let documents = [];
+				docs.map((doc , index)=> {
+					let document = new model(doc);
+					this.setChanges("INSERT", document);
+					documents.push(document.toObject() as Partial<T>);
+				});
+				resolve(documents as Partial<T>[]);
+			}
+			catch(e){
+				reject(e);
+			}
 		});
 	}
 	remove(conditions: any = {}) {
-		this.find(conditions).then(docs => {
+		let model = this.model;
+		return this.find(conditions).then(docs => {
 			docs.map(doc => {
-				this.setChanges("REMOVE", doc);
+				let document = new model(doc);
+				document.isNew = false;
+				this.setChanges("REMOVE", document);
 			});
-		})
+			return docs as Partial<T>[];
+		});
 	}
 	removeById(_id: string) {
-		this.findById(_id).then(doc => {
-			this.setChanges("REMOVE", doc);
+		let model = this.model;
+		return this.findById(_id).then(doc => {
+			let document = new model(doc);
+			document.isNew = false;
+			this.setChanges("REMOVE", document);
+			return doc as Partial<T>;
 		});
 	}
 	removeMany(_ids: Array<string>) {
-		this.findByIds(_ids).then(docs => {
+		let model = this.model;
+		return this.findByIds(_ids).then(docs => {
 			docs.map(doc => {
-				this.setChanges("REMOVE", doc);
+				let document = new model(doc);
+				document.isNew = false;
+				this.setChanges("REMOVE", document);
 			});
+			return docs as Partial<T>[];
 		});
 	}
 	update(conditions: any, data: any) {
-		this.find(conditions).then(docs => {
+		let model = this.model;
+		return this.find(conditions).then(docs => {
+			let documents: Partial<T>[] = [];
 			docs.map(doc => {
-				this.setChanges("UPDATE", doc, data);
+				let document = new model(doc);
+				document.isNew = false;
+				this.setChanges("UPDATE", document, data);
+				let tempDocument = new model(doc);
+				tempDocument.isNew = false;
+				tempDocument.set(data);
+				documents.push(tempDocument.toObject() as Partial<T>);
 			});
+			return documents;
 		});
 	}
 	updateById(_id: string, data: any) {
-		this.findById(_id).then(doc => {
-			this.setChanges("UPDATE", doc, data);
+		let model = this.model;
+		return this.findById(_id).then(doc => {
+			let document = new model(doc);
+			document.isNew = false;
+			this.setChanges("UPDATE", document, data);
+			let tempDocument = new model(doc);
+			tempDocument.isNew = false;
+			tempDocument.set(data);
+			return tempDocument.toObject() as Partial<T>;
 		});
 	}
 	updateMany(_ids: Array<string>, data: any) {
-		this.findByIds(_ids).then(docs => {
+		let model = this.model;
+		return this.findByIds(_ids).then(docs => {
+			let documents: Partial<T>[] = [];
 			docs.map(doc => {
-				this.setChanges("UPDATE", doc, data);
+				let document = new model(doc);
+				document.isNew = false;
+				this.setChanges("UPDATE", document, data);
+				let tempDocument = new model(doc);
+				tempDocument.isNew = false;
+				tempDocument.set(data);
+				documents.push(tempDocument.toObject() as Partial<T>);
 			});
+			return documents;
 		});
 	}
 	count() {

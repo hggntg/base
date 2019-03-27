@@ -21,20 +21,22 @@ export interface IBaseEntity{
 }
 
 export interface IBaseRepository<T extends IBaseEntity>{
-	find(conditions?: any): Promise<T[]>;
-	findOne(conditions?: any): Promise<T>;
-	findById(_id: string): Promise<T>;
+	aggregate(conditions: any[]): Promise<Partial<T>[]>;
 
-	insert(doc: Partial<T>);
-	insertMany(docs: Array<Partial<T>>);
+	find(conditions?: any): Promise<Partial<T>[]>;
+	findOne(conditions?: any): Promise<Partial<T>>;
+	findById(_id: string): Promise<Partial<T>>;
 
-	remove(conditions?: any);
-	removeById(_id: string);
-	removeMany(_ids: Array<string>);
+	insert(doc: Partial<T>): void;
+	insertMany(docs: Array<Partial<T>>): void;
 
-	update(conditions: any, data: any);
-	updateById(_id: string, data: any);
-	updateMany(_ids: Array<string>, data: any);
+	remove(conditions?: any): void;
+	removeById(_id: string): void;
+	removeMany(_ids: Array<string>): void;
+
+	update(conditions: any, data: any): void;
+	updateById(_id: string, data: any): void;
+	updateMany(_ids: Array<string>, data: any): void;
 
 	count();
 }
