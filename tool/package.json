@@ -19,8 +19,10 @@
     "@types/node": "^11.9.4",
     "@types/prettyjson": "0.0.28",
     "@types/rimraf": "^2.0.2",
-    "@types/shelljs": "^0.8.3"
+    "@types/shelljs": "^0.8.3",
+    "typescript": "^3.3.4000"
   },
+  "bundleDependencies": ["typescript"],
   "preferGlobal": true,
   "bin": {
     "tool": "./index.js"
