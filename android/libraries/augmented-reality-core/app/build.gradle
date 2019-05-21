@@ -1,0 +1,89 @@
+apply plugin: 'com.android.library'
+
+/*
+The arcore aar library contains the native shared libraries.  These are
+extracted before building to a temporary directory.
+*/
+def arCoreLibPath = "${buildDir}/arcore-native"
+
+configurations { natives }
+
+// Extracts the shared libraries from aars in the natives configuration.
+// This is done so that NDK builds can access these libraries.
+task extractNativeLibraries(){
+    //Extract every time.
+    outputs.upToDateWhen { false }
+
+    doFirst {
+        configurations.natives.files.each { f ->
+            copy {
+                from    zipTree(f)
+                into    arCoreLibPath
+                include "jni/**/*"
+            }
+        }
+    }
+}
+
+android {
+    compileSdkVersion 28
+    defaultConfig {
+        minSdkVersion 14
+        versionName "1.0"
+        testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
+        externalNativeBuild {
+            cmake {
+                cppFlags    "-std=c++11", "-Wall"
+                arguments   "-DANDROID_STL=c++_static",
+                        "-DARCORE_LIBPATH=${arCoreLibPath}/jni",
+                        "-DARCORE_INCLUDE=${project.rootDir}/../../ndk/arcore-android-sdk/libraries/include"
+            }
+        }
+        ndk {
+            abiFilters "arm64-v8a", "armeabi-v7a", "x86"
+        }
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+    externalNativeBuild{
+        cmake {
+            path    "CMakeLists.txt"
+        }
+    }
+}
+
+dependencies {
+    implementation fileTree(dir: 'libs', include: ['*.jar'])
+    implementation 'com.android.support:appcompat-v7:28.0.0'
+    implementation 'com.google.ar:core:1.8.0'
+    natives 'com.google.ar:core:1.8.0'
+    testImplementation 'junit:junit:4.12'
+    androidTestImplementation 'com.android.support.test:runner:1.0.2'
+    androidTestImplementation 'com.android.support.test.espresso:espresso-core:3.0.2'
+}
+
+// task to delete the old jar
+task deleteOldJar(type: Delete) {
+    delete 'release/ARCorePlugin.jar'
+}
+
+// task to export contents as jar
+task exportJar(type: Copy) {
+    from('build/intermediates/bundles/release/')
+    into('release')
+    include('classes.jar')
+    // name the plugin
+    rename('classes.jar','ARCorePlugin.jar')
+}
+
+exportJar.dependsOn(deleteOldJar, build)
+
+tasks.whenTaskAdded {
+    task -> if (task.name.contains("external") && !task.name.contains("Clean")){
+        task.dependsOn(extractNativeLibraries)
+    }
+}

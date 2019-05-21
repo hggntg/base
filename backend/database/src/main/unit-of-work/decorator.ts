@@ -1,12 +1,21 @@
-import { getMetadata, getClass } from "@base/class";
+import { getMetadata, getClass, defineMetadata } from "@base/class";
 import { UNIT_OF_WORK_KEY } from "../../infrastructure/constant";
-import { ICollection } from "../database-context/collection";
-import { IBaseEntity, IBaseRepository } from "@base/interfaces";
+import { IUnitOfWorkMetadata } from "@base-interfaces/database";
+import { ILogger } from "@base-interfaces/logger";
+import { Logger } from "@base/logger";
 
-export interface IUnitOfWorkMetadata {
-	classes: { 
-		[key: string]: { new(_collection: ICollection<IBaseEntity>): IBaseRepository<IBaseEntity> }
-	};
+
+export function UOW(tracer: ILogger) {
+	return function (target: object) {
+		let unitOfWork: IUnitOfWorkMetadata = getUnitOfWorkMetadata(getClass(target));
+		if(!unitOfWork){
+			unitOfWork = {
+				classes: {},
+				tracer: tracer ? tracer : new Logger("database-uow")
+			}
+		}
+		defineMetadata(UNIT_OF_WORK_KEY, unitOfWork, getClass(target));
+	}
 }
 
 export function getUnitOfWorkMetadata(target: any) {

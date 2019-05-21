@@ -7,13 +7,13 @@ import { getRootBasePath, getConfig } from "../infrastructure/utilities";
 declare const commander : CommanderStatic;
 
 (function(){
-    commander.command("publish <name>")
+    commander.command("publish <scope> <name>")
     .description("publish module to registry")
-    .action((name: string) => {
+    .action((scope: string, name: string) => {
         let storePath = getRootBasePath();
         let modulePath = path.join(storePath, name);
         let registry = getConfig("registry");
         shell.cd(modulePath);
-        shell.exec("npm publish --registry" + registry);
+        shell.exec("npm publish --registry" + registry[scope]);
     });
 })();

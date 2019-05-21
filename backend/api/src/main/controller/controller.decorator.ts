@@ -4,6 +4,7 @@ import { Property, getProperties, getMetadata, defineMetadata, getClass } from "
 import { UnitOfWork, App } from "@base/interfaces";
 import { IExtendApi } from "../../internal";
 import { IncomingHttpHeaders } from "http";
+import { Stream } from "stream";
 
 declare const app: App & IExtendApi;
 
@@ -40,15 +41,21 @@ export class ControllerImp implements IController {
             let routeConfig = controllerProperty.routes[property];
             this.subApp[routeConfig.method.toLowerCase()](routeConfig.url, (req: express.Request, res: express.Response) => {
                 let result = this[property](checkInput(req));
-                if(typeof result.then === "function" && typeof result.catch === "function"){
+                if(result instanceof Stream){
+                    result.pipe(res);
+                    res.once("drain", () => {
+                        console.log("It's was drain");
+                    });
+                }
+                else if(typeof result.then === "function" && typeof result.catch === "function"){
                     result.then((value) => {
-                        res.json(value);
+                        res.json({results: value});
                     }).catch(err => {
-                        res.json(err);
+                        res.status(500).json({status: "error", message: err.message});
                     });
                 }
                 else{
-                    res.json(result);
+                    res.json({results: result});
                 }
             });
         });

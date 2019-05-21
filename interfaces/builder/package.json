@@ -1,0 +1,22 @@
+{
+	"name": "@base-interfaces/builder",
+	"version": "1.0.14",
+	"description": "Interface for @base/builder",
+	"scripts": {
+		"test": "echo \"Error: no test specified\" && exit 1"
+	},
+	"author": "Uncle Hung",
+	"maintainers": [
+		"Unclde Hung"
+	],
+	"license": "ISC",
+	"devDependencies": {
+		"@base-interfaces/utilities": "^1.0.11"
+	},
+	"main": "index.js",
+	"types": "index.d.ts",
+	"dependencies": {},
+	"baseDependencies": [
+		"@base-interfaces/utilities"
+	]
+}

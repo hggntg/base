@@ -1,22 +1,28 @@
 {
-  "name": "@base/logger",
-  "version": "1.0.18",
-  "description": "",
-  "main": "index.js",
-  "types": "index.d.ts",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "author": "",
-  "license": "ISC",
-  "dependencies": {
-    "@base/interfaces": "^1.0.6",
-    "chalk": "^2.4.2",
-    "winston": "^3.2.1"
-  },
-  "devDependencies": {
-    "@types/chalk": "^2.2.0",
-    "@types/node": "^11.11.6",
-    "@types/winston": "^2.4.4"
-  }
+	"name": "@base/logger",
+	"version": "1.0.39",
+	"description": "Asynchronous logger",
+	"main": "index.js",
+	"types": "index.d.ts",
+	"scripts": {
+		"test": "echo \"Error: no test specified\" && exit 1"
+	},
+	"author": "Uncle Hung",
+	"maintainers": [
+		"Uncle Hung"
+	],
+	"license": "ISC",
+	"dependencies": {
+		"chalk": "^2.4.2",
+		"winston": "^3.2.1"
+	},
+	"devDependencies": {
+		"@base-interfaces/logger": "^1.0.7",
+		"@types/chalk": "^2.2.0",
+		"@types/node": "^11.11.6",
+		"@types/winston": "^2.4.4"
+	},
+	"baseDependencies": [
+		"@base-interfaces/logger"
+	]
 }

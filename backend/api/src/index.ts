@@ -22,7 +22,18 @@ app.startServer =  function (this: (App & IExtendApi & IExtendLogger), port: num
             namespace.set("tid", v1());
             next();
         }).catch((e) => {
-            console.error(e);
+            this.logger.pushLog({
+                level: "error",
+                message: {
+                    delimiter: "",
+                    tag: "API",
+                    messages: [
+                        {
+                            text: e.stack
+                        }
+                    ]
+                }
+            });
         });
 
         res.once("finish", () => {
@@ -42,12 +53,13 @@ app.startServer =  function (this: (App & IExtendApi & IExtendLogger), port: num
                     level: "info",
                     message: {
                         delimiter: " ",
+                        tag: "API",
                         messages: [
                             {
                                 text: `
                                 ---------------------------------------------------------------------
                                 ---------------------------------------------------------------------
-                                ------------------ Server started at port ${port} -------------------
+                                ------------------- Server started at port ${port} ---------------------
                                 ---------------------------------------------------------------------
                                 ---------------------------------------------------------------------
                                 `
@@ -67,19 +79,13 @@ app.startServer =  function (this: (App & IExtendApi & IExtendLogger), port: num
 app.setLogForApi = function(this: App & IExtendApi & IExtendLogger, hasLog: boolean = false){
     if(hasLog){
         if(this.logger){
-            this.server.use((req, res, next) => {
+            this.registerMiddleware([(req, res, next) => {
                 this.logger.pushLog({
                     level: "info",
                     message: {
                         delimiter: " ",
+                        tag: "API",
                         messages: [
-                            {
-                                text: "API",
-                                style: {
-                                    bold: true,
-                                    fontColor: { r: 100, g: 255, b: 218 }
-                                }
-                            },
                             {
                                 text: (req.headers["x-forwarded-for"]? req.headers["x-forwarded-for"].toString() : null) || req.connection.remoteAddress,
                                 style: {
@@ -108,7 +114,7 @@ app.setLogForApi = function(this: App & IExtendApi & IExtendLogger, hasLog: bool
                     }
                 });
                 next();
-            });
+            }]);
         }
     }
 }
@@ -120,6 +126,32 @@ app.registerMiddleware = function(arg0: (RequestHandler[] | RequestHandlerParams
     else{
         return this.server.use(arg0 as PathParams, arg1 as RequestHandler[]);
     }
+}
+
+app.useCORS = function(this: (App & IExtendApi & IExtendLogger)){
+    return this.registerMiddleware([(req, res, next) => {
+        res.header('Access-Control-Allow-Origin', '*')
+        res.header("Access-Control-Allow-Methods", "GET, PUT, POST, DELETE, OPTIONS");
+        res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, X-XSRF-TOKEN, Authorization");
+        this.logger.pushLog({
+            level: "info",
+            message: {
+                delimiter: "",
+                tag: "API",
+                messages: [
+                    {
+                        text: JSON.stringify(req.headers)
+                    }
+                ]
+            }
+        })
+        if(req.method === 'OPTIONS'){
+            res.status(204).send();
+        }
+        else{
+            next();
+        }
+    }]);
 }
 
 export * from "./internal";

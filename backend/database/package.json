@@ -1,23 +1,34 @@
 {
-  "name": "@base/database",
-  "version": "1.0.64",
-  "description": "",
-  "scripts": {
-    "test": "nodemon --exec ts-node test/index.ts"
-  },
-  "author": "",
-  "license": "ISC",
-  "dependencies": {
-    "@base/class": "^1.0.9",
-    "@base/interfaces": "^1.0.10",
-    "@base/logger": "^1.0.18",
-    "@base/utilities": "^1.0.14",
-    "mongoose": "^5.4.20"
-  },
-  "devDependencies": {
-    "@types/mongodb": "^3.1.22",
-    "@types/mongoose": "^5.3.24"
-  },
-  "main": "index.js",
-  "types": "index.d.ts"
+	"name": "@base/database",
+	"version": "1.0.100",
+	"description": "Database use mongoose",
+	"scripts": {
+		"test": "nodemon --exec ts-node test/index.ts"
+	},
+	"author": "Uncle Hung",
+	"maintainers": [
+		"Uncle Hung"
+	],
+	"license": "ISC",
+	"dependencies": {
+		"@base-interfaces/database": "^1.0.16",
+		"@base-interfaces/utilities": "^1.0.15",
+		"@base/class": "^1.0.12",
+		"@base/logger": "^1.0.39",
+		"@base/utilities": "^1.0.32",
+		"mongoose": "^5.4.20"
+	},
+	"devDependencies": {
+		"@types/mongodb": "^3.1.22",
+		"@types/mongoose": "^5.3.24"
+	},
+	"main": "index.js",
+	"types": "index.d.ts",
+	"baseDependencies": [
+		"@base-interfaces/database",
+		"@base/class",
+		"@base/utilities",
+		"@base-interfaces/utilities",
+		"@base/logger"
+	]
 }

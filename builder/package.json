@@ -1,29 +1,38 @@
 {
-  "name": "@base/builder",
-  "version": "1.0.9",
-  "description": "",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "author": "Uncle Hung",
-  "license": "ISC",
-  "dependencies": {
-    "@base/class": "^1.0.0",
-    "@base/interfaces": "^1.0.0",
-    "@base/utilities": "^1.0.0",
-    "config": "^3.0.1",
-    "dotenv": "^6.2.0",
-    "inversify": "^5.0.1",
-    "object-path": "^0.11.4",
-    "reflect-metadata": "^0.1.13"
-  },
-  "devDependencies": {
-    "@types/config": "0.0.34",
-    "@types/dotenv": "^6.1.0",
-    "@types/lodash": "^4.14.120",
-    "@types/node": "^10.12.24",
-    "@types/object-path": "^0.11.0"
-  },
-  "main": "index.js",
-  "types": "index.d.ts"
+	"name": "@base/builder",
+	"version": "1.0.13",
+	"description": "Main core of base project",
+	"scripts": {
+		"test": "echo \"Error: no test specified\" && exit 1"
+	},
+	"author": "Uncle Hung",
+	"maintainers": [
+		"Uncle Hung"
+	],
+	"license": "ISC",
+	"dependencies": {
+		"@base/class": "^1.0.12",
+		"@base/utilities": "^1.0.18",
+		"config": "^3.1.0",
+		"dotenv": "^6.2.0",
+		"inversify": "^5.0.1",
+		"object-path": "^0.11.4"
+	},
+	"devDependencies": {
+		"@base-interfaces/builder": "^1.0.14",
+		"@base-interfaces/utilities": "^1.0.11",
+		"@types/config": "0.0.34",
+		"@types/dotenv": "^6.1.1",
+		"@types/lodash": "^4.14.129",
+		"@types/node": "^10.14.6",
+		"@types/object-path": "^0.11.0"
+	},
+	"main": "index.js",
+	"types": "index.d.ts",
+	"baseDependencies": [
+		"@base-interfaces/utilities",
+		"@base-interfaces/builder",
+		"@base/utilities",
+		"@base/class"
+	]
 }

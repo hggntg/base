@@ -1,13 +1,16 @@
 {
   "name": "@base/tool",
-  "version": "1.0.9",
-  "description": "",
+  "version": "1.0.33",
+  "description": "Commandline tool for base project",
   "main": "index.js",
   "types": "index.d.ts",
   "scripts": {
     "build": "node ./build/index.js"
   },
-  "author": "",
+  "author": "Uncle Hung",
+  "maintainers": [
+    "Uncle Hung"
+  ],
   "license": "ISC",
   "dependencies": {
     "commander": "^2.19.0",
@@ -22,7 +25,9 @@
     "@types/shelljs": "^0.8.3",
     "typescript": "^3.3.4000"
   },
-  "bundleDependencies": ["typescript"],
+  "bundleDependencies": [
+    "typescript"
+  ],
   "preferGlobal": true,
   "bin": {
     "tool": "./index.js"

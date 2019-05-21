@@ -1,0 +1,19 @@
+{
+  "name": "@base-interfaces/api",
+  "version": "1.0.0",
+  "description": "Interface for @base/api",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Uncle Hung",
+  "maintainers": [
+    "Uncle Hung"
+  ],
+  "license": "ISC",
+  "devDependencies": {},
+  "dependencies": {
+    "@types/express-serve-static-core": "^4.16.4"
+  }
+}

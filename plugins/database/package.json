@@ -1,0 +1,21 @@
+{
+	"name": "@base-plugins/database",
+	"version": "1.0.1",
+	"description": "",
+	"main": "index.js",
+	"scripts": {
+		"test": "echo \"Error: no test specified\" && exit 1"
+	},
+	"author": "Uncle Hung",
+	"license": "ISC",
+	"baseDependencies": [
+		"@base-interfaces/builder",
+		"@base-interfaces/database",
+		"@base/database"
+	],
+	"dependencies": {
+		"@base-interfaces/builder": "^1.0.14",
+		"@base-interfaces/database": "^1.0.9",
+		"@base/database": "^1.0.99"
+	}
+}

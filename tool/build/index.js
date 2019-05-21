@@ -8,5 +8,7 @@ if(fs.existsSync(storePath)){
 fs.mkdirSync(storePath);
 const sourcePath = path.resolve(process.cwd());
 shell.cp("-R", path.join(sourcePath, "package.json"), path.join(storePath, "package.json"));
+shell.cp("-R", path.join(sourcePath, "README.md"), path.join(storePath, "README.md"));
+shell.cp("-R", path.join(sourcePath, "logo"), path.join(storePath, "logo"));
 shell.exec("tsc");
 shell.cd(storePath);

@@ -4,8 +4,9 @@ import { Container, ContainerModule, interfaces, injectable } from "inversify";
 import { IConfig } from "config";
 import * as objectPath from "object-path";
 import { mapData } from "@base/class";
-import { App, Config } from "@base/interfaces";
-import { INamespace, Namespace } from "@base/utilities/namespace";
+import { IApp, IConfig as IBaseConfig} from "@base-interfaces/builder";
+import { INamespaceStatic } from "@base-interfaces/utilities";
+import { Namespace } from "@base/utilities/namespace";
 import { EventEmitter } from "events";
 
 export const CONFIG = Symbol.for("Config");
@@ -14,7 +15,7 @@ export const APP = Symbol.for("App");
 const ContainerRoot: Container = new Container();
 
 @injectable()
-abstract class ConfigAbs implements Config {
+abstract class ConfigAbs implements IBaseConfig {
     abstract setConfig(config: any);
     abstract getSection<T>(classImp: { new(): T }, sectionName: string): T;
     protected configRoot: any;
@@ -37,12 +38,12 @@ class DoubleConfigImp extends ConfigAbs {
 }
 
 @injectable()
-export class AppImp implements App {
+export class App implements IApp {
     private event: EventEmitter;
     private preStartAppTasks: Array<Promise<any>>;
-    context: INamespace;
+    context: INamespaceStatic;
     type: "Worker" | "API";
-    config: Config;
+    config: IBaseConfig;
     constructor() {
         this.event = new EventEmitter();
         this.preStartAppTasks = new Array();
@@ -71,13 +72,13 @@ export class AppImp implements App {
             throw new Error("Missing NODE_CONFIG_DIR in .env");
         }
         let config = require("config");
-        this.config = ContainerRoot.get<Config>(CONFIG);
+        this.config = ContainerRoot.get<IBaseConfig>(CONFIG);
         this.config.setConfig(config);
     }
     serveAs(_type: "Worker" | "API") {
         this.type = _type;
     }
-    use(plugin: Promise<any>, preStartApp: boolean): App {
+    use(plugin: Promise<any>, preStartApp: boolean): IApp {
         try {
             if (preStartApp) {
                 this.preStartAppTasks.push(plugin);
@@ -97,8 +98,8 @@ export class AppImp implements App {
 }
 
 const APP_MODULE = new ContainerModule((bind: interfaces.Bind) => {
-    bind<Config>(CONFIG).to(DoubleConfigImp);
-    bind<App>(APP).to(AppImp);
+    bind<IBaseConfig>(CONFIG).to(DoubleConfigImp);
+    bind<IApp>(APP).to(App);
 });
 
 ContainerRoot.load(APP_MODULE);

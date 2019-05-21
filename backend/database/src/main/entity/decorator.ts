@@ -1,12 +1,14 @@
 import { Property, getMetadata, getClass, defineMetadata } from "@base/class";
-import { SCHEMA_KEY } from "../../infrastructure/constant";
+import { SCHEMA_KEY, FOREIGN_KEY } from "../../infrastructure/constant";
 import { 
-	IEntitySchema, ensureEntitySchemaInitiate, IFakePreAggregate,
+	IEntitySchema, IFakePreAggregate,
 	IFakePreDocument, HookDocumentType, HookModelType, IFakePreModel,
-	HookAggregateType, HookQueryType, IFakePreQuery, IFakePlugin
-} from "./entity-schema";
+	HookAggregateType, HookQueryType, IFakePreQuery, IFakePlugin, ForeignFieldOptions, IFakeSchemaFunction
+} from "@base-interfaces/database";
+import { ensureEntitySchemaInitiate } from "./entity-schema";
 import mongoose from "mongoose";
-import { IBaseEntity } from "@base/interfaces";
+import { ILogger } from "@base-interfaces/logger";
+import { Logger } from "@base/logger";
 
 
 export function Id() {
@@ -41,31 +43,54 @@ export function Field(name?: string | mongoose.SchemaTypeOpts<any>, entitySchema
 	}
 }
 
-export function RelatedField(name: string | IBaseEntity, relatedEntity?: IBaseEntity) {
+export function getForeignField(target): (ForeignFieldOptions & {name: string})[]{
+	let foreignField: (ForeignFieldOptions & {name: string})[] = getMetadata(FOREIGN_KEY, getClass(target)) || [];
+	return foreignField;
+}
+
+export function ForeignField(options: ForeignFieldOptions);
+export function ForeignField(name: string, options: ForeignFieldOptions);
+export function ForeignField(arg0: ForeignFieldOptions | string, arg1?: ForeignFieldOptions){
 	return function(target: object, propertyKey: string){
-		Property(target, propertyKey);
 		let classImp = getClass(target);
 		let schema: IEntitySchema<typeof classImp> = getMetadata(SCHEMA_KEY, classImp);
 		schema = ensureEntitySchemaInitiate(schema);
-		if(typeof name !== "string"){
-			relatedEntity = name;
-			name = propertyKey;
+		let name = "";
+		let options = null;
+		if(typeof arg0 === "string"){
+			name = arg0;
+			options = arg1;
 		}
-		
+		else{
+			name = propertyKey;
+			options = arg0;
+		}
+		if(options.type === "one-to-one"){
+			let entitySchemaField: mongoose.SchemaTypeOpts<any> = {
+				type: mongoose.Types.ObjectId,
+				ref: options.relatedEntity,
+				path: options.refKey
+			}
+			schema.definition[propertyKey + "::-::" + name] = entitySchemaField;
+		}
+		else{
+			let entitySchemaField = function(schema: mongoose.Schema){
+				schema.virtual(name, {
+					ref: options.relatedEntity,
+					localField: options.localKey,
+					foreignField: options.refKey
+				});
+			}
+			schema.virutals.push(entitySchemaField);
+		}
+		let foreignField: (ForeignFieldOptions & {name: string})[] = getForeignField(target);
+		foreignField.push({
+			name: name,
+			...options
+		});
+		defineMetadata(SCHEMA_KEY, schema, classImp);
+		defineMetadata(FOREIGN_KEY, foreignField, classImp);
 	}
-}
-
-export interface IFakeSchemaFunction<T>{
-	pre(method: HookAggregateType, fn: mongoose.HookSyncCallback<mongoose.Aggregate<any>>, errorCb?: mongoose.HookErrorCallback): IFakeSchemaFunction<T>;
-	pre(method: HookAggregateType, paralel : boolean, fn: mongoose.HookAsyncCallback<mongoose.Aggregate<any>>, errorCb?: mongoose.HookErrorCallback): IFakeSchemaFunction<T>;
-	pre(method: HookDocumentType, fn: mongoose.HookSyncCallback<mongoose.Document & T>, errorCb?: mongoose.HookErrorCallback): IFakeSchemaFunction<T>;
-	pre(method: HookDocumentType, paralel : boolean, fn: mongoose.HookAsyncCallback<mongoose.Document  & T>, errorCb?: mongoose.HookErrorCallback): IFakeSchemaFunction<T>;
-	pre(method: HookModelType, fn: mongoose.HookSyncCallback<mongoose.Model<mongoose.Document & T, {}>>, errorCb?: mongoose.HookErrorCallback): IFakeSchemaFunction<T>;
-	pre(method: HookModelType, paralel : boolean, fn: mongoose.HookAsyncCallback<mongoose.Model<mongoose.Document & T, {}>>, errorCb?: mongoose.HookErrorCallback): IFakeSchemaFunction<T>;
-	pre(method: HookQueryType, fn: mongoose.HookSyncCallback<mongoose.Query<any>>, errorCb?: mongoose.HookErrorCallback): IFakeSchemaFunction<T>;
-	pre(method: HookQueryType, paralel : boolean, fn: mongoose.HookAsyncCallback<mongoose.Query<any>>, errorCb?: mongoose.HookErrorCallback): IFakeSchemaFunction<T>;
-	plugin(plugin: (schema: mongoose.Schema) => void): IFakeSchemaFunction<T>;
-	plugin<U>(plugin: (schema: mongoose.Schema, options: U) => void, opts: U): IFakeSchemaFunction<T>; 
 }
 
 class FakeSchemaFunction<T> implements IFakeSchemaFunction<T>{
@@ -131,34 +156,43 @@ function isSchemaOptions(input): input is mongoose.SchemaOptions{
 	return !!isSchemaOption;
 }
 
-export function Entity<T>(options: mongoose.SchemaOptions): (target: any) => void;
-export function Entity<T>(name: string, options: mongoose.SchemaOptions): (target: any) => void;
-export function Entity<T>(options: mongoose.SchemaOptions, hook: (this: IFakeSchemaFunction<T>) => void): (target: any) => void;
-export function Entity<T>(name: string, options: mongoose.SchemaOptions, hook: (this: IFakeSchemaFunction<T>) => void): (target: any) => void;
-export function Entity<T>(arg0: string | mongoose.SchemaOptions, arg1?: mongoose.SchemaOptions | ((this: IFakeSchemaFunction<T>) => void), arg2?: (this: IFakeSchemaFunction<T>) => void): (target: any) => void{
+export function Entity<T>(options: mongoose.SchemaOptions, tracer: ILogger): (target: any) => void;
+export function Entity<T>(name: string, options: mongoose.SchemaOptions, tracer: ILogger): (target: any) => void;
+export function Entity<T>(options: mongoose.SchemaOptions, hook: (this: IFakeSchemaFunction<T>) => void, tracer: ILogger): (target: any) => void;
+export function Entity<T>(name: string, options: mongoose.SchemaOptions, hook: (this: IFakeSchemaFunction<T>) => void, tracer: ILogger): (target: any) => void;
+export function Entity<T>(arg0: string | mongoose.SchemaOptions, arg1?: mongoose.SchemaOptions | ((this: IFakeSchemaFunction<T>) => void) | ILogger, arg2?: ((this: IFakeSchemaFunction<T>) => void) | ILogger, arg3?: ILogger): (target: any) => void{
 	return function (target: any) {
 		let schema: IEntitySchema<T> = getMetadata(SCHEMA_KEY, getClass(target));	
 		schema = ensureEntitySchemaInitiate(schema);
 		schema.middleware = [];
+		let argLength = (arg0 && arg1 && arg2 && arg3) ? 4 : ((arg0 && arg1 && arg2) ? 3 : 2);
 		let hook : IFakeSchemaFunction<T> = new FakeSchemaFunction(schema.middleware);
-		if(typeof arg0 === "string" && isSchemaOptions(arg1) && typeof arg2 === "function"){
+		if(argLength === 4 && typeof arg0 === "string" && isSchemaOptions(arg1) && typeof arg2 === "function" && arg3 instanceof Logger){
 			schema.name = arg0;
 			schema.schemaOptions = arg1;
 			arg2.apply(hook);
+			schema.tracer = arg3;
 		}
-		else if(isSchemaOptions(arg0) && typeof arg2 === "function"){
+		else if(argLength === 3 && isSchemaOptions(arg0) && typeof arg1 === "function" && arg2 instanceof Logger){
 			schema.name = target.name;
 			schema.schemaOptions = arg0;
-			arg2.apply(hook);
+			arg1.apply(hook);
+			schema.tracer = arg2;
 		}
-		else if(typeof arg0 === "string" && isSchemaOptions(arg1)){
+		else if(argLength === 3 && typeof arg0 === "string" && isSchemaOptions(arg1) && arg2 instanceof Logger){
 			schema.name = arg0;
 			schema.schemaOptions = arg1;
+			schema.tracer = arg2;
 		}
-		else{
+		else if(argLength === 2 && isSchemaOptions(arg0) && arg1 instanceof Logger){
 			schema.name = target.name;
 			schema.schemaOptions = arg0 as mongoose.SchemaOptions;
+			schema.tracer = arg1;
 		}
+		else{
+			throw new Error("Something wrong");
+		}
+		schema.schemaOptions.toObject = {virtuals: true};
 		defineMetadata(SCHEMA_KEY, schema, getClass(target));
 	}
 }

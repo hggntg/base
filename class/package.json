@@ -1,0 +1,19 @@
+{
+  "name": "@base/class",
+  "version": "1.0.12",
+  "description": "Class decorator for base project",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Uncle Hung",
+  "maintainers": [
+    "Uncle Hung"
+  ],
+  "license": "ISC",
+  "devDependencies": {},
+  "main": "index.js",
+  "types": "index.d.ts",
+  "dependencies": {
+    "reflect-metadata": "^0.1.13"
+  }
+}

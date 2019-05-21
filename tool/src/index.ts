@@ -9,6 +9,7 @@ import "./lib/install";
 import "./lib/set";
 import "./lib/publish";
 import "./lib/registry";
+import "./lib/update";
 
 //#region old code
 // commander

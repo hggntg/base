@@ -1,5 +1,4 @@
-import { ICollection } from "../database-context/collection";
-import { IBaseEntity, IBaseRepository } from "@base/interfaces";
+import { ICollection, IBaseEntity, IBaseRepository } from "@base-interfaces/database";
 
 export class BaseRepository<T extends IBaseEntity> implements IBaseRepository<T>{
 	public collection: ICollection<T>;

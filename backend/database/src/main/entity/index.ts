@@ -1,14 +1,22 @@
 import mongoose from "mongoose";
-import { IEntitySchema, getEntitySchema } from "./entity-schema";
-import { IBaseEntity } from "@base/interfaces";
+import { getEntitySchema } from "./entity-schema";
+import { mapData, getClass } from "@base/class";
+import { IEntitySchema, IBaseEntity } from "@base-interfaces/database";
 
-export abstract class BaseEntity implements IBaseEntity{
-	public getInstance(): mongoose.Model<mongoose.Document>{
+export abstract class BaseEntity<T> implements IBaseEntity<T>{
+	public getInstance(): mongoose.Model<mongoose.Document & T>{
 		let entitySchema: IEntitySchema<this> = getEntitySchema(this);
-		return entitySchema.model;
+		return entitySchema.model as mongoose.Model<mongoose.Document & T>;
 	}
-	constructor() {
-		
+	constructor();
+	constructor(input: Partial<T>);
+	constructor(input?: Partial<T>){
+		if(input){
+			let result = mapData<T>(getClass(this), input);
+			Object.keys(result).map(key => {
+				this[key] = result[key];
+			});
+		}
 	}
 }
 

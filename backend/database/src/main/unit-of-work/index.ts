@@ -1,10 +1,13 @@
-import { UnitOfWork, IBaseEntity, IBaseRepository, App } from "@base/interfaces";
-import { IDatabaseContext } from "../database-context";
-import { IUnitOfWorkMetadata, getUnitOfWorkMetadata } from "./decorator";
+import { getUnitOfWorkMetadata } from "./decorator";
 import { getProperties } from "@base/class";
-import { IExtendDatabase } from "../../internal";
+import {
+	IUnitOfWorkMetadata,
+	IDatabaseContext,
+	UnitOfWork,
+	IBaseEntity,
+	IBaseRepository 
+} from "@base-interfaces/database";
 
-declare const app: App & IExtendDatabase;
 
 export abstract class AUnitOfWork implements UnitOfWork {
 	private readonly dbContext: IDatabaseContext;
@@ -16,10 +19,10 @@ export abstract class AUnitOfWork implements UnitOfWork {
 			let classImp = unitOfWork.classes[property];
 			this[property] = new classImp(_dbContext.list(property));
 		});
-		app.db = this;
 	}
 	list<T extends IBaseEntity>(name: string): IBaseRepository<T> {
-		return this[name];
+		let realName = name.toLowerCase();
+		return this[realName];
 	}
 	saveChanges() {
 		return this.dbContext.saveChanges();
@@ -28,3 +31,4 @@ export abstract class AUnitOfWork implements UnitOfWork {
 
 export * from "./decorator";
 export * from "./repository";
+	

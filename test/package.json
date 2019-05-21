@@ -1,0 +1,24 @@
+{
+	"name": "test",
+	"version": "1.0.0",
+	"description": "",
+	"main": "index.js",
+	"scripts": {
+		"test": "echo \"Error: no test specified\" && exit 1"
+	},
+	"author": "",
+	"license": "ISC",
+	"baseDependencies": [
+		"@base/logger",
+		"@base/utilities",
+		"@base-interfaces/utilities"
+	],
+	"dependencies": {
+		"@base-interfaces/utilities": "^1.0.15",
+		"@base/logger": "^1.0.36",
+		"@base/utilities": "^1.0.32"
+	},
+	"devDependencies": {
+		"@types/node": "^12.0.2"
+	}
+}
