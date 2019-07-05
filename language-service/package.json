@@ -1,0 +1,16 @@
+{
+  "name": "@base/language-service",
+  "version": "1.0.4",
+  "description": "",
+  "types": "index.d.ts",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {},
+  "devDependencies": {
+    "typescript": "^3.5.1"
+  }
+}

@@ -3,7 +3,7 @@ import fs from "fs";
 import shell from "shelljs";
 import { getRootBasePath } from "../../infrastructure/utilities";
 import rimraf from "rimraf";
-
+import replace from "replace-in-file";
 function clean(root, pathName){
     let pathSegments = pathName.split("/");
 
@@ -55,7 +55,7 @@ function copy(source, dest, ...files){
     });
 }
 
-export function buildModule(name){
+export function buildModule(name: string, src?: string){
     let storePath = getRootBasePath();
     let sourcePath = process.cwd();
     let destPath = path.join(storePath, name);
@@ -66,12 +66,34 @@ export function buildModule(name){
     
     shell.exec("npm version patch");
     copy(sourcePath, destPath, "package.json", "README.md", "logo");
-    
-    let output = shell.exec("tsc --outDir " + destPath);
+    sourcePath = src ? path.join(sourcePath, src) : sourcePath;
+    copy(sourcePath, destPath,"tsconfig.json", "typings.d.ts");
+    let tsconfigPath = path.join(sourcePath, "tsconfig.json");
+    let output = null;
+    output = shell.exec(`tsc -p ${tsconfigPath} --outDir ${destPath}`);
     if(output.stderr){
         console.error(output.stderr);
     }
     else{
-        console.log(output.stdout);
+        let files = [
+            path.join(destPath, "*.d.ts"),
+            path.join(destPath, "**/*.d.ts")
+        ]
+        replace({
+            files: files,
+            from: /\/\/\/ <reference types="(\.)+\/typings" \/>/g,
+            to: ""
+        }).then(() => {
+            return import(path.join(destPath, "tsconfig.json")).then(tsconfigObject => {
+                let compilerOptions = tsconfigObject.compilerOptions;
+                delete compilerOptions.outDir;
+                let newTsconfigObject = {
+                    compilerOptions: compilerOptions
+                }
+                return fs.writeFileSync(path.join(destPath, "tsconfig.json"), JSON.stringify(newTsconfigObject, null, 2));
+            });
+        }).catch(err => {
+            throw err;
+        });
     }
 }

@@ -7,7 +7,6 @@ declare const commander : CommanderStatic;
 (function(){
     commander.command("registry <action> <scope>")
     .action((action: string, scope: string) => {
-        console.log(action);
         if(action === "serve"){
             serveRegistry();
         }

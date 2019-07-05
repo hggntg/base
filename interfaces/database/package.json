@@ -1,6 +1,6 @@
 {
 	"name": "@base-interfaces/database",
-	"version": "1.0.16",
+	"version": "1.0.28",
 	"description": "Interface for @base/database",
 	"main": "index.js",
 	"types": "index.d.ts",
@@ -13,14 +13,17 @@
 	],
 	"license": "ISC",
 	"dependencies": {
-		"@base-interfaces/logger": "^1.0.6",
-		"@base-interfaces/utilities": "^1.0.11"
+		"@types/mongodb": "^3.1.27",
+		"@types/mongoose": "^5.5.1"
 	},
 	"baseDependencies": [
 		"@base-interfaces/utilities",
 		"@base-interfaces/logger"
 	],
 	"devDependencies": {
-		"@types/mongoose": "^5.5.1"
+		"@types/node": "^12.0.2",
+		"typescript": "^3.4.5",
+		"@base-interfaces/logger": "^1.0.8",
+		"@base-interfaces/utilities": "^1.0.30"
 	}
 }

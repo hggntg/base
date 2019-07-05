@@ -1,6 +1,6 @@
 {
 	"name": "@base/database",
-	"version": "1.0.100",
+	"version": "1.0.181",
 	"description": "Database use mongoose",
 	"scripts": {
 		"test": "nodemon --exec ts-node test/index.ts"
@@ -11,24 +11,21 @@
 	],
 	"license": "ISC",
 	"dependencies": {
-		"@base-interfaces/database": "^1.0.16",
-		"@base-interfaces/utilities": "^1.0.15",
-		"@base/class": "^1.0.12",
-		"@base/logger": "^1.0.39",
-		"@base/utilities": "^1.0.32",
+		"@types/mongoose": "^5.5.6",
 		"mongoose": "^5.4.20"
 	},
 	"devDependencies": {
-		"@types/mongodb": "^3.1.22",
-		"@types/mongoose": "^5.3.24"
+		"@base/class": "^1.0.58",
+		"@base/logger": "^1.0.58",
+		"@types/node": "^12.0.10",
+		"nodemon": "^1.19.1",
+		"ts-node": "^8.3.0",
+		"typescript": "^3.5.2"
 	},
 	"main": "index.js",
 	"types": "index.d.ts",
 	"baseDependencies": [
-		"@base-interfaces/database",
 		"@base/class",
-		"@base/utilities",
-		"@base-interfaces/utilities",
 		"@base/logger"
 	]
 }

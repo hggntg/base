@@ -1,0 +1,27 @@
+{
+	"name": "@base-plugins/communication",
+	"version": "1.0.16",
+	"description": "Plugin for base project to add @base/communication to @base/builder",
+	"main": "index.js",
+	"types": "index.d.ts",
+	"scripts": {
+		"test": "echo \"Error: no test specified\" && exit 1"
+	},
+	"author": "Uncle Hung",
+	"maintainers": [
+		"Uncle Hung"
+	],
+	"license": "ISC",
+	"baseDependencies": [
+		"@base/builder",
+		"@base-interfaces/utilities",
+		"@base/communication"
+	],
+	"dependencies": {
+		"@base/communication": "^1.0.40"
+	},
+	"devDependencies": {
+		"@base-interfaces/utilities": "^1.0.30",
+		"@base/builder": "^1.0.19"
+	}
+}

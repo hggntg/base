@@ -24,6 +24,7 @@ export interface ILog {
 export interface ILogger {
     pushLog(log: ILog);
     pushLog(message: string, level: "silly" | "debug" | "error" | "info", tag: string, style?: IMessageStyle);
+    pushError(message: Error, tag: string);
     pushError(message: string, tag: string);
     pushSilly(message: string, tag: string);
     pushDebug(message: string, tag: string);

@@ -1,0 +1,3 @@
+[submodule "android\\ndk\\arcore-android-sdk"]
+	path = android\\ndk\\arcore-android-sdk
+	url = https://github.com/google-ar/arcore-android-sdk.git

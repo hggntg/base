@@ -1,6 +1,6 @@
 {
   "name": "@base-interfaces/logger",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "description": "Interface for @base/logger",
   "main": "index.js",
   "types": "index.d.ts",
@@ -11,5 +11,9 @@
   "maintainers": [
     "Uncle Hung"
   ],
-  "license": "ISC"
+  "license": "ISC",
+  "devDependencies": {
+    "@types/node": "^12.0.2",
+    "typescript": "^3.4.5"
+  }
 }

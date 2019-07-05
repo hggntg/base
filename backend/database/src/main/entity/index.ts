@@ -1,16 +1,24 @@
 import mongoose from "mongoose";
 import { getEntitySchema } from "./entity-schema";
-import { mapData, getClass } from "@base/class";
-import { IEntitySchema, IBaseEntity } from "@base-interfaces/database";
+import { mapData, Injectable } from "@base/class";
+import { IEntitySchema, IBaseEntity } from "../../interface";
 
-export abstract class BaseEntity<T> implements IBaseEntity<T>{
+export const BASE_ENTITY_SERVICE = "IBaseEntity";
+
+@Injectable(BASE_ENTITY_SERVICE, true, true)
+export class BaseEntity<T> implements IBaseEntity<T>{
+	getType(): IClassType {
+		throw new Error("Method not implemented.");
+	}
 	public getInstance(): mongoose.Model<mongoose.Document & T>{
-		let entitySchema: IEntitySchema<this> = getEntitySchema(this);
+		let classImp = getClass(this);
+		let entitySchema: IEntitySchema<typeof classImp> = getEntitySchema<typeof classImp>(classImp);
 		return entitySchema.model as mongoose.Model<mongoose.Document & T>;
 	}
-	constructor();
-	constructor(input: Partial<T>);
-	constructor(input?: Partial<T>){
+	constructor(){
+		
+	}
+	initValue(input: Partial<T>){
 		if(input){
 			let result = mapData<T>(getClass(this), input);
 			Object.keys(result).map(key => {

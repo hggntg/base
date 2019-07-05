@@ -20,6 +20,8 @@ export interface IBaseEntity<T = any>{
 export interface IDatabaseContext {
 	list<T extends IBaseEntity>(name: string): ICollection<T>;
 	saveChanges(): Promise<any>;
+	createConnection(): Promise<boolean>;
+	extend(plugins: Function | Function[]);
 }
 
 export interface IDatabaseContextSession{
@@ -50,15 +52,13 @@ export interface IBaseRepository<T extends IBaseEntity>{
 }
 
 export interface UnitOfWork {
+	getContext(): IDatabaseContext;
 	list<T extends IBaseEntity>(name: string): IBaseRepository<T>;
 	saveChanges(): Promise<any>;
 }
 
 export interface IExtendDatabase{
 	db: UnitOfWork;
-	connectDatabase(entities: {[key: string]: {new() : IBaseEntity}}, context: {new (): IDatabaseContext}, unitOfWork: {new(_context: IDatabaseContext): UnitOfWork}) : Promise<boolean>;
-	extendDatabase(plugin: Function | Array<Function>);
-	setLogForDatabase(hasLog: boolean);
 }
 
 export interface IDocumentChange {

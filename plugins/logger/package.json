@@ -1,6 +1,6 @@
 {
 	"name": "@base-plugins/logger",
-	"version": "1.0.2",
+	"version": "1.0.5",
 	"description": "Plugin for base project to add @base/logger to @base/builder",
 	"main": "index.js",
 	"types": "index.d.ts",
@@ -13,19 +13,15 @@
 	],
 	"license": "ISC",
 	"dependencies": {
-		"@base/logger": "^1.0.30"
+		"@base/logger": "^1.0.45"
 	},
 	"devDependencies": {
-		"@base-interfaces/builder": "^1.0.14",
-		"@base-interfaces/logger": "^1.0.5",
-		"@base-interfaces/utilities": "^1.0.11",
-		"@base/builder": "^1.0.13"
+		"@base-interfaces/utilities": "^1.0.30",
+		"@base/builder": "^1.0.19"
 	},
 	"baseDependencies": [
-		"@base-interfaces/logger",
 		"@base/logger",
 		"@base/builder",
-		"@base-interfaces/utilities",
-		"@base-interfaces/builder"
+		"@base-interfaces/utilities"
 	]
 }

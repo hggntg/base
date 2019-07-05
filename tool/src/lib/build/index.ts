@@ -8,7 +8,8 @@ declare const commander : CommanderStatic;
 interface IBuildServiceCommand{
     live?: boolean,
     test?: boolean,
-    name?: string
+    name?: string,
+    src?: string
 }
 
 (function(){
@@ -17,6 +18,7 @@ interface IBuildServiceCommand{
     .option("--live", "build your app and serve app live")
     .option("--test", "apply test before serve")
     .option("--name [moduleName]", "name of your module")
+    .option("--src [source]", "your folder source code")
     .action((what: string, commands: IBuildServiceCommand) => {
         commands.live = defaultValue(commands.live, "boolean");
         commands.test = defaultValue(commands.test, "boolean");
@@ -25,7 +27,7 @@ interface IBuildServiceCommand{
             buildService();
         }
         else if(what === "module"){
-            buildModule(commands.name);
+            buildModule(commands.name, commands.src);
         }
     });
 })();

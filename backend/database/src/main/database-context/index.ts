@@ -10,16 +10,20 @@ import {
 	IFakePreDocument,
 	IFakePreModel,
 	IFakePreQuery,
-	IFakePlugin,
-	ICollectionMetadata
-} from "@base-interfaces/database";
+	IFakePlugin
+} from "../../interface";
 import mongoose, { Schema } from "mongoose";
-import { Collection } from "./collection";
-import { getProperties, defineMetadata, getClass } from "@base/class";
+import { Injectable, getDependency } from "@base/class";
 import { getDbContextMetadata } from "./decorator";
 import { DBCONTEXT_KEY, SCHEMA_KEY } from "../../infrastructure/constant";
 import { getEntitySchema, EntitySchema } from "../entity";
 import { ensureNew } from "../../infrastructure/utilities";
+import { LOGGER_SERVICE, ILogger } from "@base/logger";
+import CustomTypes from "../types";
+
+Object.values(CustomTypes).map((type) => {
+	mongoose.Schema.Types[type.name] = type;
+});
 
 export class DbContextSession implements IDatabaseContextSession{
 	session: Promise<mongoose.ClientSession>;
@@ -126,9 +130,11 @@ function mapSchemaMiddleware<T>(schema: Schema, middleware: IFakePreAggregate | 
     }
 }
 
+export const DATABASE_CONTEXT_SERVICE = "IDatabaseContext";
 
+@Injectable(DATABASE_CONTEXT_SERVICE, true, true)
 export class DatabaseContext implements IDatabaseContext{
-	list<T extends IBaseEntity>(name: string): ICollection<T> {
+	list<K, T extends IBaseEntity<K>>(name: string): ICollection<K, T> {
 		return this[name];
 	}
 	saveChanges(): Promise<any>{
@@ -167,7 +173,6 @@ export class DatabaseContext implements IDatabaseContext{
 				return session.endSession();
 			});
 		}).catch(err => {
-			console.error(err);
 			return session.abortTransaction().then(() => {
 				return session.endSession();
 			});
@@ -176,35 +181,34 @@ export class DatabaseContext implements IDatabaseContext{
 	createConnection(): Promise<boolean>{
 		let dbContext: IDbContextMetadata = getDbContextMetadata(this);
 		let connectionInfo = dbContext.connectionInfo;
-		if (dbContext.tracer) {
-			mongoose.set("debug", (collectionName, method, query, doc) => {
-				dbContext.tracer.pushLog({
-					level: "debug",
-					message: {
-						delimiter: " ",
-						tag: "DATABASE",
-						messages: [
-							{
-								text: `${collectionName}.${method}(${JSON.stringify(query)})`,
-								style:{
-									fontColor :{r: 24, g: 255, b: 255},
-									underline: true
-								}
-							},
-							{
-								text: "=>",
-								style: {
-									fontColor :{r: 255, g: 87, b: 34}
-								}
-							},
-							{
-								text: JSON.stringify(doc),
+		mongoose.set("debug", (collectionName, method, query, doc) => {
+			this.logger.pushLog({
+				level: "debug",
+				message: {
+					delimiter: " ",
+					tag: "DATABASE",
+					messages: [
+						{
+							text: `${collectionName}.${method}(${JSON.stringify(query)})`,
+							style:{
+								fontColor :{r: 24, g: 255, b: 255},
+								underline: true
 							}
-						]
-					}
-				});
+						},
+						{
+							text: "=>",
+							style: {
+								fontColor :{r: 255, g: 87, b: 34}
+							}
+						},
+						{
+							text: JSON.stringify(doc),
+						}
+					]
+				}
 			});
-		}
+		});
+		this.logger.pushInfo("Ready to connect to database", "database-context");
 		return new Promise<boolean>((resolve, reject) => {
 			mongoose.createConnection(connectionInfo.uri, connectionInfo.connectionOptions).then(connection => {
 				dbContext.connection = connection;
@@ -237,6 +241,19 @@ export class DatabaseContext implements IDatabaseContext{
 			});
 		})
 	}
+	extend(plugins: Function | Function[]) {
+		let dbContext = getDbContextMetadata(this);
+		if (!dbContext.connection || dbContext.connection.readyState === 2) {
+			if (Array.isArray(plugins)) {
+				plugins.map(plugin => {
+					mongoose.plugin(plugin);
+				});
+			}
+			else {
+				mongoose.plugin(plugins);
+			}
+		}
+	}
 	private getDbContextSession() : IDatabaseContextSession{
 		let dbContext: IDbContextMetadata = getDbContextMetadata(this);
 		let session = dbContext.context.get<Promise<mongoose.ClientSession>>("session");
@@ -247,13 +264,9 @@ export class DatabaseContext implements IDatabaseContext{
 		dbContextSession.documents = dbContext.context.get<Array<IDocumentChange>>("documents");
 		return dbContextSession;
 	}
+	protected logger: ILogger
 	constructor(){
-		let properties = getProperties(this);
-		let dbContext = getDbContextMetadata(this);
-		properties.map(property => {
-			let classImp = dbContext.classes[property];
-			this[property] = new Collection(classImp);
-		});
+		this.logger = getDependency<ILogger>(LOGGER_SERVICE);
 	}
 }
 

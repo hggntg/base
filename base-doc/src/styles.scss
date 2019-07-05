@@ -1,0 +1,94 @@
+/* You can add global styles to this file, and also import other style files */
+*{
+    margin: 0;
+    padding: 0;
+    font-family: "Rokkitt", serif;
+    color: #616161;
+    box-sizing: border-box;
+}
+
+body, html {
+    height: 100%;
+}
+
+.container{
+    height: 100vh;
+}
+
+.header-image { 
+    /* Full height */
+    height: 100%; 
+
+    /* Create the parallax scrolling effect */
+    background-position: bottom;
+    background-repeat: no-repeat;
+    background-size: cover;
+}
+
+.body-content{
+    margin-top: -1px;
+}
+
+.down{
+    background:  linear-gradient(to bottom, 
+    #4A148C,
+    #0D47A1,
+    #212121,
+    #000000);
+    padding-bottom: 45px;
+}
+
+.reverse{
+    background:  linear-gradient(to bottom,
+    #000000,
+    #212121,
+    #0D47A1,
+    #4A148C);
+    padding-bottom: 45px;
+}
+
+.body-content h1, .body-content h2, .body-content h3, .body-content h4, .body-content h5, .body-content h6{
+    padding: 30px;
+    height: 90px;
+    text-decoration: underline;
+    letter-spacing: 0.13em;
+    color: #BDBDBD;
+}
+
+.body-content h1{
+    font-size: 52px;
+}
+.body-content h2{
+    font-size: 48px;
+}
+.body-content h3{
+    font-size: 44px;
+}
+.body-content h4{
+    font-size: 40px;
+}
+.body-content h5{
+    font-size: 36px;
+}
+.body-content h6{
+    font-size: 32px;
+}
+
+.body-content p{
+    padding: 12px;
+    text-align: justify;
+    text-indent: 60px;
+    line-height: 36px;
+    letter-spacing: 0.5px;
+    font-size: 24px;
+    color: #E0E0E0;
+}
+.body-content pre{
+    font-size: 18px;
+    background: rgba(0, 0, 0, 0.8);
+    width: 90%;
+    color: #fefefe;
+    margin: auto;
+    border-radius: 5px;
+    padding: 15px;
+}

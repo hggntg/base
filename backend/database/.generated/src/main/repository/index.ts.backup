@@ -1,0 +1,67 @@
+import { ICollection, IBaseEntity, IBaseRepository, IWherable, IQueryable } from "../../interface";
+import { use, Injectable, getDependency, getConstant } from "@base/class";
+import { COLLECTION_SERVICE } from "../database-context";
+import { getRepositoryMetadata } from "./decorator";
+
+export const BASE_REPOSITORY_SERVICE = "IBaseRepository";
+
+@Injectable(BASE_REPOSITORY_SERVICE, true, true)
+export class BaseRepository<K, T extends IBaseEntity<K>> implements IBaseRepository<K, T>{
+	protected collection: ICollection<K, T>;
+	constructor() {
+		let repositoryMetadata = getRepositoryMetadata<K, T>(this);
+		if (repositoryMetadata && repositoryMetadata.entity) {
+			this.collection = getConstant<ICollection<K, T>>(COLLECTION_SERVICE, `Collection<${repositoryMetadata.entity.name}>`);
+		}
+	}
+	aggregate(conditions: any[]): Promise<Partial<K>[]> {
+		return this.collection.aggregate(conditions);
+	}
+	find(conditions?: any): Promise<Partial<K>[]> {
+		return this.collection.find(conditions);
+	}
+	findOne(conditions?: any): Promise<Partial<K>> {
+		return this.collection.findOne(conditions);
+	}
+	findById(_id: string): Promise<Partial<K>> {
+		return this.collection.findById(_id);
+	}
+	insert(doc: Partial<K>) {
+		return this.collection.insert(doc);
+	}
+	insertMany(docs: Array<Partial<K>>) {
+		return this.collection.insertMany(docs);
+	}
+	remove(conditions?: any) {
+		return this.collection.remove(conditions);
+	}
+	removeById(_id: string) {
+		return this.collection.removeById(_id);
+	}
+	removeMany(_ids: Array<string>) {
+		return this.collection.removeMany(_ids);
+	}
+	update(conditions: any, data: any) {
+		return this.collection.update(conditions, data);
+	}
+	updateById(_id: string, data: any) {
+		return this.collection.updateById(_id, data);
+	}
+	updateMany(_ids: Array<string>, data: any) {
+		return this.collection.updateMany(_ids, data);
+	}
+	count(conditions: any): Promise<number> {
+		return this.collection.count();
+	}
+	where(conditions: any): IWherable {
+		throw new Error("Method not implemented.");
+	}
+	limit?<T extends IQueryable>(about: number): Pick<T, Exclude<keyof T, "limit">> {
+		throw new Error("Method not implemented.");
+	}
+	skip?<T extends IQueryable>(about: number): Pick<T, Exclude<keyof T, "skip">> {
+		throw new Error("Method not implemented.");
+	}
+}
+
+export * from "./decorator";

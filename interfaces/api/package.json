@@ -1,19 +1,32 @@
 {
-  "name": "@base-interfaces/api",
-  "version": "1.0.0",
-  "description": "Interface for @base/api",
-  "main": "index.js",
-  "types": "index.d.ts",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "author": "Uncle Hung",
-  "maintainers": [
-    "Uncle Hung"
-  ],
-  "license": "ISC",
-  "devDependencies": {},
-  "dependencies": {
-    "@types/express-serve-static-core": "^4.16.4"
-  }
+	"name": "@base-interfaces/api",
+	"version": "1.0.11",
+	"description": "Interface for @base/api",
+	"main": "index.js",
+	"types": "index.d.ts",
+	"scripts": {
+		"test": "echo \"Error: no test specified\" && exit 1"
+	},
+	"author": "Uncle Hung",
+	"maintainers": [
+		"Uncle Hung"
+	],
+	"license": "ISC",
+	"devDependencies": {
+		"@base-interfaces/database": "^1.0.28",
+		"@base-interfaces/logger": "^1.0.8",
+		"@base-interfaces/utilities": "^1.0.30",
+		"@types/node": "^12.0.2",
+		"typescript": "^3.4.5"
+	},
+	"dependencies": {
+		"@types/express": "^4.16.1",
+		"@types/express-serve-static-core": "^4.16.4",
+		"@types/morgan": "^1.7.35"
+	},
+	"baseDependencies": [
+		"@base-interfaces/database",
+		"@base-interfaces/logger",
+		"@base-interfaces/utilities"
+	]
 }

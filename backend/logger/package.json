@@ -1,6 +1,6 @@
 {
 	"name": "@base/logger",
-	"version": "1.0.39",
+	"version": "1.0.59",
 	"description": "Asynchronous logger",
 	"main": "index.js",
 	"types": "index.d.ts",
@@ -13,16 +13,17 @@
 	],
 	"license": "ISC",
 	"dependencies": {
+		"@base/class": "^1.0.59",
 		"chalk": "^2.4.2",
 		"winston": "^3.2.1"
 	},
 	"devDependencies": {
-		"@base-interfaces/logger": "^1.0.7",
-		"@types/chalk": "^2.2.0",
-		"@types/node": "^11.11.6",
-		"@types/winston": "^2.4.4"
+		"@types/node": "^11.13.15",
+		"nodemon": "^1.19.1",
+		"ts-node": "^8.3.0",
+		"typescript": "^3.5.2"
 	},
 	"baseDependencies": [
-		"@base-interfaces/logger"
+		"@base/class"
 	]
 }

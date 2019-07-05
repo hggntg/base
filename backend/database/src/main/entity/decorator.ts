@@ -1,19 +1,18 @@
-import { Property, getMetadata, getClass, defineMetadata } from "@base/class";
+import { Property } from "@base/class";
 import { SCHEMA_KEY, FOREIGN_KEY } from "../../infrastructure/constant";
 import { 
 	IEntitySchema, IFakePreAggregate,
 	IFakePreDocument, HookDocumentType, HookModelType, IFakePreModel,
 	HookAggregateType, HookQueryType, IFakePreQuery, IFakePlugin, ForeignFieldOptions, IFakeSchemaFunction
-} from "@base-interfaces/database";
+} from "../../interface";
 import { ensureEntitySchemaInitiate } from "./entity-schema";
 import mongoose from "mongoose";
-import { ILogger } from "@base-interfaces/logger";
-import { Logger } from "@base/logger";
 
+type TEntityForeignField = ForeignFieldOptions & {name: string; localField: string}
 
 export function Id() {
 	return function (target: object, propertyKey: string) {
-		Property(target, propertyKey);
+		Property(String)(target, propertyKey);
 		let classImp = getClass(target);
 		let schema: IEntitySchema<typeof classImp> = getMetadata(SCHEMA_KEY, classImp);
 		schema = ensureEntitySchemaInitiate(schema);
@@ -27,7 +26,7 @@ export function Id() {
 
 export function Field(name?: string | mongoose.SchemaTypeOpts<any>, entitySchemaField?: mongoose.SchemaTypeOpts<any>) {
 	return function (target: object, propertyKey: string) {
-		Property(target, propertyKey);
+		Property(Object)(target, propertyKey);
 		let classImp = getClass(target);
 		let schema: IEntitySchema<typeof classImp> = getMetadata(SCHEMA_KEY, classImp);
 		schema = ensureEntitySchemaInitiate(schema);
@@ -43,8 +42,8 @@ export function Field(name?: string | mongoose.SchemaTypeOpts<any>, entitySchema
 	}
 }
 
-export function getForeignField(target): (ForeignFieldOptions & {name: string})[]{
-	let foreignField: (ForeignFieldOptions & {name: string})[] = getMetadata(FOREIGN_KEY, getClass(target)) || [];
+export function getForeignField(target): TEntityForeignField[]{
+	let foreignField: TEntityForeignField[] = getMetadata(FOREIGN_KEY, getClass(target)) || [];
 	return foreignField;
 }
 
@@ -52,6 +51,7 @@ export function ForeignField(options: ForeignFieldOptions);
 export function ForeignField(name: string, options: ForeignFieldOptions);
 export function ForeignField(arg0: ForeignFieldOptions | string, arg1?: ForeignFieldOptions){
 	return function(target: object, propertyKey: string){
+		Property(Object)(target, propertyKey);
 		let classImp = getClass(target);
 		let schema: IEntitySchema<typeof classImp> = getMetadata(SCHEMA_KEY, classImp);
 		schema = ensureEntitySchemaInitiate(schema);
@@ -65,13 +65,27 @@ export function ForeignField(arg0: ForeignFieldOptions | string, arg1?: ForeignF
 			name = propertyKey;
 			options = arg0;
 		}
+		let localField = "";
 		if(options.type === "one-to-one"){
 			let entitySchemaField: mongoose.SchemaTypeOpts<any> = {
 				type: mongoose.Types.ObjectId,
 				ref: options.relatedEntity,
 				path: options.refKey
 			}
-			schema.definition[propertyKey + "::-::" + name] = entitySchemaField;
+			localField = options.relatedEntity + "_" + name;
+			schema.definition[propertyKey + "::-::" + localField] = entitySchemaField;
+			let refKey = options.refKey === "id" ? "_id" : options.refKey;
+			let entitySchemaVirtualField = function(schema: mongoose.Schema){
+				schema.virtual(name, {
+					ref: options.relatedEntity,
+					localField: localField,
+					foreignField: refKey,
+					justOne: true
+				}).set(function(value){
+					this[localField] = value[refKey];
+				});
+			}
+			schema.virutals.push(entitySchemaVirtualField);
 		}
 		else{
 			let entitySchemaField = function(schema: mongoose.Schema){
@@ -81,11 +95,13 @@ export function ForeignField(arg0: ForeignFieldOptions | string, arg1?: ForeignF
 					foreignField: options.refKey
 				});
 			}
+			localField = options.localKey;
 			schema.virutals.push(entitySchemaField);
 		}
-		let foreignField: (ForeignFieldOptions & {name: string})[] = getForeignField(target);
+		let foreignField: TEntityForeignField[] = getForeignField(target);
 		foreignField.push({
 			name: name,
+			localField: localField,
 			...options
 		});
 		defineMetadata(SCHEMA_KEY, schema, classImp);
@@ -156,38 +172,30 @@ function isSchemaOptions(input): input is mongoose.SchemaOptions{
 	return !!isSchemaOption;
 }
 
-export function Entity<T>(options: mongoose.SchemaOptions, tracer: ILogger): (target: any) => void;
-export function Entity<T>(name: string, options: mongoose.SchemaOptions, tracer: ILogger): (target: any) => void;
-export function Entity<T>(options: mongoose.SchemaOptions, hook: (this: IFakeSchemaFunction<T>) => void, tracer: ILogger): (target: any) => void;
-export function Entity<T>(name: string, options: mongoose.SchemaOptions, hook: (this: IFakeSchemaFunction<T>) => void, tracer: ILogger): (target: any) => void;
-export function Entity<T>(arg0: string | mongoose.SchemaOptions, arg1?: mongoose.SchemaOptions | ((this: IFakeSchemaFunction<T>) => void) | ILogger, arg2?: ((this: IFakeSchemaFunction<T>) => void) | ILogger, arg3?: ILogger): (target: any) => void{
+export function Entity<T>(options: mongoose.SchemaOptions): (target: any) => void;
+export function Entity<T>(name: string, options: mongoose.SchemaOptions): (target: any) => void;
+export function Entity<T>(options: mongoose.SchemaOptions, hook: (this: IFakeSchemaFunction<T>) => void): (target: any) => void;
+export function Entity<T>(name: string, options: mongoose.SchemaOptions, hook: (this: IFakeSchemaFunction<T>) => void): (target: any) => void;
+export function Entity<T>(arg0: string | mongoose.SchemaOptions, arg1?: mongoose.SchemaOptions | ((this: IFakeSchemaFunction<T>) => void), arg2?: ((this: IFakeSchemaFunction<T>) => void)): (target: any) => void{
 	return function (target: any) {
 		let schema: IEntitySchema<T> = getMetadata(SCHEMA_KEY, getClass(target));	
 		schema = ensureEntitySchemaInitiate(schema);
 		schema.middleware = [];
-		let argLength = (arg0 && arg1 && arg2 && arg3) ? 4 : ((arg0 && arg1 && arg2) ? 3 : 2);
+		let argLength = ((arg0 && arg1 && arg2) ? 3 : (arg0 && arg1) ? 2 : 1);
 		let hook : IFakeSchemaFunction<T> = new FakeSchemaFunction(schema.middleware);
-		if(argLength === 4 && typeof arg0 === "string" && isSchemaOptions(arg1) && typeof arg2 === "function" && arg3 instanceof Logger){
+		if(argLength === 3 && typeof arg0 === "string" && isSchemaOptions(arg1) && typeof arg2 === "function"){
 			schema.name = arg0;
 			schema.schemaOptions = arg1;
 			arg2.apply(hook);
-			schema.tracer = arg3;
 		}
-		else if(argLength === 3 && isSchemaOptions(arg0) && typeof arg1 === "function" && arg2 instanceof Logger){
+		else if(argLength === 2 && isSchemaOptions(arg0) && typeof arg1 === "function"){
 			schema.name = target.name;
 			schema.schemaOptions = arg0;
 			arg1.apply(hook);
-			schema.tracer = arg2;
 		}
-		else if(argLength === 3 && typeof arg0 === "string" && isSchemaOptions(arg1) && arg2 instanceof Logger){
+		else if(argLength === 2 && typeof arg0 === "string" && isSchemaOptions(arg1)){
 			schema.name = arg0;
 			schema.schemaOptions = arg1;
-			schema.tracer = arg2;
-		}
-		else if(argLength === 2 && isSchemaOptions(arg0) && arg1 instanceof Logger){
-			schema.name = target.name;
-			schema.schemaOptions = arg0 as mongoose.SchemaOptions;
-			schema.tracer = arg1;
 		}
 		else{
 			throw new Error("Something wrong");

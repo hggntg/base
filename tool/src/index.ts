@@ -10,6 +10,16 @@ import "./lib/set";
 import "./lib/publish";
 import "./lib/registry";
 import "./lib/update";
+import "./lib/project";
+import { log } from "./infrastructure/logger";
+
+process.on('uncaughtException', (err) => {
+    log(err, "error");
+});
+
+process.on('unhandledRejection', (err) => {
+    log(err, "error");
+});
 
 //#region old code
 // commander

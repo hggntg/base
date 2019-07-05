@@ -1,0 +1,26 @@
+{
+	"name": "@base-interfaces/communication",
+	"version": "1.0.22",
+	"description": "Interface for @base/communication",
+	"main": "index.js",
+	"types": "index.d.ts",
+	"scripts": {
+		"test": "echo \"Error: no test specified\" && exit 1"
+	},
+	"author": "Uncle Hung",
+	"maintainers": [
+		"Uncle Hung"
+	],
+	"license": "ISC",
+	"dependencies": {
+		"@types/amqplib": "^0.5.11"
+	},
+	"devDependencies": {
+		"@types/node": "^12.0.2",
+		"typescript": "^3.4.5",
+		"@base-interfaces/logger": "^1.0.8"
+	},
+	"baseDependencies": [
+		"@base-interfaces/logger"
+	]
+}

@@ -1,50 +1,42 @@
-import { Logger } from "@base/logger";
-import { CustomWrap } from "./custom";
+import { Lib } from "./lib";
+import { A, B } from "./model";
 
-const logger = new Logger("main");
-// setTimeout(() => {
-//     logger.pushDebug('Timeout happened 1', "");
-//     setTimeout(() => {
-//         logger.pushDebug('Timeout happened 2', "");
-//         setTimeout(() => {
-//             logger.pushDebug('Timeout happened 3', "");
-//         }, 0);
-//         logger.pushDebug('Registered timeout 3', "");
-//     }, 0);
-//     logger.pushDebug('Registered timeout 2', "");
-// }, 0)
-// logger.pushDebug('Registered timeout 1', "");
+interface IBerforeTest extends IBaseClass{
+    value: number;
+}
+interface ITestClass extends IBaseClass{
+    name: string;
+    before: IBerforeTest;
+}
+class TestClass implements ITestClass{
+    getType(): IClassType {
+        throw new Error("Method not implemented.");
+    }
+    name: string;
+    before: IBerforeTest;
+}
+class D implements IBaseClass{
+    getType(): IClassType {
+        throw new Error("Method not implemented.");
+    }
+    value: string;
+}
 
-// function a(){
-//     logger.pushDebug("Ok 1?", "");
-// }
+console.log(TestClass.getType());
+console.log(D.getType());
 
-// function b(){
-//     logger.pushDebug("Ok 2?", "");
-// }
+import express from "express"
 
-// a();
-// b();
-let cus: CustomWrap = new CustomWrap();
-cus.connect((a)=>{
-    logger.pushDebug("Ayo a.k.a C.D.C", a);
+let app = express();
+
+app.use("/post", (req, res) => {
+    res.send("POSTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT");
 });
-cus.connect((a)=>{
-    logger.pushDebug("Ayo a.k.a C.D.C", a);
-});
-// cus.connect((a)=>{
-//     logger.pushDebug("Ayo a.k.a C.D.C", a);
-// });
-// cus.connect((a)=>{
-//     logger.pushDebug("Ayo a.k.a C.D.C", a);
-// });
-// cus.connect((a)=>{
-//     logger.pushDebug("Ayo a.k.a C.D.C", a);
-// });
-// cus.connect((a)=>{
-//     logger.pushDebug("Ayo a.k.a C.D.C", a);
-// });
 
-setTimeout(() => {
-    cus.disconnect();
-}, 200);
+const server = app.listen(3000, ()=>{
+    console.log("ayoooooooooooooooooooooooooooooooooooooooooooo");
+});
+
+process.on("SIGINT", () => {
+    server.close();
+});

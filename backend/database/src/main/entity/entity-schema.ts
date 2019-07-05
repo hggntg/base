@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import { Property, getClass, getMetadata } from "@base/class";
+import { Property } from "@base/class";
 import { ensureNew } from "../../infrastructure/utilities";
 import { SCHEMA_KEY } from "../../infrastructure/constant";
 import { 
@@ -7,33 +7,29 @@ import {
 	IFakePreAggregate, IFakePreModel,
 	IFakePreDocument, IFakePreQuery, IFakePlugin,
 	IEntitySchema
-} from "@base-interfaces/database";
-import { ILogger } from "@base-interfaces/logger";
+} from "../../interface";
 
 export class EntitySchema<T> implements IEntitySchema<T> {
-	@Property
+	@Property(String)
 	name: string;
 
-	@Property
+	@Property(Object)
 	definition?: EntitySchemaDefinition;
 
-	@Property
+	@Property(Object)
 	schemaOptions?: mongoose.SchemaOptions;
 
-	@Property
+	@Property(Object)
 	model?: mongoose.Model<mongoose.Document, {}>;
 
-	@Property
+	@Property(Object)
 	schema?: mongoose.Schema<any>;
 
-	@Property
+	@Property(Array)
 	middleware?: Array<IFakePreAggregate | IFakePreModel<T> | IFakePreDocument<T> | IFakePreQuery | IFakePlugin> = [];
 
-	@Property
+	@Property(Function)
 	virutals?: ((schema: mongoose.Schema) => void)[];
-
-	@Property
-	tracer: ILogger;
 
 	constructor() {
 		this.definition = {};
@@ -47,8 +43,8 @@ export function ensureEntitySchemaInitiate<T>(input: EntitySchema<T>) {
 	return output;
 }
 
-export function getEntitySchema(target: any){
+export function getEntitySchema<T>(target: any): IEntitySchema<T>{
 	let classImp = getClass(target);
-	let schemaEntity = getMetadata(SCHEMA_KEY, classImp);
+	let schemaEntity = getMetadata<IEntitySchema<T>>(SCHEMA_KEY, classImp);
 	return schemaEntity;
 }

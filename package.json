@@ -1,0 +1,26 @@
+{
+  "name": "base",
+  "version": "1.0.0",
+  "description": "* [Sự tích rợn người về design pattern](https://viblo.asia/p/design-pattern-tai-sao-phai-hoc-design-pattern-ORNZq9OGZ0n)\r * Gia tộc database:\r   * [Cụ tổ Unit Of Work](https://viblo.asia/p/gioi-thieu-ve-unitofwork-pattern-aWj53p4eK6m)\r   * [Ông Entity và bà Repository](https://viblo.asia/p/domain-driven-design-phan-2-MgNeWoZAeYx)\r   * [Quản gia DatabaseContext người đến từ xử sở Entity Framework thuộc hành tinh C#]: Entity Framework sử dụng DbContext để kết nối dữ liệu với Database. Nó là trung gian kết nối giữa các Entities sinh ra trong ứng dụng của bạn và Database.\r ### Hướng dẫn:\r #### Lần đầu tiên:\r 1. Cài đặt docker vào máy\r 2. Chạy lệnh ```docker pull verdaccio/verdaccio```\r 3. Chạy lệnh ```docker run -it --rm --name verdaccio -p 4873:4873 verdaccio/verdaccio```\r 4. Vào thư mục tool trong thư mục base\r 5. Chạy lệnh ```tool set basePath $1``` ($1 là đường dẫn vật lý tới thư mục base phải là đường dẫn full);\r 6. Chạy lệnh ```tool set registry http://localhost:4873```\r 7. Sau đó lần lượt vào các thư mục từ thư mục base để chạy lệnh ```tool build module --name (tên thực mục)``` và lệnh ```tool publish (tên thư mục)``` :\r     * utilities\r     * interfaces\r     * backend/class\r     * backend/database\r     * backend/api",
+  "main": "index.js",
+  "directories": {
+    "test": "test"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "typescript": "^3.5.1"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hggntg/base.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/hggntg/base/issues"
+  },
+  "homepage": "https://github.com/hggntg/base#readme"
+}

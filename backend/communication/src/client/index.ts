@@ -3,48 +3,83 @@ import { Connection, Channel } from "amqplib";
 import { EventEmitter } from "events";
 import { v4 } from "uuid";
 import { queue } from "async"
-import { Communication } from "../internal";
-import { ILogger } from "@base/logger";
+import { ILogger } from "@base-interfaces/logger";
 import { Namespace } from "@base/utilities/namespace";
+import { Communication } from "../main";
+import { IClient, IRpcTemplate, IRPCBody, IRPCOption, ITask, IRPCResult, IRPCResultListBody, IRPCResultSingleBody } from "@base-interfaces/communication";
 
-interface rpcTemplate {
-    queueName: string;
-    correlationId: string;
-    body: string
-}
-
-interface Watchman {
-    id: string;
-    timeout: number;
-    time: number;
-    interval?: any;
-    isDone: boolean;
-}
-
-class WatchTeam{
-    [key: string]: Watchman;
-    constructor(){
-
+export class RPCResult<T> implements IRPCResult<T>{
+    status: number;
+    message: string;
+    body: IRPCResultListBody<T> | IRPCResultSingleBody<T>;
+    constructor();
+    constructor(input: IRPCResult<T>);
+    constructor(arg0?: IRPCResult<T>){
+        this.status = arg0.status;
+        this.message = arg0.message;
+        this.body = arg0.body;
+    }
+    result(){
+        return new RPCPlainResult(this.body);
     }
 }
-export class Client {
+
+class RPCPlainResult<T>{
+    private body: IRPCResultListBody<T> | IRPCResultSingleBody<T>;
+    list(): IRPCResultListBody<T>{
+        if(Array.isArray(this.body.content)){
+            return this.body as IRPCResultListBody<T>;
+        }
+        else{
+            throw new Error("RPC Result is not a list");
+        }
+    }
+    single(): IRPCResultSingleBody<T>{
+        if(!Array.isArray(this.body.content)){
+            return this.body as IRPCResultSingleBody<T>;
+        }
+        else{
+            throw new Error("RPC Result is not a single");
+        }
+    }
+    constructor();
+    constructor(input: IRPCResultListBody<T> | IRPCResultSingleBody<T>);
+    constructor(arg0?: IRPCResultListBody<T> | IRPCResultSingleBody<T>){
+        this.body = arg0;
+    }
+}
+
+export class Client implements IClient {
     private readonly conn: Connection;
     private logger: ILogger;
-    private logTag: string = "Rabbitmq[Client]";
-    private q = queue((task, callback) => {
-        let rpcMessage: rpcTemplate = task as any;
+    private logTag: string = "Rabbitmq(Client)";
+    private q = queue((task: ITask, callback) => {
+        let rpcMessage: IRpcTemplate = task.message;
+        let options: IRPCOption = task.options;
         if (this.channel) {
-            let status = this.rpcCallInBack(rpcMessage, this.channel);
-            this.logger.pushSilly(rpcMessage.correlationId + " send message with status is " + status, this.logTag);
-            callback();
+            this.rpcCallInBack(rpcMessage, options, this.channel).then(status => {
+                if (status) {
+                    this.logger.pushDebug("Successfully preparing message for rpc request", this.logTag);
+                }
+                callback();
+            }).catch(err => {
+                this.logger.pushError(err, this.logTag);    
+                callback();
+            });
         }
         else {
             this.conn.createChannel().then(channel => {
                 this.channel = channel;
                 this.q.concurrency = this.concurrency;
-                let status = this.rpcCallInBack(rpcMessage, this.channel);
-                this.logger.pushSilly(rpcMessage.correlationId + " send message with status is " + status, this.logTag);
-                callback();
+                this.rpcCallInBack(rpcMessage, options, this.channel).then(status => {
+                    if (status) {
+                        this.logger.pushDebug("Successfully preparing message for rpc request", this.logTag);
+                    }
+                    callback();
+                }).catch(err => {
+                    this.logger.pushError(err, this.logTag);
+                    callback();
+                });
             });
         }
     }, 1);
@@ -52,84 +87,98 @@ export class Client {
     private channel: Channel;
     private timeout: number = 20000;
     private concurrency: number = 12;
-    private watchTeam: WatchTeam;
 
     public queueName: string;
-    
+
     constructor(_queueName: string, conn: Connection, _logger: ILogger) {
         this.queueName = _queueName;
         this.conn = conn;
         this.logger = _logger;
         this.event = new EventEmitter();
-        this.watchTeam = new WatchTeam();
-        this.event.on("rpcCall", (rpcMessage: rpcTemplate) => {
-            this.q.push(rpcMessage, (err) => { });
-        });
-        this.event.on("receive", (data) => {
-
+        this.event.on("rpcCall", (rpcMessage: IRpcTemplate, options: IRPCOption) => {
+            this.q.push({ message: rpcMessage, options }, (err) => { });
         });
     }
-    private rpcCallInBack(rpcMessage: rpcTemplate, channel: Channel) {
+    private rpcCallInBack(rpcMessage: IRpcTemplate, options: IRPCOption, channel: Channel) {
         let correlationId = rpcMessage.correlationId;
-        let session = Namespace.create(correlationId);
-        let queueNameResult = rpcMessage.queueName + "->" + "rpc_result";
+        let queueNameResult = rpcMessage.queueName + "->" + correlationId;
         let self = this;
-        let watchman: Watchman = {
-            id: correlationId,
-            timeout: this.timeout,
-            time: (+ new Date()),
-            isDone: false
-        }
-        watchman.interval = setInterval(function () {
-            let currentTime = (+new Date());
-            if (this.isDone) {
-                clearInterval(this.interval);
-                this.interval = null;
-            }
-            else {
-                if (currentTime - this.time >= this.timeout) {
-                    clearInterval(this.interval);
-                    this.interval = null;
-                    self.event.emit(this.id, {err: new Error(this.id + " is timeout.........................."), data: null});
-                }
-            }
-        }.bind(watchman), Math.floor(this.timeout / 2));
-        this.watchTeam[watchman.id] = watchman;
-        session.run(() => {
-            channel.assertQueue(queueNameResult, { exclusive: true }).then(q => {
+
+        let context = Namespace.create(correlationId);
+        return context.run(async () => {
+            context.set("correlationId", correlationId);
+            context.set("queueNameResult", queueNameResult);
+            let resultQueue = context.get<string>("queueNameResult");
+            let outerId = context.getCurrentId();
+            context.holdById(outerId);
+            return await channel.assertQueue(resultQueue, { exclusive: true, autoDelete: true }).then(q => {
+                this.logger.pushDebug("Ready to receive result", this.logTag);
                 channel.prefetch(1);
-                channel.consume(q.queue, function (msg) {
-                    if (Namespace.get(msg.properties.correlationId)) {
-                        self.watchTeam[msg.properties.correlationId].isDone = true;
-                        clearInterval(self.watchTeam[msg.properties.correlationId].interval);
-                        delete self.watchTeam[msg.properties.correlationId];
+                context.cloneById(outerId);
+                context.flush(outerId, true);
+                return channel.consume(q.queue, function (msg) {
+                    let currentCorrelationId = context.get<string>("correlationId");
+                    if (correlationId === currentCorrelationId) {
+                        let watcher = context.get<NodeJS.Timeout>("watcher");
+                        clearTimeout(watcher);
+                        self.logger.pushDebug("Receive a result from " + q.queue, self.logTag);
                         self.event.emit(msg.properties.correlationId, { err: null, data: Communication.reverseBody(msg.content.toString()) });
-                        session.dispose();
-                        Namespace.destroy(msg.properties.correlationId);
+                        let consumerTag = context.get<string>("consumerTag");
+                        if (consumerTag) {
+                            channel.cancel(consumerTag).then(() => { });
+                        }
+                        context.flush(context.getCurrentId(), true);
+                        Namespace.destroy(correlationId);
                     }
-                }, { noAck: true }).then(ok => {
-                    // console.log(ok);
-                }).catch(err => {
-                    this.logger.pushError(err.message, this.logTag);
-                });
-            }).catch(err => {
-                this.logger.pushError(err.message, this.logTag);
+                }, { noAck: true });
+            }).then((ok) => {
+                context.set("consumerTag", ok.consumerTag);
+                this.logger.pushDebug("Send request to " + rpcMessage.queueName, this.logTag);
+                let consumerTag = ok.consumerTag;
+                let flag = 0;
+                let watcher = setTimeout((consumerTag: string, correlationId: string, options: IRPCOption) => {
+                    if(flag++ < options.retry){
+                        watcher.refresh();
+                        this.logger.pushDebug("Request " + correlationId + " retries " + flag + " time(s)", this.logTag);
+                    }
+                    else{
+                        if (consumerTag) {
+                            channel.cancel(consumerTag).then(() => {
+                                this.logger.pushError("Request " + correlationId + " reached the timeout", this.logTag);
+                            });
+                        }
+                    }
+                }, options.timeout, consumerTag, correlationId, options);
+                context.set("watcher", watcher);
+                return ok;
             });
+        }).then(() => {
+            let timeout = (options.timeout * options.retry);
+            return channel.sendToQueue(rpcMessage.queueName, Buffer.from(rpcMessage.body), { correlationId: rpcMessage.correlationId, replyTo: queueNameResult, expiration: timeout });
+        }).catch(err => {
+            this.logger.pushError(err, this.logTag);
         });
-        return channel.sendToQueue(rpcMessage.queueName, Buffer.from(rpcMessage.body), { correlationId: rpcMessage.correlationId, replyTo: queueNameResult, expiration: this.timeout });
     }
 
-    rpcCall(queueName: string, body: any) {
+    rpcCall(queueName: string, body: IRPCBody, options?: IRPCOption) {
         let correlationId = v4().toString();
-        let rpcMessage: rpcTemplate = {
+        let rpcMessage: IRpcTemplate = {
             correlationId: correlationId,
             body: Communication.ensureBodyString(body),
             queueName: queueName
         }
-        this.event.emit("rpcCall", rpcMessage);
+        if (!options) {
+            options = {
+                retry: 1,
+                timeout: 5000
+            }
+        }
+        if (!options.retry) options.retry = 1;
+        if (!options.timeout) options.timeout = 5000;
+        this.event.emit("rpcCall", rpcMessage, options);
         return correlationId;
     }
-    setOptionForRPCCall(timeout: number, concurrency: number){
+    setOptionForRPCCall(timeout: number, concurrency: number) {
         this.timeout = timeout;
         this.concurrency = concurrency
     }

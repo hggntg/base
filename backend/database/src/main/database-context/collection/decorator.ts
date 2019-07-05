@@ -1,13 +1,13 @@
-import { Property, defineMetadata, getClass, getMetadata } from "@base/class";
+import { Property, getDependency, checkConstant, registerConstant } from "@base/class";
 import { getDbContextMetadata, DbContextMetadata } from "../decorator";
 import { DBCONTEXT_KEY, COLLECTION_KEY } from "../../../infrastructure/constant";
-import { IBaseEntity, IDbContextMetadata, ICollectionMetadata, IDatabaseContext } from "@base-interfaces/database";
-import { ILogger } from "@base-interfaces/logger";
-import { Logger } from "@base/logger";
+import { IBaseEntity, IDbContextMetadata, ICollectionMetadata, IDatabaseContext, ICollection } from "../../../interface";
+import { ILogger } from "@base/logger";
+import { COLLECTION_SERVICE } from ".";
 
-export function DCollection<T extends IBaseEntity>(classImp: {new() : T}, tracer: ILogger){
+export function DCollection<K, T extends IBaseEntity<K>>(classImp: {new() : T}){
 	return function(target: object, propertyKey: string){
-		Property(target, propertyKey);
+		Property(Object);
 		let dbContextMetadata: IDbContextMetadata = getDbContextMetadata(target);
 		let collectionMetadata: ICollectionMetadata = getCollectionMetadata(classImp);
 		if(!dbContextMetadata){
@@ -23,15 +23,35 @@ export function DCollection<T extends IBaseEntity>(classImp: {new() : T}, tracer
 			collectionMetadata.dbContextClass = getClass(target);
 		}
 		dbContextMetadata.classes[propertyKey] = classImp;
-		collectionMetadata.tracer = tracer ? tracer : new Logger("database-collection");
 		defineMetadata(DBCONTEXT_KEY, dbContextMetadata, getClass(target));
 		defineMetadata(COLLECTION_KEY, collectionMetadata, getClass(classImp));
+
+		let isDeleted = delete target[propertyKey];
+		if(isDeleted){
+			let newVal = getDependency<ICollection<K, T>>(COLLECTION_SERVICE, true);
+			newVal.initValue({classImp: classImp});
+			let constantName = `Collection<${classImp.name}>`;
+			let isExists = checkConstant(COLLECTION_SERVICE, constantName);
+			if(!isExists){
+				registerConstant(COLLECTION_SERVICE, newVal, constantName);
+			}
+			Object.defineProperty(target, propertyKey, {
+				configurable: true,
+				enumerable: true,
+				get(){
+					return newVal;
+				},
+				set(_val: ICollection<K, T>){
+					newVal = _val;
+				}
+			});
+		}
 	}
 }
 
 export function getCollectionMetadata(target: any) : ICollectionMetadata{
 	let classImp = getClass(target);
-	let collectionMetadata = getMetadata(COLLECTION_KEY, classImp);
+	let collectionMetadata = getMetadata<ICollectionMetadata>(COLLECTION_KEY, classImp);
 	return collectionMetadata;
 }
 

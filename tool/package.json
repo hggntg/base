@@ -1,6 +1,6 @@
 {
   "name": "@base/tool",
-  "version": "1.0.33",
+  "version": "1.0.95",
   "description": "Commandline tool for base project",
   "main": "index.js",
   "types": "index.d.ts",
@@ -13,17 +13,22 @@
   ],
   "license": "ISC",
   "dependencies": {
+    "async": "^3.1.0",
+    "chokidar": "^3.0.1",
     "commander": "^2.19.0",
     "prettyjson": "^1.2.1",
+    "queue": "^6.0.1",
+    "replace-in-file": "^4.1.0",
     "rimraf": "^2.6.3",
-    "shelljs": "^0.8.3"
+    "shelljs": "^0.8.3",
+    "ts-morph": "^2.3.0",
+    "typescript": "^3.3.4000"
   },
   "devDependencies": {
     "@types/node": "^11.9.4",
     "@types/prettyjson": "0.0.28",
     "@types/rimraf": "^2.0.2",
-    "@types/shelljs": "^0.8.3",
-    "typescript": "^3.3.4000"
+    "@types/shelljs": "^0.8.3"
   },
   "bundleDependencies": [
     "typescript"

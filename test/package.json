@@ -4,21 +4,43 @@
 	"description": "",
 	"main": "index.js",
 	"scripts": {
-		"test": "echo \"Error: no test specified\" && exit 1"
+		"test": "echo \"Error: no test specified\" && exit 1",
+		"dev": "ts-node compiler && nodemon --exec ts-node ./.generated/src"
 	},
 	"author": "",
 	"license": "ISC",
 	"baseDependencies": [
-		"@base/logger",
 		"@base/utilities",
-		"@base-interfaces/utilities"
+		"@base-interfaces/utilities",
+		"@base/builder",
+		"@base-plugins/database",
+		"@base-plugins/logger",
+		"@base/class",
+		"@base/communication",
+		"@base-interfaces/communication",
+		"@base/language-service"
 	],
 	"dependencies": {
-		"@base-interfaces/utilities": "^1.0.15",
-		"@base/logger": "^1.0.36",
-		"@base/utilities": "^1.0.32"
+		"@base-interfaces/communication": "^1.0.22",
+		"@base-interfaces/utilities": "^1.0.30",
+		"@base-plugins/database": "^1.0.6",
+		"@base-plugins/logger": "^1.0.5",
+		"@base/builder": "^1.0.19",
+		"@base/class": "^1.0.13",
+		"@base/communication": "^1.0.40",
+		"@base/utilities": "^1.0.77",
+		"chokidar": "^3.0.1",
+		"express": "^4.17.1",
+		"queue": "^6.0.1",
+		"shelljs": "^0.8.3"
 	},
 	"devDependencies": {
-		"@types/node": "^12.0.2"
+		"@base/language-service": "^1.0.4",
+		"@types/express": "^4.17.0",
+		"@types/node": "^12.0.2",
+		"@types/shelljs": "^0.8.5",
+		"inversify": "^5.0.1",
+		"ts-morph": "^2.3.0",
+		"typescript": "^3.5.1"
 	}
 }

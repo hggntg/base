@@ -1,19 +1,26 @@
 {
-  "name": "@base/class",
-  "version": "1.0.12",
-  "description": "Class decorator for base project",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "author": "Uncle Hung",
-  "maintainers": [
-    "Uncle Hung"
-  ],
-  "license": "ISC",
-  "devDependencies": {},
-  "main": "index.js",
-  "types": "index.d.ts",
-  "dependencies": {
-    "reflect-metadata": "^0.1.13"
-  }
+	"name": "@base/class",
+	"version": "1.0.59",
+	"description": "Class decorator for base project",
+	"scripts": {
+		"test": "echo \"Error: no test specified\" && exit 1"
+	},
+	"author": "Uncle Hung",
+	"maintainers": [
+		"Uncle Hung"
+	],
+	"license": "ISC",
+	"devDependencies": {
+		"@types/node": "^12.0.8",
+		"nodemon": "^1.19.1",
+		"ts-node": "^8.3.0",
+		"typescript": "^3.5.2"
+	},
+	"main": "index.js",
+	"types": "index.d.ts",
+	"dependencies": {
+		"inversify": "^5.0.1",
+		"reflect-metadata": "^0.1.13"
+	},
+	"baseDependencies": []
 }
