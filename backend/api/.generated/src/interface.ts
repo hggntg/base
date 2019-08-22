@@ -8,11 +8,9 @@ export interface IAPIOptions {
 
 export interface IAPIMetadata {
     classes: {
-        [key in string]: { new(): IController };
+        [key in string]: { new(): IZone };
     }
-    db: any;
-    context: INamespace;
-    options: IAPIOptions;
+    options: IAPIOptions
 }
 
 export interface IWorkerMetadata {
@@ -24,18 +22,27 @@ export interface IAPI {
     registerMiddleware(handler: IMiddlewareInput): Express;
 }
 
+export interface IZone {
+    establish(): Express;
+    registerMiddleware(handler: IMiddlewareInput): Express;
+}
+
+export interface IAPIZoneMetadata {
+    classes: {
+        [key in string]: { new(): IController };
+    }
+    context: INamespace;
+}
+
+
 export interface IWorker {
     start(): Promise<boolean>;
 }
 
-
-export interface IExtendAPI {
-    apiServer: IAPI;
-}
-
-export interface IRoute<T, K> {
+export interface IRoute<T, K, L> {
     bodyType?: { new(...arg: any[]): T },
-    queryType?: { new(...arg: any[]): K},
+    queryType?: { new(...arg: any[]): K },
+    paramType?: { new(...arg: any[]): L },
     name: string;
     url: string;
     method: "GET" | "POST" | "PUT" | "DELETE" | "OPTIONS" | "PATCH";
@@ -44,11 +51,20 @@ export interface IRoute<T, K> {
     };
     byPasses: string[];
 }
+
+export interface IRouteMetadata<T, K, L> {
+    list: IRoute<T, K, L>[];
+    listMapping: {
+        [key in string]: number
+    };
+    currentIndex: number;
+}
+
 export interface IControllerMetadata {
     name: string;
     routeBase: string;
     routes: {
-        [key: string]: IRoute<any, any>;
+        [key: string]: IRouteMetadata<any, any, any>;
     };
     middlewares: {
         [key: string]: RequestHandler | RequestHandlerParams;
@@ -73,4 +89,12 @@ export interface IMiddlewareChainable {
 
 export interface IMiddlewareInput {
     [key: string]: RequestHandler | RequestHandlerParams
+}
+
+export interface IQueryParamInput {
+    pageSize?: number;
+    pageIndex?: number;
+    sort?: any;
+    filter?: any;
+    fields?: string;
 }

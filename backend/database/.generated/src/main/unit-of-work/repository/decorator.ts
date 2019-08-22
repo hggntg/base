@@ -18,15 +18,12 @@ export function RepositoryProperty<K, T extends IBaseRepository<K, IBaseEntity<K
 		defineMetadata(UNIT_OF_WORK_KEY, unitOfWork, getClass(target));
 		let isDeleted = delete target[propertyKey];
 		if(isDeleted){
-			let newVal = getDependency<T>(BASE_REPOSITORY_SERVICE, classImp.name);
 			Object.defineProperty(target, propertyKey, {
 				configurable: true,
 				enumerable: true,
 				get(){
-					return newVal;
-				},
-				set(_val: T){
-					newVal = _val;
+					let unitOfWork = getMetadata<IUnitOfWorkMetadata<any>>(UNIT_OF_WORK_KEY, getClass(this));
+					return getDependency<T>(BASE_REPOSITORY_SERVICE, unitOfWork.classes[propertyKey].name);
 				}
 			});
 		}

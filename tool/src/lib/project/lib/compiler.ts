@@ -1,59 +1,17 @@
-import { Project, ts, Node, FileSystemHost } from "ts-morph";
+import { Project, FileSystemHost } from "ts-morph";
 import EventEmitter from "events";
-import sysPath from "path";
 import queue from "queue";
 
 import chokidar from "chokidar";
-import shell from "shelljs";
-import { ChildProcess } from "child_process";
+import { ChildProcess, spawn } from "child_process";
 import { corets } from "../assets/normal.corets";
-import { log } from "../../../infrastructure/logger";
+import { log, clear } from "../../../infrastructure/logger";
 
 import fsNode from "fs";
-
-interface IIntrinsicType {
-    kind: "intrinsic";
-    name: "string" | "number" | "any" | "void" | "number" | "object" | "array" | "boolean";
-}
-
-interface IPropertyType {
-    kind: "property";
-    name: string;
-    type: IInterfaceType | IIntrinsicType;
-    optional: boolean;
-}
-
-interface IMethodType {
-    kind: "method";
-    name: string;
-    params: (IInterfaceType | IIntrinsicType)[];
-    returnType: IIntrinsicType | IInterfaceType;
-    optional: boolean;
-}
-
-interface IConstructorType {
-    kind: "construct";
-    name: string;
-    params: (IInterfaceType | IIntrinsicType)[];
-}
-
-interface IClassType {
-    kind: "class";
-    name: string;
-    properties: IPropertyType[];
-    methods: IMethodType[];
-    extend: IClassType;
-    implements: IInterfaceType[];
-    constructors: IConstructorType[];
-}
-
-interface IInterfaceType {
-    kind: "interface";
-    name: string;
-    properties: IPropertyType[];
-    methods: IMethodType[];
-    extends: IInterfaceType[];
-}
+import npmRun from "npm-run";
+import sysPath from "path";
+import { parallelLimit } from "async";
+import { cpus } from "os";
 
 const q = queue({
     autostart: true,
@@ -62,10 +20,7 @@ const q = queue({
 
 export const mainEventSource = new EventEmitter();
 
-interface IUpdateSourceFile {
-    pos: number,
-    text: string
-}
+
 
 interface IFileItem {
     path: string;
@@ -88,220 +43,114 @@ let sourcePath: string = null;
 let generatePath: string = null;
 let bouncer: NodeJS.Timeout = null;
 let watcher: chokidar.FSWatcher = null;
-let fs: FileSystemHost = null;
 let project: Project = null;
+let fs: FileSystemHost = null;
+
 let isRun: boolean = false;
 let isLive: boolean = false;
-let typeDeclares: (IInterfaceType | IClassType)[] = [];
-let typeDeclareIndexes = [];
 
 const fileList: IFileList = {};
 
-function getInterface(node: Node<ts.Node>, updates: IUpdateSourceFile[]) {
-    let type = node.getType();
-    let name = type.getSymbol().getName();
-    let interfaceType: IInterfaceType = {
-        kind: "interface",
-        name: name,
-        extends: [],
-        methods: [],
-        properties: []
-    };
-    type.getProperties().map(function (property) {
-        let propertyType = property.getValueDeclarationOrThrow().getType();
-        let propertyTypeName = propertyType.getText();
-        let propertyName = property.getName();
-        if (propertyType.getCallSignatures().length > 0) {
-            // log()
-        }
-        else {
-            interfaceType.properties.push({ kind: "property", name: propertyName, optional: false, type: null });
-        }
-    });
-    if (typeDeclareIndexes.indexOf(interfaceType.name) < 0) {
-        typeDeclares.push(interfaceType);
-        typeDeclareIndexes.push(interfaceType.name);
+function divideTask(tasks: string[], divideTime: number = 2) {
+    let taskSegment: Array<string[]> = [];
+    let middleIndex = Math.floor(tasks.length / divideTime);
+    let start = 0;
+    let end = -1;
+    for (let i = 0; i < divideTime; i++) {
+        start = end + 1;
+        end = i === 0 ? end + start + middleIndex : start + middleIndex;
+        if (end > tasks.length) end = tasks.length - 1;
+        taskSegment.push(tasks.slice(start, end))
     }
-    // updates.push({
-    //     pos: node.getEnd(),
-    //     text: `\nType.declare(${JSON.stringify(interfaceType)});`
-    // });
+    return taskSegment;
 }
 
-function visit(node: Node<ts.Node>, updates: IUpdateSourceFile[]): void {
-
-    let childCount = node.getChildCount();
-    if (childCount > 0) {
-        let childNodes = node.getChildren();
-        let childNodeLength = childNodes.length;
-        for (let i = 0; i < childNodeLength; i++) {
-            let innerNode = childNodes[i];
-            visit(innerNode, updates);
-        }
-        if (node.getKind() === ts.SyntaxKind.InterfaceDeclaration) {
-            getInterface(node, updates);
-        }
-        else if (node.getKind() === ts.SyntaxKind.ClassDeclaration) {
-            let className = node.getType().getSymbol().getName();
-            let classType: IClassType = {
-                kind: "class",
-                name: className,
-                constructors: [],
-                extend: null,
-                implements: [],
-                methods: [],
-                properties: []
-            }
-            if (typeDeclareIndexes.indexOf(classType.name) < 0) {
-                typeDeclares.push(classType);
-                typeDeclareIndexes.push(classType.name);
-            }
-        }
-    }
-    else {
-        if (node.getKind() === ts.SyntaxKind.InterfaceDeclaration) {
-            getInterface(node, updates);
-        }
-        else if (node.getKind() === ts.SyntaxKind.ClassDeclaration) {
-            let className = node.getType().getSymbol().getName();
-            let classType: IClassType = {
-                kind: "class",
-                name: className,
-                constructors: [],
-                extend: null,
-                implements: [],
-                methods: [],
-                properties: []
-            }
-            if (typeDeclareIndexes.indexOf(classType.name) < 0) {
-                typeDeclares.push(classType);
-                typeDeclareIndexes.push(classType.name);
-            }
-        }
-    }
-}
-
-function main(sourceFiles: string[], generatedPath, isFirstTime: boolean) {
-    project.addExistingSourceFiles(sourceFiles).map(sourceFile => {
-        sourceFile.refreshFromFileSystemSync();
-        let srcIndex = sourceFile.getFilePath().indexOf("src");
-        let filePath = sourceFile.getFilePath().substring(srcIndex, sourceFile.getFilePath().length);
-        try {
-            let destPath = `${generatedPath}/${filePath}`;
-            if (fs.fileExistsSync(destPath)) {
-                fs.deleteSync(destPath);
-            }
-            let copiedSourceFile = sourceFile.copy(destPath, { overwrite: true });
-            log("Generating " + filePath);
-            try {
-                let sourceRootDeclarations = sourceFile.getImportDeclarations();
-                let importPaths = [];
-                sourceRootDeclarations.map((sourceRootDeclaration) => {
-                    try {
-                        importPaths.push(sourceRootDeclaration.getModuleSpecifierValue());
-                    }
-                    catch (e) {
-                        throw e;
-                    }
-                });
-                let sourceRootExportations = sourceFile.getExportDeclarations();
-                let exportPaths = [];
-                sourceRootExportations.map((sourceRootExportation) => {
-                    try {
-                        exportPaths.push(sourceRootExportation.getModuleSpecifierValue());
-                    }
-                    catch (e) {
-                        throw e;
-                    }
-                });
-
-                let declarations = copiedSourceFile.getImportDeclarations();
-                declarations.map((declaration, index) => {
-                    try {
-                        if (importPaths[index] !== declaration.getModuleSpecifierValue()) {
-                            declaration.setModuleSpecifier(importPaths[index]);
-                        }
-                    }
-                    catch (e) {
-                        throw e;
-                    }
-                });
-
-                let exportations = copiedSourceFile.getExportDeclarations();
-                exportations.map((exportation, index) => {
-                    try {
-                        if (exportPaths[index] !== exportation.getModuleSpecifierValue()) {
-                            exportation.setModuleSpecifier(exportPaths[index]);
-                        }
-                    }
-                    catch (e) {
-                        throw e;
-                    }
-                });
-            }
-            catch (e) {
-                throw e;
-            }
-
-            if (filePath === "src/index.ts") {
-                let importCoreText = `import "./core";\n`;
-                copiedSourceFile.insertText(0, `import "./core";\n`);
-                copiedSourceFile.insertText(importCoreText.length, `import "./declare";\n`);
-            }
-            let childNodes = copiedSourceFile.getChildren();
-            let childNodeLength = childNodes.length;
-            let updates: IUpdateSourceFile[] = [];
-            for (let i = 0; i < childNodeLength; i++) {
-                visit(childNodes[i], updates);
-            }
-            let increment = 0;
-            let promiseList: Promise<void>[] = [];
-            updates.map((updateItem) => {
-                let pos = updateItem.pos + increment;
-                let text = updateItem.text;
-                copiedSourceFile.insertText(pos, text);
-                increment += text.length;
+async function main(sourceFiles: string[], generatedPath, isFirstTime: boolean) {
+    let divideTime = Math.ceil(sourceFiles.length / 9);
+    let taskSegment = divideTask(sourceFiles, divideTime);
+    log("Divide in " + divideTime + " segments");
+    let parallelTasks = taskSegment.map((sourceSegmentList, index) => {
+        let tempSourceSegmentList = sourceSegmentList.slice(0);
+        return function (callback) {
+            let childProcess = spawn("node", ["main.js", "--appPath=" + appPath, "--src=" + tempSourceSegmentList.join(","), "--genPath=" + generatedPath], { cwd: __dirname, detached: true });
+            childProcess.stdout.pipe(process.stdout);
+            childProcess.unref();
+            childProcess.stdout.once("end", () => {
+                callback();
             });
-
-            copiedSourceFile.getClasses().map((classMember) => {
-                let className = classMember.getName();
-                classMember.addMethod({
-                    isStatic: true,
-                    name: "getType",
-                    returnType: "IClassType",
-                    statements: [
-                        `return Type.get("${className}", "class") as IClassType;`
-                    ]
-                });
-                classMember.getMethod("getType").removeBody().addStatements(`return Type.get("${className}", "class") as IClassType;`);
-            });
-            Promise.resolve(promiseList).then(() => {
-
-            }).catch(err => {
-                throw err;
-            });
-        }
-        catch (e) {
-            log(e, "error");
         }
     });
+    let promiseTask = new Promise((resolve, reject) => {
+        let limit = cpus().length / 3;
+        if (limit % 2 !== 0) limit = Math.ceil(limit);
+        parallelLimit(parallelTasks, limit, (err, results) => {
+            if (err) reject(err);
+            else resolve();
+        });
+    });
+    await promiseTask;
     if (isFirstTime) {
-        if(fsNode.existsSync("tsconfig.json")){
-            fsNode.copyFileSync("tsconfig.json", `${generatedPath}/tsconfig.json`)
-        }
-        if(fsNode.existsSync("typings.d.ts")){
-            fsNode.copyFileSync("typings.d.ts", `${generatedPath}/typings.d.ts`);
-        }
-        if(fsNode.existsSync(".env")){
-           fsNode.copyFileSync(".env", `${generatePath}/.env`);
-        }
+        let promise = new Promise((resolve, reject) => {
+            let promiseList = [];
+            promiseList.push(new Promise((innerResolve, innerReject) => {
+                fsNode.exists("tsconfig.json", (exists) => {
+                    if (exists) {
+                        fsNode.copyFile("tsconfig.json", `${generatedPath}/tsconfig.json`, (err: NodeJS.ErrnoException) => {
+                            if (err && err.code !== "ENOENT") innerReject(err);
+                            else innerResolve(true);
+                        });
+                    }
+                    else {
+                        innerResolve(true);
+                    }
+                });
+            }));
+            promiseList.push(new Promise((innerResolve, innerReject) => {
+                fsNode.exists("typings.d.ts", (exists) => {
+                    if (exists) {
+                        fsNode.copyFile("typings.d.ts", `${generatedPath}/typings.d.ts`, (err: NodeJS.ErrnoException) => {
+                            if (err && err.code !== "ENOENT") innerReject(err);
+                            else innerResolve(true);
+                        });
+                    }
+                    else {
+                        innerResolve(true);
+                    }
+                })
+            }));
+            promiseList.push(new Promise((innerResolve, innerReject) => {
+                fsNode.exists(".env", (exists) => {
+                    if (exists) {
+                        fsNode.copyFile(".env", `${generatePath}/.env`, (err: NodeJS.ErrnoException) => {
+                            if (err && err.code !== "ENOENT") innerReject(err);
+                            else innerResolve(true);
+                        });
+                    }
+                    else {
+                        innerResolve(true);
+                    }
+                })
+            }));
+            return Promise.all(promiseList).then(() => {
+                resolve(true);
+            }).catch(err => {
+                reject(err);
+            })
+        });
+        await promise;
         project.createSourceFile(`${generatedPath}/src/core.ts`, corets, { overwrite: true });
     }
     let typeDeclareText = "";
-    typeDeclares.map((typeDeclare) => {
-        typeDeclareText += `Type.declare(${JSON.stringify(typeDeclare)});\n`;
-    });
-    fsNode.writeFileSync(`${generatedPath}/src/declare.ts`, typeDeclareText, { encoding: "utf8" });
+    // typeDeclares.map((typeDeclare) => {
+    //     typeDeclareText += `Type.declare(${JSON.stringify(typeDeclare)});\n`;
+    // });
+    let promise = new Promise((resolve, reject) => {
+        fsNode.writeFile(`${generatedPath}/src/declare.ts`, typeDeclareText, { encoding: "utf8" }, (err) => {
+            if (err) reject(err);
+            else resolve(true);
+        });
+    })
+    await promise;
     return project.save();
 }
 mainEventSource.once("start", (_appPath: string, _isRun: boolean, _isLive: boolean) => {
@@ -311,12 +160,16 @@ mainEventSource.once("start", (_appPath: string, _isRun: boolean, _isLive: boole
         isLive = true;
     }
     appPath = _appPath;
-    sourcePath = sysPath.join(appPath, "src");
     project = new Project({
         tsConfigFilePath: sysPath.resolve(sysPath.join(appPath, "tsconfig.json"))
     });
     fs = project.getFileSystem();
+    sourcePath = sysPath.join(appPath, "src");
+
     generatePath = sysPath.join(appPath, ".generated");
+    let srcGeneratedPath = sysPath.join(generatePath, "src");
+    if (!fsNode.existsSync(generatePath)) fsNode.mkdirSync(generatePath);
+    if (!fsNode.existsSync(srcGeneratedPath)) fsNode.mkdirSync(srcGeneratedPath);
     bouncer = setInterval(() => {
         let current = (+ new Date());
         let diff = current - lastChange;
@@ -363,7 +216,7 @@ mainEventSource.once("start", (_appPath: string, _isRun: boolean, _isLive: boole
     });
 });
 
-mainEventSource.on("change", (isFirstTime: boolean) => {
+mainEventSource.on("change", async (isFirstTime: boolean) => {
     let sourceFilePaths = [];
     Object.values(fileList).map(fileItem => {
         if (fileItem.status === "CHANGED") {
@@ -371,7 +224,7 @@ mainEventSource.on("change", (isFirstTime: boolean) => {
         }
     });
     log("Ready to generate source files........");
-    main(sourceFilePaths, generatePath, isFirstTime).then(() => {
+    await main(sourceFilePaths, generatePath, isFirstTime).then(() => {
         Object.keys(fileList).map(key => {
             fileList[key].status = "NOT_CHANGED";
         });
@@ -381,7 +234,22 @@ mainEventSource.on("change", (isFirstTime: boolean) => {
             log("Waiting for changes.....");
             if (firstTimeStartServer && isRun) {
                 log("Starting to run app");
-                startServerProcess = shell.exec(`nodemon`, { async: true }) as ChildProcess;
+                startServerProcess = npmRun("nodemon");
+                startServerProcess.stdout.off("data", () => { }).on("data", (chunk) => {
+                    log(chunk.toString());
+                });
+                startServerProcess.stdout.off("error", () => { }).on("error", (chunk) => {
+                    log(chunk.toString());
+                });
+                startServerProcess.stderr.off("data", (err) => { }).on("data", (chunk) => {
+                    log(chunk.toString());
+                });
+                startServerProcess.stderr.off("error", (err) => { }).on("error", (chunk) => {
+                    log(chunk.toString());
+                });
+                startServerProcess.off("error", (err) => { }).on("error", (err) => {
+                    log(err.message + "\n" + err.stack, "error");
+                });
                 startServerProcess.unref();
                 firstTimeStartServer = false;
             }

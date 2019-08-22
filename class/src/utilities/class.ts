@@ -2,6 +2,8 @@ import "reflect-metadata";
 import { PROPERTIES_KEY } from "../shared/constant";
 import { IProperty } from "../interface";
 import { Container } from "inversify";
+import { Property } from "../main/property";
+import { PropertyType } from "../internal";
 
 
 export function getProperties(target: any): IProperty[] {
@@ -55,7 +57,10 @@ export function rebindToContainer<T>(container: Container, identifier: symbol | 
     let allBinders = container.getAll(identifier);
     let reBinders = [];
     allBinders.map((binder) => {
-        reBinders.push(Object.getPrototypeOf(binder).constructor);
+        let binderContructor = Object.getPrototypeOf(binder).constructor;
+        if(isDefault || (!isDefault && service.name !== binderContructor.name)){
+            reBinders.push(binderContructor);
+        }
     });
 
     if(isDefault){
@@ -73,7 +78,10 @@ export function rebindToContainer<T>(container: Container, identifier: symbol | 
         let allNewableBinders = container.getAll(generateNewableIdentifier(identifier));
         let reNewableBinders = [];
         allNewableBinders.map((newableBinder) => {
-            reNewableBinders.push(Object.getPrototypeOf(newableBinder).constructor);
+            let binderContructor = Object.getPrototypeOf(newableBinder).constructor;
+            if(isDefault || (!isDefault && service.name !== binderContructor.name)){
+                reNewableBinders.push(binderContructor);
+            }
         });
 
         if(isDefault){
@@ -122,6 +130,18 @@ export function registerDependency<T>(identifier: symbol | string, service: new 
     else {
         bindToContainer<T>(container, identifier, service, newable, isDefault);
     }
+    defineMetadata("DI", container, global);
+}
+
+export function registerDependencyAgain<T>(identifier: symbol | string, service: new(...args: any[]) => T, newable?: boolean, isDefault?: boolean){
+    if(typeof newable === "undefined"){
+        newable = true;
+    }
+    let container: Container = getMetadata("DI", global);
+    if (!container) {
+        container = new Container();
+    }
+    rebindToContainer<T>(container, identifier, service, newable, isDefault);
     defineMetadata("DI", container, global);
 }
 
@@ -252,8 +272,13 @@ export function checkDependency(identifier: symbol | string, newable: boolean = 
     return false;
 }
 
-export function extendClass(derivedCtor: any, baseCtors: any[]) {
-    baseCtors.forEach(baseCtor => {
+export function extendClass(derivedCtor: {new(...args): any}, baseCtors: {new(...args): any}, ...moreBaseCtors: {new(...args): any}[]) {
+    moreBaseCtors.unshift(baseCtors);
+    moreBaseCtors.forEach(baseCtor => {
+        let baseCtorProperties = getProperties(baseCtor);
+        baseCtorProperties.map(property => {
+            Property(property.type as PropertyType, {required: property.required})(derivedCtor, property.name);
+        })
         Object.getOwnPropertyNames(baseCtor.prototype).forEach(name => {
             if (name !== 'constructor') {
                 derivedCtor.prototype[name] = baseCtor.prototype[name];

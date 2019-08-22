@@ -1,0 +1,19 @@
+import mongoose from "mongoose";
+import { IEntitySchema } from "../../interface";
+import { getEntitySchema } from "../entity";
+
+export default class Struct<T> extends mongoose.SchemaType {
+    cast(instance: T) {
+        return instance;
+    }
+    constructor(path: string, options?: any) {
+        if (options.struct) {
+            let schemaEntity: IEntitySchema<T> = getEntitySchema(options.struct);
+            options.type = schemaEntity.schema;
+            super(path, options, "Struct");
+        }
+        else {
+            throw new Error("Missing struct for schema with custom type");
+        }
+    }
+}

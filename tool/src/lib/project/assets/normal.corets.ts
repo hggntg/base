@@ -1,36 +1,35 @@
 export const corets =
 `import "reflect-metadata";
 const typeKey = "Type";
-function getClass(target: any): { new(...args: any[]): any } {
-    if (target) {
-        if (typeof target === "object" && typeof target.constructor === "function") {
-            return target.constructor;
+
+if("undefined" === typeof global["getClass"]){
+    global["getClass"] = function getClass(target: any): { new(...args: any[]): any } {
+        if (target) {
+            if (typeof target === "object" && typeof target.constructor === "function") {
+                return target.constructor;
+            }
+            else {
+                return target;
+            }
         }
         else {
-            return target;
+            throw new Error("Error target is undefined cannot identify a class");
         }
     }
-    else {
-        throw new Error("Error target is undefined cannot identify a class");
+}
+
+if("undefined" === typeof global["getMetadata"]){
+    global["getMetadata"] = function getMetadata<T>(key: string | Symbol, target: any) {
+        return Reflect.getMetadata(key, getClass(target)) as T;
     }
 }
-if("undefined" === typeof global["getClass"]){
-    global["getClass"] = getClass;
-}
 
-function getMetadata<T>(key: string | Symbol, target: any) {
-    return Reflect.getMetadata(key, getClass(target)) as T;
-}
-if("undefined" === typeof global["getMetadata"]){
-    global["getMetadata"] = getMetadata;
-}
-
-function defineMetadata (key: string | Symbol, value: any, target: any) {
-    return Reflect.defineMetadata(key, value, getClass(target));
-}
 if("undefined" === typeof global["defineMetadata"]){
-    global["defineMetadata"] = defineMetadata;
+    global["defineMetadata"] = function defineMetadata (key: string | Symbol, value: any, target: any) {
+        return Reflect.defineMetadata(key, value, getClass(target));
+    }
 }
+
 
 if("undefined" === typeof global["Type"]){
     type TType = {

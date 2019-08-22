@@ -1,6 +1,6 @@
 import * as asyncHooks from "async_hooks";
-import { defaultValue } from "./default-value";
 import { INamespace, IContext, IContextValue, IContextOriginValue, IContextProperty } from "../interface";
+import { assignData } from "./data";
 
 const AsyncFunction = Object.getPrototypeOf(async function(){}).constructor;
 
@@ -140,7 +140,7 @@ export class Namespace implements INamespace{
 
     cloneById(sourceId: number){
         let source = this.getById(sourceId);
-        let destValue = Object.assign({}, source.value);
+        let destValue = assignData(source.value);
         let dest = new Context({
             children: [],
             flushed: false,
@@ -149,7 +149,7 @@ export class Namespace implements INamespace{
             prev: null,
             value: destValue,
             type: source.type,
-            resource: source.resource ? Object.assign({}, source.resource) : undefined
+            resource: source.resource ? assignData(source.resource) : undefined
         });
         this.setById(asyncHooks.triggerAsyncId(), dest);
     }
@@ -297,7 +297,7 @@ export class Namespace implements INamespace{
         if(valueType === "object" && Array.isArray(value)){
             valueType = "array";
         }
-        delete this.context[eid]["value"][key];
+        if(this.context[eid] && this.context[eid]["value"]) delete this.context[eid]["value"][key];
     }
 
     flush(id, force = false){

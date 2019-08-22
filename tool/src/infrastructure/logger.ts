@@ -1,11 +1,15 @@
+import { clearLine, cursorTo } from "readline";
 function echo(message: string, type: "normal" | "error" = "normal"){
-    if(type === "normal"){
-        process.stdout.write(message);
-        process.stdout.write("\n");
-    }
-    else{
-        process.stderr.write(message);
-        process.stderr.write("\n");
+    if(message !== "\n"){
+        message = message.replace(/[\n\n]/g, "\n");
+        if(type === "normal"){
+            process.stdout.write(message);
+            process.stdout.write("\n");
+        }
+        else{
+            process.stderr.write(message);
+            process.stderr.write("\n");
+        }
     }
 }
 export function log(input: any, type: "normal" | "error" = "normal"){
@@ -27,5 +31,12 @@ export function log(input: any, type: "normal" | "error" = "normal"){
             echo(input.stack, "error");
         }
     }
+}
+
+export function clear(){
+    cursorTo(process.stdout, 0);
+    clearLine(process.stdout, -1);
+    cursorTo(process.stdout, 0);
+    clearLine(process.stdout, 0);
 }
 

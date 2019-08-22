@@ -1,19 +1,18 @@
-import { ICollection, IBaseEntity, IBaseRepository, IWherable, IQueryable, IRepositoryAfterQueryable, IRepositoryQuery, IRepositoryRestCommand, IDbContextMetadata, IQueryResult } from "../../interface";
-import { Injectable, getDependency, getConstant } from "@base/class";
+import { ICollection, IBaseEntity, IBaseRepository, IWherable, IQueryable, IRepositoryAfterQueryable, IRepositoryQuery, IRepositoryRestCommand, IDbContextMetadata, IQueryResult, IRepositoryRestCommandableForOne } from "../../interface";
+import { Injectable, getDependency, getConstant, assignData } from "@base/class";
 import { COLLECTION_SERVICE, getDbContextMetadata } from "../database-context";
 import { getRepositoryMetadata } from "./decorator";
 import { getCollectionMetadata } from "../database-context/collection/decorator";
 
 export const BASE_REPOSITORY_SERVICE = "IBaseRepository";
 
-
-export class RepositoryRestCommand<K, T extends IBaseEntity<K>> implements IRepositoryRestCommand<K, T> {
+export class RepositoryRestCommandForOne<K, T extends IBaseEntity<K>> implements IRepositoryRestCommandableForOne<K>{
 	private dbContext: IDbContextMetadata;
 	private collection: ICollection<K, T>;
 	private returnQuery(): IRepositoryQuery {
 		let namespace = this.dbContext.context;
 		if (namespace) {
-			let repositoryQuery: IRepositoryQuery = Object.assign({}, namespace.get<IRepositoryQuery>("repository-query") || {});
+			let repositoryQuery: IRepositoryQuery = assignData(namespace.get<IRepositoryQuery>("repository-query") || {});
 			namespace.remove("repository-query");
 			return repositoryQuery;
 		}
@@ -21,7 +20,7 @@ export class RepositoryRestCommand<K, T extends IBaseEntity<K>> implements IRepo
 			throw new Error("DbContext change detector not exists");
 		}
 	}
-	update(data: K): void {
+	update(data: K): Promise<Partial<K>> {
 		try {
 			let repositoryQuery = this.returnQuery();
 			let query = null;
@@ -37,7 +36,7 @@ export class RepositoryRestCommand<K, T extends IBaseEntity<K>> implements IRepo
 						else query = this.collection[keys[index]]();
 					}
 				});
-				if (query) query["update"](data);
+				if (query) return query["update"](data);
 				else throw new Error("DbContext change detector not exists")
 			}
 			else {
@@ -48,7 +47,7 @@ export class RepositoryRestCommand<K, T extends IBaseEntity<K>> implements IRepo
 			throw e;
 		}
 	}
-	remove(): void {
+	remove(): Promise<Partial<K>> {
 		try {
 			let repositoryQuery = this.returnQuery();
 			let query = null;
@@ -64,7 +63,7 @@ export class RepositoryRestCommand<K, T extends IBaseEntity<K>> implements IRepo
 						else query = this.collection[keys[index]]();
 					}
 				});
-				if (query) query["remove"]();
+				if (query) return query["remove"]();
 				else throw new Error("DbContext change detector not exists")
 			}
 			else {
@@ -73,6 +72,56 @@ export class RepositoryRestCommand<K, T extends IBaseEntity<K>> implements IRepo
 		}
 		catch (e) {
 			throw e;
+		}
+	}
+	then<TResult1 = IQueryResult<K>, TResult2 = never>(
+		onfulfilled?: (value: IQueryResult<K>) => TResult1 | PromiseLike<TResult1>,
+		onrejected?: (reason: any) => TResult2 | PromiseLike<TResult2>
+	): Promise<TResult1 | TResult2> {
+		try {
+			let repositoryQuery = this.returnQuery();
+			let query = null;
+			if (repositoryQuery) {
+				let keys = Object.keys(repositoryQuery);
+				Object.values(repositoryQuery).map((queryData, index) => {
+					if (queryData !== null && queryData !== undefined) {
+						if (query) query = query[keys[index]](queryData);
+						else query = this.collection[keys[index]](queryData);
+					}
+					else {
+						if (query) query = query[keys[index]](queryData);
+						else query = this.collection[keys[index]]();
+					}
+				});
+				if (query) return query["then"](onfulfilled, onrejected);
+				else return Promise.reject("DbContext change detector not exists");
+			}
+			else {
+				throw new Error("DbContext change detector not exists");
+			}
+		}
+		catch (e) {
+			return Promise.reject(e);
+		}
+	}
+	constructor(_dbContext: IDbContextMetadata, _collection: ICollection<K, T>) {
+		this.dbContext = _dbContext;
+		this.collection = _collection;
+	}
+}
+
+export class RepositoryRestCommand<K, T extends IBaseEntity<K>> implements IRepositoryRestCommand<K, T> {
+	private dbContext: IDbContextMetadata;
+	private collection: ICollection<K, T>;
+	private returnQuery(): IRepositoryQuery {
+		let namespace = this.dbContext.context;
+		if (namespace) {
+			let repositoryQuery: IRepositoryQuery = assignData(namespace.get<IRepositoryQuery>("repository-query") || {});
+			namespace.remove("repository-query");
+			return repositoryQuery;
+		}
+		else {
+			throw new Error("DbContext change detector not exists");
 		}
 	}
 	select?(what?: string): Promise<IQueryResult<K>> {
@@ -91,7 +140,10 @@ export class RepositoryRestCommand<K, T extends IBaseEntity<K>> implements IRepo
 						else query = this.collection[keys[index]]();
 					}
 				});
-				if (query) return query["select"](what);
+				if (query){
+					if(what) return query["select"](what);
+					return query["select"]();
+				}
 				else return Promise.reject("DbContext change detector not exists")
 			}
 			else {
@@ -165,7 +217,7 @@ export class RepositoryRestCommand<K, T extends IBaseEntity<K>> implements IRepo
 	}
 }
 
-type TQueryable<T> = IQueryable<T, IRepositoryAfterQueryable<T>>;
+type TQueryable<T> = IQueryable<T, IRepositoryAfterQueryable<T>, IRepositoryRestCommandableForOne<T>>;
 
 @Injectable(BASE_REPOSITORY_SERVICE, true, true)
 export class BaseRepository<K, T extends IBaseEntity<K>> implements IBaseRepository<K, T>{
@@ -176,8 +228,10 @@ export class BaseRepository<K, T extends IBaseEntity<K>> implements IBaseReposit
 			this.collection = getConstant<ICollection<K, T>>(COLLECTION_SERVICE, `Collection<${repositoryMetadata.entity.name}>`);
 		}
 		this.repositoryCommand = new RepositoryRestCommand(this.dbContext, this.collection);
+		this.repositoryCommandOne = new RepositoryRestCommandForOne(this.dbContext, this.collection);
 	}
 	private repositoryCommand: IRepositoryRestCommand<K, T>;
+	private repositoryCommandOne: IRepositoryRestCommandableForOne<K>;
 	private get dbContext() {
 		let repositoryMetadata = getRepositoryMetadata<K, T>(this);
 		let collectionMetadata = getCollectionMetadata(repositoryMetadata.entity);
@@ -209,7 +263,7 @@ export class BaseRepository<K, T extends IBaseEntity<K>> implements IBaseReposit
 		this.buildQuery("sort", conditions);
 		return this as any;
 	}
-	where(conditions: any): IWherable<K, IRepositoryAfterQueryable<K>> {
+	where(conditions: any): IWherable<K, IRepositoryAfterQueryable<K>, IRepositoryRestCommandableForOne<K>> {
 		this.buildQuery("where", conditions);
 		return this as any;
 	}
@@ -217,15 +271,15 @@ export class BaseRepository<K, T extends IBaseEntity<K>> implements IBaseReposit
 		this.buildQuery("find", null);
 		return this.repositoryCommand;
 	}
-	findOne(): IRepositoryAfterQueryable<K> {
+	findOne(): IRepositoryRestCommandableForOne<K> {
 		this.buildQuery("findOne", null);
-		return this.repositoryCommand;
+		return this.repositoryCommandOne;
 	}
-	insert(document: Partial<K>): void {
-		this.collection.insert(document);
+	insert(document: Partial<K>): Promise<Partial<K>> {
+		return this.collection.insert(document);
 	}
-	insertMany(documents: Partial<K>[]): void {
-		this.collection.insertMany(documents);
+	insertMany(documents: Partial<K>[]): Promise<Partial<K>[]> {
+		return this.collection.insertMany(documents);
 	}
 }
 

@@ -1,7 +1,8 @@
 import { Connection } from "amqplib";
-import { ILogger, ILog } from "@base-interfaces/logger";
+import { ILogger, ILog } from "@base/logger";
 import { EventEmitter } from "events";
-import { IWorkerJobRequest, IWorker, IWorkerOptions } from "@base-interfaces/communication";
+import { IWorkerJobRequest, IWorker, IWorkerOptions } from "../interface";
+import { Communication } from "../main";
 
 const TIMEOUT = Symbol.for("TIMEOUT");
 
@@ -96,8 +97,10 @@ export class Worker implements IWorker {
             channel.assertQueue(jobQueue, { durable: true, maxPriority: options.maxPriority });
             channel.prefetch(options.prefetch);
             let consumerTag = null;
-            return channel.consume(jobQueue, (msg) => {
-                let content = JSON.parse(msg.content.toString());
+            return channel.consume(jobQueue, async (msg) => {
+                msg.content = await Communication.decompress(msg.content);
+                let data = Communication.reverseBody(msg.content.toString());
+                let content = data.content;
                 let jobRequest = new WorkerJobRequest({...content, retry: options.retry, timeout: options.timeout}, this.logger);
                 this.logger.pushDebug("Received a job", this.logTag);
                 jobRequest.once("finish", (thing) => {

@@ -92,5 +92,5 @@ process.on('unhandledRejection', (err) => {
 //     });
 
 //#endregion
-
+console.log(process.argv[0]);
 commander.parse(process.argv);

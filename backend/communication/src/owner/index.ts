@@ -1,9 +1,9 @@
 import { Connection, Channel } from "amqplib";
 import { queue, ErrorCallback } from "async";
 import { EventEmitter } from "events";
-import { Communication } from "..";
-import { ILogger } from "@base-interfaces/logger";
-import { IOwner, IOwnerTask, IOwnerJobRequest } from "@base-interfaces/communication";
+import { Communication } from "../main";
+import { ILogger } from "@base/logger";
+import { IOwner, IOwnerTask, IOwnerJobRequest } from "../interface";
 
 export class Owner implements IOwner{
     private readonly conn: Connection;
@@ -39,10 +39,15 @@ export class Owner implements IOwner{
             method : task.ownerJobRequest.method,
             args: task.ownerJobRequest.args
         };
-        this.channel.sendToQueue(task.jobQueue, Buffer.from(Communication.ensureBodyString(jobRequest)), { persistent: true, priority: priority });
-        setTimeout(() => {
-            callback();
-        }, 1);
+        Communication.compress(Communication.ensureBodyString({
+            from: task.jobQueue,
+            content: jobRequest
+        })).then(sendingBuffer => {
+            this.channel.sendToQueue(task.jobQueue, sendingBuffer, { persistent: true, priority: priority });
+            setTimeout(() => {
+                callback();
+            }, 1);
+        }); 
     }
 
     pushJob(jobQueue: string, jobRequest: IOwnerJobRequest) {

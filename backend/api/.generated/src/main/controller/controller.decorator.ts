@@ -1,14 +1,147 @@
 import express from "express";
 import { CONTROLLER_KEY } from "../../shared/constant";
-import { Property, getProperties, Injectable, getDependency, mapData } from "@base/class";
+import { Property, getProperties, Injectable, getDependency, mapData, IBaseError, assignData } from "@base/class";
 import { IController, IControllerMetadata, IRoute, IMiddlewareInput, IControllerProperty } from "../../interface";
 import { IncomingHttpHeaders } from "http";
-import { Stream } from "stream";
+import { Stream, Readable } from "stream";
 import { ILogger, LOGGER_SERVICE } from "@base/logger";
 import { ResponseBody } from "../response";
 import { ResponseTemplate as Resp } from "../../main/response";
 
 export const CONTROLLER_SERVICE = "IController";
+
+interface IAppendHttpHeader {
+    code: number;
+    headers: { [key in string]: string }
+}
+
+function generateRouteExecution(this: IController, property) {
+    return async (req: express.Request, res: express.Response) => {
+        let controllerProperty = getController(this);
+        let index = controllerProperty.routes[property.name].listMapping[req.route.path];
+        let currentRoute = controllerProperty.routes[property.name].list[index];
+        try {
+            let input = checkInput<typeof currentRoute.bodyType, typeof currentRoute.queryType, typeof currentRoute.paramType>(currentRoute.bodyType, currentRoute.queryType, currentRoute.paramType, req);
+            let result = this[property.name](input);
+            if (result instanceof Stream || result instanceof Readable) {
+                result.once("response-error", (err: IBaseError) => {
+                    let code = err.code || 500;
+                    let error = Resp.error(code, err.message);
+                    if(!res.headersSent){
+                        res.status(code).json({
+                            status: error.status,
+                            message: error.message,
+                            error: error.error || undefined
+                        });
+                    }
+                }).on("append-http-header", (httpHeader: IAppendHttpHeader) => {
+                    if(!res.headersSent){
+                        if(httpHeader.code) res.status(httpHeader.code);
+                        if(httpHeader.headers) {
+                            let headerKeys = Object.keys(httpHeader.headers);
+                            Object.values((httpHeader.headers)).map((header, index) => {
+                                let headerKey = headerKeys[index];
+                                res.setHeader(headerKey, header);
+                            });
+                        }
+                    }
+                }).pipe(res);
+                res.once("drain", () => {
+                    console.log("It's was drain");
+                }).on("error", (err: IBaseError) => {
+                    let code = err.code || 500;
+                    let error = Resp.error(code, err.message);
+                    if(!res.headersSent){
+                        res.status(code).json({
+                            status: error.status,
+                            message: error.message,
+                            error: error.error || undefined
+                        });
+                    }
+                });
+            }
+            else if (typeof result.then === "function" && typeof result.catch === "function") {
+                try {
+                    return await result.then((value: ResponseBody | Readable | Stream) => {
+                        if (value instanceof Readable || value instanceof Stream) {
+                            value.once("response-error", (err: IBaseError) => {
+                                let code = err.code || 500;
+                                let error = Resp.error(code, err.message);
+                                if(!res.headersSent){
+                                    res.status(code).json({
+                                        status: error.status,
+                                        message: error.message,
+                                        error: error.error || undefined
+                                    });
+                                }
+                            }).on("append-http-header", (httpHeader: IAppendHttpHeader) => {
+                                if(!res.headersSent){
+                                    if(httpHeader.code) res.status(httpHeader.code);
+                                    if(httpHeader.headers) {
+                                        let headerKeys = Object.keys(httpHeader.headers);
+                                        Object.values((httpHeader.headers)).map((header, index) => {
+                                            let headerKey = headerKeys[index];
+                                            res.setHeader(headerKey, header);
+                                        });
+                                    }
+                                }
+                            }).pipe(res);
+                            res.once("drain", () => {
+                                console.log("It's was drain");
+                            }).on("error", (err: IBaseError) => {
+                                let code = err.code || 500;
+                                let error = Resp.error(code, err.message);
+                                if(!res.headersSent){
+                                    res.status(code).json({
+                                        status: error.status,
+                                        message: error.message,
+                                        error: error.error || undefined
+                                    });
+                                }
+                            });
+                        }
+                        else {
+                            let body = assignData(value);
+                            delete body.code;
+                            res.status(value.code).json(body);
+                        }
+                    }).catch(err => {
+                        throw err;
+                    });
+                }
+                catch (e) {
+                    let err: IBaseError = e;
+                    let code = err.code || 500;
+                    let error = Resp.error(code, err.message);
+                    if(!res.headersSent){
+                        res.status(code).json({
+                            status: error.status,
+                            message: error.message,
+                            error: error.error || undefined
+                        });
+                    }
+                }
+            }
+            else {
+                if(!res.headersSent){
+                    res.send(result);
+                }
+            }
+        }
+        catch (e) {
+            let err: IBaseError = e;
+            let code = err.code || 500;
+            let error = Resp.error(code, err.message);
+            if(!res.headersSent){
+                res.status(code).json({
+                    status: error.status,
+                    message: error.message,
+                    error: error.error || undefined
+                });
+            }
+        }
+    }
+}
 
 @Injectable(CONTROLLER_SERVICE, true, true)
 export class ControllerImp implements IController {
@@ -36,48 +169,22 @@ export class ControllerImp implements IController {
         let properties = getProperties(getClass(this));
         properties.map(property => {
             let routeConfig = controllerProperty.routes[property.name];
+            let routeList = routeConfig.list;
             let handlers = [];
-            Object.values(routeConfig.middlewares).map(middleware => {
-                handlers.push(middleware);
-            });
-            handlers.push((req: express.Request, res: express.Response) => {
-                try{
-                    let input = checkInput<typeof routeConfig.bodyType, typeof routeConfig.queryType>(routeConfig.bodyType, routeConfig.queryType, req);
-                    let result = this[property.name](input);
-                    if (result instanceof Stream) {
-                        result.pipe(res);
-                        res.once("drain", () => {
-                            console.log("It's was drain");
-                        });
-                    }
-                    else if (typeof result.then === "function" && typeof result.catch === "function") {
-                        result.then((value: ResponseBody) => {
-                            let body = Object.assign({}, value);
-                            delete body.code;
-                            res.status(value.code).json(body);
-                        }).catch(err => {
-                            let error = Resp.error(500, err.message);
-                            res.status(500).json({ 
-                                status: error.status,
-                                message: error.message,
-                                error: error.error || undefined
-                            });
-                        });
-                    }
-                    else {
-                        res.send(result);
-                    }
-                }
-                catch(e){
-                    let error = Resp.error(400, e.message);
-                    res.status(400).json({
-                        status: error.status,
-                        message: error.message,
-                        error: error.error || undefined
-                    })
-                }
-            });
-            this.subApp[routeConfig.method.toLowerCase()](routeConfig.url, handlers);
+            let middlewares = {};
+            routeList.map(route => {
+                let middlewareKeys = Object.keys(route.middlewares);
+                Object.values(route.middlewares).map((middleware, index) => {
+                    middlewares[middlewareKeys[index]] = middleware;
+                });
+                Object.values(middlewares).map((middleware) => {
+                    handlers.push(middleware);
+                });
+
+                let routeExecution = generateRouteExecution.apply(this, [property]);
+                handlers.push(routeExecution);
+                this.subApp[route.method.toLowerCase()](route.url, handlers);
+            })
         });
     }
 
@@ -108,7 +215,7 @@ export function Controller(routeBase: string) {
     }
 }
 
-export function Route<T, K>(routeConfig: Omit<IRoute<T, K>, "middlewares" | "byPasses">) {
+export function Route<T = any, K = any, L = any>(routeConfig: Omit<IRoute<T, K, L>, "middlewares" | "byPasses">) {
     return function (target: any, propertyKey: string, descriptor: PropertyDescriptor) {
         Property(Object)(target, propertyKey);
         let controllerProperty: IControllerMetadata = getController(target);
@@ -121,7 +228,7 @@ export function Route<T, K>(routeConfig: Omit<IRoute<T, K>, "middlewares" | "byP
                 byPasses: []
             };
         }
-        let route: IRoute<T, K> = {
+        let route: IRoute<T, K, L> = {
             byPasses: [],
             middlewares: {},
             ...routeConfig
@@ -129,11 +236,24 @@ export function Route<T, K>(routeConfig: Omit<IRoute<T, K>, "middlewares" | "byP
         if (route.url.indexOf("/") !== 0) {
             route.url = "/" + route.url;
         }
-        if (controllerProperty.routes[propertyKey]) {
-            if (controllerProperty.routes[propertyKey].byPasses) route.byPasses = controllerProperty.routes[propertyKey].byPasses;
-            if (controllerProperty.routes[propertyKey].middlewares) route.middlewares = controllerProperty.routes[propertyKey].middlewares;
+        if (!controllerProperty.routes[propertyKey]) controllerProperty.routes[propertyKey] = { list: [], listMapping: {}, currentIndex: -1 };
+        if (!controllerProperty.routes[propertyKey].list) controllerProperty.routes[propertyKey].list = [];
+        controllerProperty.routes[propertyKey].currentIndex += 1;
+        let lastIndex = controllerProperty.routes[propertyKey].currentIndex;
+
+        if (!controllerProperty.routes[propertyKey].list[lastIndex]) {
+            controllerProperty.routes[propertyKey].list[lastIndex] = {
+                byPasses: [],
+                method: null,
+                middlewares: {},
+                name: null,
+                url: null
+            }
         }
-        controllerProperty.routes[propertyKey] = route;
+        if (controllerProperty.routes[propertyKey].list[lastIndex].byPasses) route.byPasses = controllerProperty.routes[propertyKey].list[lastIndex].byPasses;
+        if (controllerProperty.routes[propertyKey].list[lastIndex].middlewares) route.middlewares = controllerProperty.routes[propertyKey].list[lastIndex].middlewares;
+        controllerProperty.routes[propertyKey].list[lastIndex] = route;
+        controllerProperty.routes[propertyKey].listMapping[route.url] = lastIndex;
         defineMetadata(CONTROLLER_KEY, controllerProperty, target.constructor);
     }
 }
@@ -144,38 +264,38 @@ export function getController(target: any): IControllerMetadata {
     return controllerProperty;
 }
 
-export interface IRequestParam<T, K> {
+export interface IRequestParam<T = any, K = any, L = any> {
     query: K;
-    params: {
-        [key in string]: any
-    };
+    params: L;
     body: T,
     headers: IncomingHttpHeaders
 }
 
-export interface IRequestMethod {
 
-}
 
-function checkInput<T, K>(bodyClass: { new(): T }, queryClass: { new() : K }, req: express.Request) {
-    try{
+function checkInput<T, K, L>(bodyClass: { new(): T }, queryClass: { new(): K }, paramClass: { new(): L }, req: express.Request) {
+    try {
         let input: IRequestParam<T, K> = {
             query: {} as K,
-            params: req.params,
+            params: {},
             body: {} as T,
             headers: req.headers
         }
-        if(bodyClass){
+        if (bodyClass) {
             let body = mapData(bodyClass, req.body || {});
             input.body = body;
         }
-        if(queryClass){
+        if (queryClass) {
             let query = mapData(queryClass, req.query || {});
             input.query = query;
         }
+        if (paramClass) {
+            let params = mapData(paramClass, req.params || {});
+            input.params = params;
+        }
         return input;
     }
-    catch(e){
+    catch (e) {
         throw e;
     }
 }
@@ -198,15 +318,24 @@ export function Middleware(handlers: IMiddlewareInput): (target: any, propertyKe
         }
         else if (numArguments === 3) {
             if (!controllerProperty.routes[propertyKey]) {
-                controllerProperty.routes[propertyKey] = {                  
+                controllerProperty.routes[propertyKey] = {
+                    list: [],
+                    listMapping: {},
+                    currentIndex: -1
+                }
+            }
+            let lastIndex = controllerProperty.routes[propertyKey].currentIndex;
+            if (lastIndex === -1) lastIndex = 0;
+            if (!controllerProperty.routes[propertyKey].list[lastIndex]) {
+                controllerProperty.routes[propertyKey].list[lastIndex] = {
                     byPasses: [],
                     method: null,
                     middlewares: {},
                     name: null,
-                    url: null,
+                    url: null
                 }
             }
-            controllerProperty.routes[propertyKey].middlewares = handlers;
+            controllerProperty.routes[propertyKey].list[lastIndex].middlewares = handlers;
         }
         defineMetadata(CONTROLLER_KEY, controllerProperty, target);
     }
@@ -228,11 +357,40 @@ export function Bypass(middlewareName: string, ...moreMidllewareName: string[]):
         if (numArguments === 1) {
             moreMidllewareName.unshift(middlewareName);
             controllerProperty.byPasses = moreMidllewareName;
-            controllerProperty.routes[propertyKey].byPasses = moreMidllewareName;
+            if (!controllerProperty.routes[propertyKey]) controllerProperty.routes[propertyKey] = { list: [], listMapping: {}, currentIndex: -1 };
+            if (!controllerProperty.routes[propertyKey].list) controllerProperty.routes[propertyKey].list = [];
+            let lastIndex = controllerProperty.routes[propertyKey].currentIndex;
+            if (lastIndex === -1) lastIndex = 0;
+            if (!controllerProperty.routes[propertyKey].list[lastIndex]) {
+                controllerProperty.routes[propertyKey].list[lastIndex] = {
+                    byPasses: [],
+                    method: null,
+                    middlewares: {},
+                    name: null,
+                    url: null
+                }
+            }
+            if (lastIndex === 0) controllerProperty.routes[propertyKey].list[lastIndex].byPasses = moreMidllewareName;
+            else {
+                let byPasses = [];
+                for (let i = 0; i < lastIndex; i++) {
+                    let prevByPasses = controllerProperty.routes[propertyKey].list[i].byPasses;
+                    prevByPasses.map(bypassName => {
+                        if (!byPasses.includes(bypassName)) byPasses.push(bypassName);
+                    });
+                }
+                moreMidllewareName.map(bypassName => {
+                    if (!byPasses.includes(bypassName)) byPasses.push(bypassName);
+                })
+            }
         }
         else if (numArguments === 3) {
-            if (!controllerProperty.routes[propertyKey]) {
-                controllerProperty.routes[propertyKey] = {
+            if (!controllerProperty.routes[propertyKey]) controllerProperty.routes[propertyKey] = { list: [], listMapping: {}, currentIndex: -1 };
+            if (!controllerProperty.routes[propertyKey].list) controllerProperty.routes[propertyKey].list = [];
+            let lastIndex = controllerProperty.routes[propertyKey].currentIndex;
+            if (lastIndex === -1) lastIndex = 0;
+            if (!controllerProperty.routes[propertyKey].list[lastIndex]) {
+                controllerProperty.routes[propertyKey].list[lastIndex] = {
                     byPasses: [],
                     method: null,
                     middlewares: {},
@@ -241,7 +399,19 @@ export function Bypass(middlewareName: string, ...moreMidllewareName: string[]):
                 }
             }
             moreMidllewareName.unshift(middlewareName);
-            controllerProperty.routes[propertyKey].byPasses = moreMidllewareName;
+            if (lastIndex === 0) controllerProperty.routes[propertyKey].list[lastIndex].byPasses = moreMidllewareName;
+            else {
+                let byPasses = [];
+                for (let i = 0; i < lastIndex; i++) {
+                    let prevByPasses = controllerProperty.routes[propertyKey].list[i].byPasses;
+                    prevByPasses.map(bypassName => {
+                        if (!byPasses.includes(bypassName)) byPasses.push(bypassName);
+                    });
+                }
+                moreMidllewareName.map(bypassName => {
+                    if (!byPasses.includes(bypassName)) byPasses.push(bypassName);
+                })
+            }
         }
         defineMetadata(CONTROLLER_KEY, controllerProperty, target);
     }

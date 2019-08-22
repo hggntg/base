@@ -1,0 +1,9 @@
+color: true
+exit: true
+extension:
+  - ts
+require: 'ts-node/register/transpile-only'
+recursive: true
+spec: ./src/**/*.spec.ts
+watch: false
+ui: tdd

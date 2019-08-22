@@ -1,5 +1,5 @@
 import { injectable, inject, named } from "inversify";
-import { registerDependency, generateNewableIdentifier, checkDependency } from "../../utilities/class";
+import { registerDependency, generateNewableIdentifier, checkDependency, registerDependencyAgain } from "../../utilities/class";
 
 export function Injectable<T>(serviceName: string, newable?: boolean, isDefault?: boolean) {
     return (target: any) => {
@@ -8,6 +8,9 @@ export function Injectable<T>(serviceName: string, newable?: boolean, isDefault?
         let isExists = checkDependency(serviceName, newable, targetClass.name);
         if(!isExists){
             registerDependency<T>(serviceName, targetClass, newable, isDefault);
+        }
+        else{
+            registerDependencyAgain<T>(serviceName, targetClass, newable, isDefault);
         }
     }
 }

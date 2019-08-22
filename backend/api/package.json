@@ -1,6 +1,6 @@
 {
 	"name": "@base/api",
-	"version": "1.0.103",
+	"version": "1.0.192",
 	"description": "",
 	"scripts": {
 		"test": "echo \"Error: no test specified\" && exit 1"
@@ -14,8 +14,8 @@
 		"uuid": "^3.3.2"
 	},
 	"devDependencies": {
-		"@base/class": "^1.0.59",
-		"@base/logger": "^1.0.59",
+		"@base/class": "^1.0.102",
+		"@base/logger": "^1.0.95",
 		"@types/node": "^12.0.10",
 		"@types/uuid": "^3.4.4",
 		"nodemon": "^1.19.1",

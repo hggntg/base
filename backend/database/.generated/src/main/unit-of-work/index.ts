@@ -24,7 +24,8 @@ export abstract class AUnitOfWork implements IUnitOfWork {
 		return this.dbContext;
 	}
 	list<K, T extends IBaseEntity<K>>(name: string): IBaseRepository<K, T> {
-		let realName = name.toLowerCase();
+		let firstChar = name[0].toLowerCase();
+		let realName = name.replace(name[0], firstChar);
 		return this[realName];
 	}
 	saveChanges() {

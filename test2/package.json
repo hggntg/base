@@ -1,0 +1,21 @@
+{
+  "name": "test2",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "dev": "ts-node src/index.ts",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "node-ipc": "^9.1.1"
+  },
+  "devDependencies": {
+    "@types/node": "^12.6.8",
+    "@types/node-ipc": "^9.1.1",
+    "minimist": "^1.2.0",
+    "ts-node": "^8.3.0"
+  }
+}

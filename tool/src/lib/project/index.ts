@@ -4,6 +4,7 @@ import { run } from "./run";
 import { build } from "./build";
 import { fix } from "./fix";
 import { generate } from "./generate";
+import { compile } from "./compile";
 
 declare const commander : CommanderStatic;
 
@@ -18,6 +19,9 @@ declare const commander : CommanderStatic;
         }
         else if(action === "build"){
             return build(scope);
+        }
+        else if(action === "compile"){
+            return compile();
         }
         else if(action === "fix"){
             return fix();

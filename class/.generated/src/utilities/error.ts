@@ -1,29 +1,25 @@
-interface IChainError{
-    errors: Error[]
+export interface IBaseError extends Error {
+    code: number;
+    specificCode: number;
 }
 
-export class ChainError implements IChainError{
-    errors: Error[];
-    constructor(err: Error);
-    constructor(chainErr: IChainError);
-    constructor(errOrChainErr: Error | IChainError | string){
-        if(!this.errors){
-            this.errors = [];
-        }       
-        if(errOrChainErr instanceof Error){
-            this.errors.push(errOrChainErr);
-            errOrChainErr = null;
-        }
-        else if (typeof errOrChainErr === "string"){
-            this.errors.push(new Error(errOrChainErr))
-        }
-        else if (errOrChainErr){
-            this.errors = this.errors.concat(errOrChainErr.errors.slice(0));
-            errOrChainErr = null;
-        }
+export class BaseError extends Error implements IBaseError{
+    code: number;
+    specificCode: number;
+    name: string;
+    message: string;
+    stack?: string;
+    constructor(_code: number, _specificCode: number, _name: string, _message: string){
+        super(_message);
+        this.code = _code;
+        this.specificCode = _specificCode;
+        this.name = _name;
+    }
+    toString(){
+        return `${this.code} - ${this.specificCode} - ${this.name} : ${this.message} \n ${this.stack}`;
     }
 
     static getType(): IClassType {
-        return Type.get("ChainError", "class") as IClassType;
+        return Type.get("BaseError", "class") as IClassType;
     }
 }

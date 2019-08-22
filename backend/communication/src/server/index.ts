@@ -1,7 +1,7 @@
 import { Connection, Channel, Message, ConsumeMessage } from "amqplib";
 import { EventEmitter } from "events";
-import { ILogger } from "@base-interfaces/logger";
-import { IServer, IListenOption, IRPCResult, IRPCRequest, IRPCBody, IRpcTemplate } from "@base-interfaces/communication";
+import { ILogger } from "@base/logger";
+import { IServer, IListenOption, IRPCResult, IRPCRequest, IRPCBody, IRpcTemplate } from "../interface";
 import { Communication } from "../main";
 
 'use strict';
@@ -50,8 +50,10 @@ export class Server implements IServer {
             this.channel = channel;
             channel.assertQueue(this.queueName, { durable: false, maxPriority: 10 });
             channel.prefetch(options.prefecth);
-            return channel.consume(this.queueName, function (msg) {
-                let body: IRPCBody = JSON.parse(msg.content.toString());
+            return channel.consume(this.queueName, async function (msg) {
+                msg.content = await Communication.decompress(msg.content);
+                let data = Communication.reverseBody(msg.content.toString());
+                let body: IRPCBody = data.content;
                 let request: IRPCRequest = new RPCRequest({
                     server: self,
                     args: body.args,
@@ -75,8 +77,13 @@ export class Server implements IServer {
     }
     sendBack(dataBack, msg: Message) {
         this.logger.pushInfo("Ready to send result back to client " + msg.properties.correlationId, this.logTag);
-        this.channel.sendToQueue(msg.properties.replyTo, Buffer.from(Communication.ensureBodyString(dataBack)), { correlationId: msg.properties.correlationId });
-        this.channel.ack(msg);
+        Communication.compress(Communication.ensureBodyString({
+            to: msg.properties.replyTo,
+            content: dataBack,
+        })).then(sendingBuffer => {
+            this.channel.sendToQueue(msg.properties.replyTo, sendingBuffer, { correlationId: msg.properties.correlationId });
+            this.channel.ack(msg);
+        });
     }
     waitForListenData(cb: (request: IRPCRequest) => void) {
         this.event.on("REQUEST", (request: IRPCRequest) => {

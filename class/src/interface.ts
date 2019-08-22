@@ -1,13 +1,19 @@
+import { PropertyType } from "./internal";
+
 export interface IPropertyDecorator{
     (target: object, propertyKey: string): any;
 }
 export interface IParameterDecorator{
     (target: Object, propertyKey: string, parameterIndex?: number): any;
 }
+
+
 export interface IProperty{
+    type: PropertyType | string[],
     name: string;
     required: boolean;
 }
+
 export interface INamespace extends IBaseClass<any>{
     run(func: Function) : Promise<void>;
     set(key, value): void;
@@ -68,4 +74,12 @@ export interface IContextProperty{
 export interface IContext extends IBaseClass<IContextProperty>, IContextProperty{
     rawValue(): IContextValue;
     originValue(): IContextOriginValue;
+}
+
+export interface ISearchInput{
+    pageSize?:  number;
+    pageIndex?: number;
+    fields?:    string;
+    sort?:      any;
+    filter?:    any;    
 }

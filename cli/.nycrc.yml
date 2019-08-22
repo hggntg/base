@@ -1,0 +1,14 @@
+all: false
+check-coverage: true
+include:
+  - "src/**/*.ts"
+exclude:
+  - "**/*.d.ts"
+  - "./coverage"
+  - "src/**/*.spec.ts"
+extension:
+  - ".ts"
+reporter:
+  - "mocha"
+  - "text"
+report-dir: "./coverage"

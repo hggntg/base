@@ -64,4 +64,5 @@ declare let Type: IGlobalType;
 
 declare function getClass(target: any): { new(...args: any[]): any };
 declare function getMetadata<T>(key: string | Symbol, target: any);
-declare function defineMetadata (key: string | Symbol, value: any, target: any);`;
+declare function defineMetadata (key: string | Symbol, value: any, target: any);
+declare function wrapInTryCatch<T>(fn: Function): T`;

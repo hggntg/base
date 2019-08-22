@@ -1,6 +1,6 @@
 {
   "name": "@base/tool",
-  "version": "1.0.95",
+  "version": "1.0.197",
   "description": "Commandline tool for base project",
   "main": "index.js",
   "types": "index.d.ts",
@@ -16,6 +16,8 @@
     "async": "^3.1.0",
     "chokidar": "^3.0.1",
     "commander": "^2.19.0",
+    "minimist": "^1.2.0",
+    "npm-run": "^5.0.1",
     "prettyjson": "^1.2.1",
     "queue": "^6.0.1",
     "replace-in-file": "^4.1.0",
@@ -25,7 +27,10 @@
     "typescript": "^3.3.4000"
   },
   "devDependencies": {
+    "@types/async": "^3.0.1",
+    "@types/cli-progress": "^1.8.1",
     "@types/node": "^11.9.4",
+    "@types/npm-run": "^5.0.0",
     "@types/prettyjson": "0.0.28",
     "@types/rimraf": "^2.0.2",
     "@types/shelljs": "^0.8.3"

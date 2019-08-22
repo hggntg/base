@@ -1,7 +1,9 @@
 import { Logger } from "@base/logger";
-import { Communication, RPCResult } from "../src";
-import { IRPCResult } from "@base-interfaces/communication";
-const logger = new Logger("test");
+import { Communication, RPCResult, IRPCResult } from "../src";
+const logger = new Logger();
+logger.initValue({
+    appName: "test"
+})
 logger.trace(true);
 const com = new Communication("amqp://guest:guest@localhost:5672", logger);
 

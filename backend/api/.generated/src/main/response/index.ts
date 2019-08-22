@@ -1,3 +1,5 @@
+import { assignData } from "@base/class";
+
 export interface ResponseBody {
     code: number;
     status: string;
@@ -10,7 +12,8 @@ interface ErrorBodyInput{
     stack: string;
 }
 interface ResponseResult {
-    value: object;
+    type?: "single" | "list" | "empty";
+    value: any[];
     page: number;
     end: boolean;
     numOfRecords: number;
@@ -68,11 +71,17 @@ const HttpResponseCode: { [key: string]: ResponseBody } = {
 
 function generateResponse(code: number, message: string, type: "error" | "success" = "success", body?: ResponseResult | ErrorBodyInput): ResponseBody {
     let httpCode = HttpCode[code.toString()];
-    let httpResponseCode = Object.assign({}, HttpResponseCode[httpCode]);
+    let httpResponseCode = assignData(HttpResponseCode[httpCode]);
     httpResponseCode.message = message;
     if (body) {
         if(type === "success"){
             let resultBody = body as ResponseResult;
+            if(!resultBody.value){
+                resultBody.value = [];
+            }
+            if(resultBody.value.length === 0) resultBody.type = "empty";
+            else if(resultBody.value.length === 1) resultBody.type = "single";
+            else if(resultBody.value.length > 1) resultBody.type = "list";
             httpResponseCode.result = resultBody;
         }
         else{
@@ -89,15 +98,25 @@ export class ResponseTemplate {
             return generateResponse(code, message, "success", body);
         }
         else {
-            throw new Error("This is not success response");
+            return generateResponse(500, "Internal server error", "error");
         }
     }
     static error(code: number, message: string, body?: ErrorBodyInput): ResponseBody {
         if (code >= 400) {
-            return generateResponse(code, message, "error", body);
+            if(process.env["NODE_ENV"] !== "production"){
+                return generateResponse(code, message, "error", body);
+            }
+            else{
+                return generateResponse(code, message, "error");
+            }
         }
         else {
-            throw new Error("This is not error response");
+            if(process.env["NODE_ENV"] !== "production"){
+                return generateResponse(code, message, "error", body);
+            }
+            else{
+                return generateResponse(code, message, "error");
+            }
         }
     }
 

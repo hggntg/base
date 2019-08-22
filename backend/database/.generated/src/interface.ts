@@ -1,4 +1,4 @@
-import {
+import mongoose, {
 	ConnectionOptions, Document, HookSyncCallback, Aggregate, HookErrorCallback,
 	HookAsyncCallback, Model, Schema, Query, SchemaTypeOpts, ClientSession,
 	SchemaOptions, Connection
@@ -28,53 +28,53 @@ export interface IDatabaseContextSession {
 	documents: Array<IDocumentChange>;
 }
 
-export interface IWherable<K, T> {
-    where(conditions: any): IWherable<K, T>;
-    find(): T;
-	findOne(): T;
+export interface IWherable<K, T, Z> {
+	where(conditions: any): IWherable<K, T, Z>;
+	find(): T;
+	findOne(): Z;
 }
 
 
-export interface ILimitable<K, T> extends IWherable<K, T> {
-	limit?<Q extends ILimitable<K, T>>(this: Q, about: number): Omit<Q, "limit">;
+export interface ILimitable<K, T, Z> extends IWherable<K, T, Z> {
+	limit?<Q extends ILimitable<K, T, Z>>(this: Q, about: number): Omit<Q, "limit">;
 }
 
-export interface ISkipable<K, T> extends IWherable<K, T> {
-	skip?<Q extends ISkipable<K, T>>(this: Q, about: number): Omit<Q, "skip">;
+export interface ISkipable<K, T, Z> extends IWherable<K, T, Z> {
+	skip?<Q extends ISkipable<K, T, Z>>(this: Q, about: number): Omit<Q, "skip">;
 }
 
-export interface ISortable<K, T> extends IWherable<K, T> {
-	sort?<Q extends ISortable<K, T>>(this: Q, conditions: any): Omit<Q, "sort">;
+export interface ISortable<K, T, Z> extends IWherable<K, T, Z> {
+	sort?<Q extends ISortable<K, T, Z>>(this: Q, conditions: any): Omit<Q, "sort">;
 }
 
-export interface ICountable<T>{
+export interface ICountable<T> {
 	count?<K extends ICountable<T>>(this: K, what?: string): Promise<number>;
 }
 
-export interface ISelectable<T>{
+export interface ISelectable<T> {
 	select?<K extends ISelectable<T>>(this: K, what?: string): Promise<IQueryResult<T>>;
 }
 
-export interface IRepositoryCountable<T>{
-    count?<K extends IRepositoryCountable<T>>(this: K, what?: string): Promise<number>;
+export interface IRepositoryCountable<T> {
+	count?<K extends IRepositoryCountable<T>>(this: K, what?: string): Promise<number>;
 }
 
-export interface IRepositorySelectable<T>{
-    select?<K extends IRepositorySelectable<T>>(this: K, what?: string): Promise<IQueryResult<T>>;
+export interface IRepositorySelectable<T> {
+	select?<K extends IRepositorySelectable<T>>(this: K, what?: string): Promise<IQueryResult<T>>;
 }
 
-export interface IQueryable<K, T> extends ILimitable<K, T>, ISkipable<K, T>, ISortable<K, T>{
+export interface IQueryable<K, T, Z> extends ILimitable<K, T, Z>, ISkipable<K, T, Z>, ISortable<K, T, Z> {
 
 }
 
 export interface IInsertable<T> {
-    insert(document: Partial<T>): Promise<Partial<T>>;
-    insertMany(documents: Partial<T>[]):Promise<Partial<T>[]>;
+	insert(document: Partial<T>): Promise<Partial<T>>;
+	insertMany(documents: Partial<T>[]): Promise<Partial<T>[]>;
 }
 
-export interface IRepositoryInsertable<T>{
-	insert(document: Partial<T>): void;
-    insertMany(documents: Partial<T>[]): void;
+export interface IRepositoryInsertable<T> {
+	insert(document: Partial<T>): Promise<Partial<T>>;
+	insertMany(documents: Partial<T>[]): Promise<Partial<T>[]>;
 }
 
 export interface IRestCommandable<T> {
@@ -83,20 +83,23 @@ export interface IRestCommandable<T> {
 	then<TResult1 = IQueryResult<T>, TResult2 = never>(onfulfilled?: ((value: IQueryResult<T>) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): Promise<TResult1 | TResult2>;
 }
 
+export interface IRepositoryRestCommandableForOne<T> extends IRepositoryRestCommandable<T> {
+	update(data: T): Promise<Partial<T>>;
+	remove(): Promise<Partial<T>>;
+}
+
 export interface IRepositoryRestCommandable<T>{
-	update(data: T): void;
-    remove(): void;
 	then<TResult1 = IQueryResult<T>, TResult2 = never>(onfulfilled?: ((value: IQueryResult<T>) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): Promise<TResult1 | TResult2>;
 }
 
-export interface IAfterQueryable<T> extends IRestCommandable<T>, ISelectable<T>, ICountable<T>{}
+export interface IAfterQueryable<T> extends IRestCommandable<T>, ISelectable<T>, ICountable<T> { }
 
-export interface IRepositoryAfterQueryable<T> extends IRepositoryRestCommandable<T>, IRepositorySelectable<T>, IRepositoryCountable<T>{
+export interface IRepositoryAfterQueryable<T> extends IRepositoryRestCommandable<T>, IRepositorySelectable<T>, IRepositoryCountable<T> {
 
 }
 
-export interface IBaseRepository<K, T extends IBaseEntity<K>> extends IQueryable<K, IRepositoryAfterQueryable<K>>, IRepositoryInsertable<K>{}
-export interface IRepositoryRestCommand<K, T extends IBaseEntity<K>> extends IRepositoryAfterQueryable<K>{}
+export interface IBaseRepository<K, T extends IBaseEntity<K>> extends IQueryable<K, IRepositoryAfterQueryable<K>, IRepositoryRestCommandableForOne<K>>, IRepositoryInsertable<K> { }
+export interface IRepositoryRestCommand<K, T extends IBaseEntity<K>> extends IRepositoryAfterQueryable<K> { }
 
 // export interface IBaseRepository<K, T extends IBaseEntity<K>>{
 // 	aggregate(conditions: any[]): Promise<Partial<K>[]>;
@@ -125,7 +128,7 @@ export interface IUnitOfWork {
 	saveChanges(): Promise<any>;
 }
 
-export interface IDocumentQuery{
+export interface IDocumentQuery {
 	select?: string;
 	limit?: number;
 	skip?: number;
@@ -162,10 +165,10 @@ export interface IDocumentChange {
 // 	count(): Promise<number>;
 // }
 
-export interface ICollection<K, T extends IBaseEntity<K>> extends IBaseClass<{ classImp: { new(): T } }>, IQueryable<K, IAfterQueryable<K>>, IInsertable<K>  {}
-export interface ICollectionRestCommand<T> extends IAfterQueryable<T>{}
+export interface ICollection<K, T extends IBaseEntity<K>> extends IBaseClass<{ classImp: { new(): T } }>, IQueryable<K, IAfterQueryable<K>, IAfterQueryable<K>>, IInsertable<K> { }
+export interface ICollectionRestCommand<T> extends IAfterQueryable<T> { }
 
-export interface IFakeSchemaFunction<T> {
+export interface IFakeSchemaFunction<T>{
 	pre(method: HookAggregateType, fn: HookSyncCallback<Aggregate<any>>, errorCb?: HookErrorCallback): IFakeSchemaFunction<T>;
 	pre(method: HookAggregateType, paralel: boolean, fn: HookAsyncCallback<Aggregate<any>>, errorCb?: HookErrorCallback): IFakeSchemaFunction<T>;
 	pre(method: HookDocumentType, fn: HookSyncCallback<Document & T>, errorCb?: HookErrorCallback): IFakeSchemaFunction<T>;
@@ -176,24 +179,26 @@ export interface IFakeSchemaFunction<T> {
 	pre(method: HookQueryType, paralel: boolean, fn: HookAsyncCallback<Query<any>>, errorCb?: HookErrorCallback): IFakeSchemaFunction<T>;
 	plugin(plugin: (schema: Schema) => void): IFakeSchemaFunction<T>;
 	plugin<U>(plugin: (schema: Schema, options: U) => void, opts: U): IFakeSchemaFunction<T>;
+	index(fielfds: {[key in keyof T]: 1 | -1}): IFakeSchemaFunction<T>;
 }
 
-export interface ForeignFieldOptions {
+export interface ForeignFieldOptions<T> {
 	type: "one-to-one" | "one-to-many",
 	load: "eager" | "lazy",
 	refKey: string,
 	localKey?: string,
-	relatedEntity: string
+	relatedEntity: {new(...args): T}
 }
 
 export interface IEntitySchema<T> {
 	name: string;
 	definition?: EntitySchemaDefinition;
-	virutals?: ((schema: Schema) => void)[],
+	virutals?: ((schema: Schema) => void)[];
 	schemaOptions?: SchemaOptions;
 	model?: Model<Document>;
 	schema?: Schema;
 	middleware?: Array<IFakePreAggregate | IFakePreModel<T> | IFakePreDocument<T> | IFakePreQuery | IFakePlugin>;
+	indexes?: ((schema: Schema) => void)[];
 }
 
 export interface EntitySchemaDefinition {
@@ -206,6 +211,7 @@ export type HookDocumentType = "init" | "validate" | "save" | "remove";
 export type HookQueryType = "count" | "find" | "findOne" | "findOneAndRemove" | "findOneAndUpdate" | "update" | "updateOne" | "updateMany";
 
 type IFakeArg2 = HookErrorCallback;
+
 
 export interface IFakeMiddleware {
 	type: "plugin" | "preAggregate" | "preModel" | "preDocument" | "preQuery"
@@ -278,19 +284,24 @@ export interface IRepositoryMetadata<K, T extends IBaseEntity<K>> {
 	entity: { new(): T }
 }
 
-export interface IQueryInput{
-	pageSize: number;
-	pageIndex: number;
+export interface IQueryInput {
+	skip?: number;
+	limit?: number;
+	sort?: any;
+	select?: string;
+	where?: any;
 }
 
-export interface IQueryResult<T>{
-	total: 			number;
-	end: 			boolean;
-	page: 			number;
-	numOfRecords: 	number;
-	value: 			Partial<T>[];
+export interface IQueryResult<T> {
+	total: number;
+	end: boolean;
+	page: number;
+	numOfRecords: number;
+	value: Partial<T>[];
 }
 
-export interface IRepositoryQuery{
+export interface IRepositoryQuery {
 	[key: string]: any;
 }
+
+export type TEntityForeignField<T> = ForeignFieldOptions<T> & { name: string; localField: string, hide: "all" | string[] }

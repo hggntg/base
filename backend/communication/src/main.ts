@@ -1,7 +1,6 @@
-'use strict';
-import { deflateRaw, inflateRaw } from "zlib";
-import { ICommunication, ConnectionOption } from "@base-interfaces/communication"
-import { ILogger } from "@base-interfaces/logger";
+import { gzip, gunzip } from "zlib";
+import { ICommunication, ConnectionOption } from "./interface"
+import { ILogger } from "@base/logger";
 import { connect, Connection } from "amqplib";
 import { Server } from "./server";
 import { Client } from "./client";
@@ -42,12 +41,24 @@ export class Communication implements ICommunication{
 
     static compress(input: Buffer | string): Promise<Buffer>{
         return new Promise<Buffer>((resolve, reject) => {
-            deflateRaw(input, {chunkSize: 8 * 64}, (err, result) => {
-                if(err){
-                    reject(err);
-                }
+            if(input instanceof Buffer){
+                input = input.toString();
+            }     
+            let json = "";
+            if(typeof input !== "string"){
+                json = JSON.stringify(input);
+            }
+            else{
+                json = input;
+            }
+            let buffer = Buffer.from(json);
+            gzip(buffer, { level : 5 }, (err, compressBuffer) => {
+                if(err) reject(err);
                 else{
-                    resolve(result);
+                    gzip(compressBuffer, {level: 5}, (err, compressBuffer) => {
+                        if(err) reject(err);
+                        else resolve(compressBuffer);
+                    });
                 }
             });
         })
@@ -55,12 +66,19 @@ export class Communication implements ICommunication{
 
     static decompress(input: Buffer): Promise<Buffer>{
         return new Promise<Buffer>((resolve, reject) => {
-            inflateRaw(input, {chunkSize: 8 * 64}, (err, result) => {
+            gunzip(input, {level: 5}, (err, decompressBuffer) => {
                 if(err){
                     reject(err);
                 }
                 else{
-                    resolve(result);
+                    gunzip(decompressBuffer, {level : 5 }, (err, decompressBuffer) => {
+                        if(err){
+                            reject(err);
+                        }
+                        else{
+                            resolve(decompressBuffer);
+                        }
+                    });
                 }
             });
         });
@@ -88,13 +106,4 @@ export class Communication implements ICommunication{
     createOwner(){
         return new Owner(this.conn, this.logger);
     }
-    // createPublisher(exchangeName: string){
-    //     return new Communication.Publisher(exchangeName, this.conn, this.logger);
-    // }
-    // createSubscriber(exchangeName: string){
-    //     return new Communication.Subscriber(exchangeName, this.conn, this.logger);
-    // }
-}  
-//DEFINE PROTOTYPE
-
-//END OF DEFINE PROTOTYPE
+}

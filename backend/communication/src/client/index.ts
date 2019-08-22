@@ -3,10 +3,10 @@ import { Connection, Channel } from "amqplib";
 import { EventEmitter } from "events";
 import { v4 } from "uuid";
 import { queue } from "async"
-import { ILogger } from "@base-interfaces/logger";
-import { Namespace } from "@base/utilities/namespace";
+import { ILogger } from "@base/logger";
+import { Namespace } from "@base/class";
 import { Communication } from "../main";
-import { IClient, IRpcTemplate, IRPCBody, IRPCOption, ITask, IRPCResult, IRPCResultListBody, IRPCResultSingleBody } from "@base-interfaces/communication";
+import { IClient, IRpcTemplate, IRPCBody, IRPCOption, ITask, IRPCResult, IRPCResultListBody, IRPCResultSingleBody } from "../interface";
 
 export class RPCResult<T> implements IRPCResult<T>{
     status: number;
@@ -116,13 +116,15 @@ export class Client implements IClient {
                 channel.prefetch(1);
                 context.cloneById(outerId);
                 context.flush(outerId, true);
-                return channel.consume(q.queue, function (msg) {
+                return channel.consume(q.queue, async function (msg) {
                     let currentCorrelationId = context.get<string>("correlationId");
                     if (correlationId === currentCorrelationId) {
                         let watcher = context.get<NodeJS.Timeout>("watcher");
                         clearTimeout(watcher);
                         self.logger.pushDebug("Receive a result from " + q.queue, self.logTag);
-                        self.event.emit(msg.properties.correlationId, { err: null, data: Communication.reverseBody(msg.content.toString()) });
+                        msg.content = await Communication.decompress(msg.content);
+                        let data = Communication.reverseBody(msg.content.toString());
+                        self.event.emit(msg.properties.correlationId, { err: null, data: data.content});
                         let consumerTag = context.get<string>("consumerTag");
                         if (consumerTag) {
                             channel.cancel(consumerTag).then(() => { });
@@ -152,9 +154,10 @@ export class Client implements IClient {
                 context.set("watcher", watcher);
                 return ok;
             });
-        }).then(() => {
+        }).then(async () => {
             let timeout = (options.timeout * options.retry);
-            return channel.sendToQueue(rpcMessage.queueName, Buffer.from(rpcMessage.body), { correlationId: rpcMessage.correlationId, replyTo: queueNameResult, expiration: timeout });
+            let sendingBuffer = await Communication.compress(rpcMessage.body);
+            return channel.sendToQueue(rpcMessage.queueName, sendingBuffer, { correlationId: rpcMessage.correlationId, replyTo: queueNameResult, expiration: timeout });
         }).catch(err => {
             this.logger.pushError(err, this.logTag);
         });
@@ -164,7 +167,10 @@ export class Client implements IClient {
         let correlationId = v4().toString();
         let rpcMessage: IRpcTemplate = {
             correlationId: correlationId,
-            body: Communication.ensureBodyString(body),
+            body: Communication.ensureBodyString({
+                to: queueName,
+                content: body
+            }),
             queueName: queueName
         }
         if (!options) {

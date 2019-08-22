@@ -1,6 +1,6 @@
 {
 	"name": "@base/communication",
-	"version": "1.0.40",
+	"version": "1.0.77",
 	"description": "Message queue use Rabbitmq",
 	"main": "index.js",
 	"types": "index.d.ts",
@@ -13,22 +13,20 @@
 	],
 	"license": "ISC",
 	"dependencies": {
-		"@base-interfaces/communication": "^1.0.22",
 		"amqplib": "^0.5.3",
 		"uuid": "^3.3.2"
 	},
 	"devDependencies": {
-		"@base/logger": "^1.0.44",
-		"@base/utilities": "^1.0.76",
+		"@base/class": "^1.0.102",
+		"@base/logger": "^1.0.95",
 		"@types/async": "^2.4.2",
-		"@types/node": "^12.0.0",
-		"typescript": "^3.4.5"
+		"@types/node": "^12.6.2",
+		"nodemon": "^1.19.1",
+		"ts-node": "^8.3.0",
+		"typescript": "^3.5.3"
 	},
 	"baseDependencies": [
-		"@base-interfaces/communication",
-		"@base-interfaces/utilities",
 		"@base/logger",
-		"@base/utilities",
-		"@base-interfaces/logger"
+		"@base/class"
 	]
 }

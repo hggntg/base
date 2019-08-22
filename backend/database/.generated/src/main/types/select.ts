@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { defineRealDataType } from "@base/class";
 
 export default class Select extends mongoose.SchemaType{
     private options: any[];
@@ -24,3 +25,7 @@ export default class Select extends mongoose.SchemaType{
         return Type.get("Select", "class") as IClassType;
     }
 }
+
+defineRealDataType(Select, "string");
+defineRealDataType(Select, "number");
+defineRealDataType(Select, "boolean");
