@@ -5,7 +5,6 @@ import path from "path";
 
 import { nodemon, tsconfig, typing, indexts } from "./assets";
 import { log } from "../../infrastructure/logger";
-import { maints } from "./assets/normal.maints";
 import { defaultEnv, env } from "./assets/normal.env";
 
 export function newProject(appName: string) {
@@ -23,7 +22,6 @@ export function newProject(appName: string) {
         log("Generating some core files......");
         fs.mkdirSync(sourcePath);
         fs.writeFileSync(path.join(sourcePath, "index.ts"), indexts);
-        fs.writeFileSync(path.join(sourcePath, "main.ts"), maints);
         fs.writeFileSync(path.join(sourcePath, ".env"), env);
         fs.writeFileSync(path.join(sourcePath, "default.env"), defaultEnv);
         let infrastructurePath = path.join(sourcePath, "infrastructure");

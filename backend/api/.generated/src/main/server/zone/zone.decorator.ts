@@ -1,7 +1,7 @@
-import { IZone } from "../../../interface";
+import { IZone } from "@app/interface";
 import { Property, getDependency } from "@base/class";
-import { Server } from "../server.decorator";
-import { SERVER_API_KEY } from "../../../shared/constant";
+import { Server } from "@app/main/server/server.decorator";
+import { SERVER_API_KEY } from "@app/shared/constant";
 
 export function Zone<T extends IZone>(classImp: { new(): T }) {
     return function (target: any, propertyKey: string) {

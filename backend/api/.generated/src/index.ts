@@ -1,16 +1,17 @@
 import "./core";
 import "./declare";
-export * from "./interface";
-export * from "./main/controller";
-export * from "./main/server";
-import { ResponseTemplate, HttpCode } from "./main/response";
-import { IQueryParamInput } from "./interface";
+addAlias("@app", __dirname);
+export * from "@app/interface";
+export * from "@app/main/controller";
+export * from "@app/main/server";
+import { ResponseTemplate, HttpCode } from "@app/main/response";
+import { IQueryParamInput } from "@app/interface";
 import { Property } from "@base/class";
 export {
     HttpCode,
     ResponseTemplate as Resp
 }
-export * from "./main/middleware";
+export * from "@app/main/middleware";
 
 export class QueryParamInput implements IQueryParamInput{
     @Property(Number)

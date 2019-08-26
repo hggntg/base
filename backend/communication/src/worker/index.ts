@@ -1,8 +1,8 @@
 import { Connection } from "amqplib";
 import { ILogger, ILog } from "@base/logger";
 import { EventEmitter } from "events";
-import { IWorkerJobRequest, IWorker, IWorkerOptions } from "../interface";
-import { Communication } from "../main";
+import { IWorkerJobRequest, IWorker, IWorkerOptions } from "@app/interface";
+import { Communication } from "@app/main";
 
 const TIMEOUT = Symbol.for("TIMEOUT");
 

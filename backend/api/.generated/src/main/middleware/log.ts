@@ -1,4 +1,4 @@
-import { IMiddlewareChainable } from "../../interface";
+import { IMiddlewareChainable } from "@app/interface";
 import { NextFunction, Response, Request } from "express";
 import { ILogger, LOGGER_SERVICE } from "@base/logger";
 import { getDependency } from "@base/class";

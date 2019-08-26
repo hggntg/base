@@ -1,2 +1,2 @@
-export * from "./cors";
-export * from "./log";
+export * from "@app/main/middleware/cors";
+export * from "@app/main/middleware/log";

@@ -1,8 +1,8 @@
-import Email from "./email";
-import Select from "./select";
-import Password from "./password";
-import Struct from "./struct";
-import Literal from "./literal";
+import Email from "@app/main/types/email";
+import Select from "@app/main/types/select";
+import Password from "@app/main/types/password";
+import Struct from "@app/main/types/struct";
+import Literal from "@app/main/types/literal";
 
 export const CustomTypes = {
     Email: Email,

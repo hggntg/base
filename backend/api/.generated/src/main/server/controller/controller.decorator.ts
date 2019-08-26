@@ -1,8 +1,8 @@
 import { Property, getDependency } from "@base/class";
-import { IController } from "../../../interface"
-import { Server } from "../server.decorator";
-import { SERVER_ZONE_KEY } from "../../../shared/constant";
-import { CONTROLLER_SERVICE } from "../../../main/controller";
+import { IController } from "@app/interface"
+import { Server } from "@app/main/server/server.decorator";
+import { SERVER_ZONE_KEY } from "@app/shared/constant";
+import { CONTROLLER_SERVICE } from "@app/main/controller";
 
 export function ControllerProperty<T extends IController>(classImp: { new(): T }) {
     return function (target: any, propertyKey: string) {

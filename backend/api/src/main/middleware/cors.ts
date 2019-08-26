@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import { ILogger, LOGGER_SERVICE } from "@base/logger";
 import { getDependency } from "@base/class";
-import { IMiddlewareChainable } from "../../interface";
+import { IMiddlewareChainable } from "@app/interface";
 
 interface ISetCredentials extends ICORSMiddlewareChainable{
     setCredentials?<T extends ISetCredentials>(this: T, credentials: boolean): Omit<T, "setCredentials">;

@@ -5,8 +5,8 @@ import { v4 } from "uuid";
 import { queue } from "async"
 import { ILogger } from "@base/logger";
 import { Namespace } from "@base/class";
-import { Communication } from "../main";
-import { IClient, IRpcTemplate, IRPCBody, IRPCOption, ITask, IRPCResult, IRPCResultListBody, IRPCResultSingleBody } from "../interface";
+import { Communication } from "@app/main";
+import { IClient, IRpcTemplate, IRPCBody, IRPCOption, ITask, IRPCResult, IRPCResultListBody, IRPCResultSingleBody } from "@app/interface";
 
 export class RPCResult<T> implements IRPCResult<T>{
     status: number;

@@ -1,1 +1,1 @@
-export * from "./decorator";
+export * from "@app/main/unit-of-work/repository/decorator";

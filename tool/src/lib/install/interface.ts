@@ -1,6 +1,7 @@
 import path from "path";
 import shell from "shelljs";
 import fs from "fs";
+import { log } from "../../infrastructure/logger";
 
 export function installInterface(name: string, type: string = "main"){
     if(!name){
@@ -20,7 +21,7 @@ export function installInterface(name: string, type: string = "main"){
             shell.exec(`npm info ${interfaceName}`, function(code, stdout, stderr){
                 if(code === 0){
                     let installOption = type === "dev" ? "--save-dev" : "--save-prod";
-                    console.log(`npm install ${interfaceName} ${installOption}`);
+                    log(`npm install ${interfaceName} ${installOption}`);
                     shell.exec(`npm install ${interfaceName} ${installOption}`, function(code, stdout, stderr){
                         if(code === 0){
                             packageJSONModule = fs.readFileSync(packagePath).toString().replace(/[\n\t\r]/g, "").replace(/\s\s/g, "");

@@ -1,8 +1,8 @@
 import { Connection, Channel, Message, ConsumeMessage } from "amqplib";
 import { EventEmitter } from "events";
 import { ILogger } from "@base/logger";
-import { IServer, IListenOption, IRPCResult, IRPCRequest, IRPCBody, IRpcTemplate } from "../interface";
-import { Communication } from "../main";
+import { IServer, IListenOption, IRPCResult, IRPCRequest, IRPCBody, IRpcTemplate } from "@app/interface";
+import { Communication } from "@app/main";
 
 'use strict';
 

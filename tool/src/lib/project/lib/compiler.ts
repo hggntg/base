@@ -53,24 +53,37 @@ const fileList: IFileList = {};
 
 function divideTask(tasks: string[], divideTime: number = 2) {
     let taskSegment: Array<string[]> = [];
-    let middleIndex = Math.floor(tasks.length / divideTime);
+    let middleIndex = Math.ceil(tasks.length / divideTime);
     let start = 0;
-    let end = -1;
+    let end = 0;
     for (let i = 0; i < divideTime; i++) {
-        start = end + 1;
-        end = i === 0 ? end + start + middleIndex : start + middleIndex;
-        if (end > tasks.length) end = tasks.length - 1;
+        start = end;
+        end = start + middleIndex;
+        if (end > tasks.length) end = tasks.length;
         taskSegment.push(tasks.slice(start, end))
     }
     return taskSegment;
 }
 
 async function main(sourceFiles: string[], generatedPath, isFirstTime: boolean) {
+    log("File total: " + sourceFiles.length);
     let divideTime = Math.ceil(sourceFiles.length / 9);
     let taskSegment = divideTask(sourceFiles, divideTime);
     log("Divide in " + divideTime + " segments");
+    if(taskSegment.length > 1){
+        log("Has " + taskSegment.length + " tasks");
+    }
+    else {
+        log("Has " + taskSegment.length + " task");
+    }
     let parallelTasks = taskSegment.map((sourceSegmentList, index) => {
         let tempSourceSegmentList = sourceSegmentList.slice(0);
+        if(tempSourceSegmentList.length > 1){
+            log("Has " + tempSourceSegmentList.length + " files in task " + (index + 1));
+        }
+        else {
+            log("Has " + tempSourceSegmentList.length + " file in task " + (index + 1));
+        }
         return function (callback) {
             let childProcess = spawn("node", ["main.js", "--appPath=" + appPath, "--src=" + tempSourceSegmentList.join(","), "--genPath=" + generatedPath], { cwd: __dirname, detached: true });
             childProcess.stdout.pipe(process.stdout);
@@ -234,7 +247,7 @@ mainEventSource.on("change", async (isFirstTime: boolean) => {
             log("Waiting for changes.....");
             if (firstTimeStartServer && isRun) {
                 log("Starting to run app");
-                startServerProcess = npmRun("nodemon");
+                startServerProcess = npmRun("nodemon", {cwd: ""});
                 startServerProcess.stdout.off("data", () => { }).on("data", (chunk) => {
                     log(chunk.toString());
                 });

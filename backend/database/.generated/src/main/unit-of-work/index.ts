@@ -1,4 +1,4 @@
-import { getUnitOfWorkMetadata } from "./decorator";
+import { getUnitOfWorkMetadata } from "@app/main/unit-of-work/decorator";
 import { getProperties, use, Injectable, getDependency } from "@base/class";
 import {
 	IDatabaseContext,

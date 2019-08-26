@@ -5,7 +5,7 @@ import fs from "fs";
 import { tsconfig, typing, nodemon } from "./assets";
 import { log } from "../../infrastructure/logger";
 
-export function fix(){
+export function fix(scope: string){
     let cwd = process.cwd();
     let missingFiles = [];
     for (let i = 0; i < folderLength; i++) {
@@ -14,7 +14,9 @@ export function fix(){
             missingFiles.push(path);
         }
     }
-    shell.exec("npm install @types/node typescript nodemon ts-node -D", {silent: false});
+    if(scope === "module"){
+        shell.exec("npm install @types/node typescript nodemon ts-node -D", {silent: false});
+    }
     missingFiles.map(missingFile => {
         if(missingFile.indexOf("tsconfig.json") > 0){
             fs.writeFileSync(sysPath.join(cwd, "tsconfig.json"), tsconfig);

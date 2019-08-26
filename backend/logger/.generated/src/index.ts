@@ -1,4 +1,5 @@
 import "./core";
 import "./declare";
-export * from "./interface";
-export * from "./main";
+addAlias("@app", __dirname);
+export * from "@app/interface";
+export * from "@app/main";

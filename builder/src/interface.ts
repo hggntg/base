@@ -5,6 +5,8 @@ export interface IConfig {
 }
 
 export interface IAppProperty{
+    aliases: {[key: string]: string};
+    root: string;
     appName: string;
     logTag: string;
 }

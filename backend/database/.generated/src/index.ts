@@ -1,21 +1,22 @@
 import "./core";
 import "./declare";
-import { CustomTypes } from "./main/types";
+addAlias("@app", __dirname);
+import { CustomTypes } from "@app/main/types";
 import mongoose from "mongoose";
 
 Object.values(CustomTypes).map((type) => {
     mongoose.Schema.Types[type.name] = type;
 });
-import { IQueryInput } from "./interface";
+import { IQueryInput } from "@app/interface";
 import { Property } from "@base/class";
 export { CustomTypes };
-export * from "./main/database-context";
-export * from "./main/entity";
-export * from "./main/repository";
-export * from "./main/unit-of-work";
-export * from "./infrastructure/constant";
-export * from "./infrastructure/utilities";
-export * from "./interface";
+export * from "@app/main/database-context";
+export * from "@app/main/entity";
+export * from "@app/main/repository";
+export * from "@app/main/unit-of-work";
+export * from "@app/infrastructure/constant";
+export * from "@app/infrastructure/utilities";
+export * from "@app/interface";
 
 export class QueryInput implements IQueryInput {
     @Property(Number)
@@ -71,9 +72,5 @@ export class QueryInput implements IQueryInput {
         this.sort = eval(mappings.sort) || undefined;
         this.where = eval(mappings.where) || undefined;
         return input;
-    }
-
-    static getType(): IClassType {
-        return Type.get("QueryInput", "class") as IClassType;
     }
 }

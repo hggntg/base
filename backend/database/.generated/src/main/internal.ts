@@ -1,7 +1,7 @@
 import mongoose, { Schema } from "mongoose";
-import { IDatabaseContextSession, IDocumentChange, IEntitySchema, IFakePreAggregate, IFakePreDocument, IFakePreModel, IFakePreQuery, IFakePlugin } from "../interface";
-import { ensureNew } from "../infrastructure/utilities";
-import { EntitySchema } from "./entity";
+import { IDatabaseContextSession, IDocumentChange, IEntitySchema, IFakePreAggregate, IFakePreDocument, IFakePreModel, IFakePreQuery, IFakePlugin } from "@app/interface";
+import { ensureNew } from "@app/infrastructure/utilities";
+import { EntitySchema } from "@app/main/entity";
 
 export class DbContextSession implements IDatabaseContextSession{
 	session: Promise<mongoose.ClientSession>;
@@ -10,10 +10,6 @@ export class DbContextSession implements IDatabaseContextSession{
 		this.session = _session;
 		this.documents = _documents;
 	}
-
-    static getType(): IClassType {
-        return Type.get("DbContextSession", "class") as IClassType;
-    }
 }
 
 export function getNumberOfArgument(list: Array<any>) {

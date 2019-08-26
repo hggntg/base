@@ -1,11 +1,11 @@
 import { gzip, gunzip } from "zlib";
-import { ICommunication, ConnectionOption } from "./interface"
+import { ICommunication, ConnectionOption } from "@app/interface"
 import { ILogger } from "@base/logger";
 import { connect, Connection } from "amqplib";
-import { Server } from "./server";
-import { Client } from "./client";
-import { Worker } from "./worker";
-import { Owner } from "./owner";
+import { Server } from "@app/server";
+import { Client } from "@app/client";
+import { Worker } from "@app/worker";
+import { Owner } from "@app/owner";
 
 export class Communication implements ICommunication{
     private options: ConnectionOption;

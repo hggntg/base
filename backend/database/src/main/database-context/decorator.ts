@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
-import { DBCONTEXT_KEY } from "../../infrastructure/constant";
-import { IDbContextMetadata, ICollection, IBaseEntity } from "../../interface";
+import { DBCONTEXT_KEY } from "@app/infrastructure/constant";
+import { IDbContextMetadata, ICollection, IBaseEntity } from "@app/interface";
 import { INamespace } from "@base/class/interface";
 import { Namespace } from "@base/class/utilities/namespace";
 

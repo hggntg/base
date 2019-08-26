@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
-import { IEntitySchema } from "../../interface";
-import { getEntitySchema } from "../entity";
+import { IEntitySchema } from "@app/interface";
+import { getEntitySchema } from "@app/main/entity";
 
 export default class Struct<T> extends mongoose.SchemaType {
     cast(instance: T) {

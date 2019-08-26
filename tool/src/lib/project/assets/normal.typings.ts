@@ -62,6 +62,8 @@ interface IGlobalType{
 
 declare let Type: IGlobalType;
 
+declare function isPathMatchesAlias(path: string, alias: string): boolean;
+declare function addAlias(alias: string, target: string): void;
 declare function getClass(target: any): { new(...args: any[]): any };
 declare function getMetadata<T>(key: string | Symbol, target: any);
 declare function defineMetadata (key: string | Symbol, value: any, target: any);

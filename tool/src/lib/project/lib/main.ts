@@ -232,14 +232,16 @@ async function processSourceFile(sourceFile: SourceFile, generatedPath: string){
 
         copiedSourceFile.getClasses().map((classMember) => {
             let className = classMember.getName();
-            classMember.addMethod({
-                isStatic: true,
-                name: "getType",
-                returnType: "IClassType",
-                statements: [
-                    `return Type.get("${className}", "class") as IClassType;`
-                ]
-            });
+            if(!classMember.getStaticMethod("getType")){
+                classMember.addMethod({
+                    isStatic: true,
+                    name: "getType",
+                    returnType: "IClassType",
+                    statements: [
+                        `return Type.get("${className}", "class") as IClassType;`
+                    ]
+                });
+            }
             classMember.getMethod("getType").removeBody().addStatements(`return Type.get("${className}", "class") as IClassType;`);
         });
         await Promise.resolve(promiseList).then(() => {

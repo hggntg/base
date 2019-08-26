@@ -1,5 +1,5 @@
-import { getProperties } from "./class";
-import { PropertyType, PropertyTypeValue } from "src/internal";
+import { getProperties } from "@app/utilities/class";
+import { PropertyType, PropertyTypeValue } from "@app/internal";
 
 // function generateMappingSource(source, mappings: { [key : string]: string[]} = {}){
 //     let mappingSource = {};

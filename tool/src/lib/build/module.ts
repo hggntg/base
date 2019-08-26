@@ -4,6 +4,7 @@ import shell from "shelljs";
 import { getRootBasePath } from "../../infrastructure/utilities";
 import rimraf from "rimraf";
 import replace from "replace-in-file";
+import { log } from "../../infrastructure/logger";
 function clean(root, pathName){
     let pathSegments = pathName.split("/");
 
@@ -55,6 +56,47 @@ function copy(source, dest, ...files){
     });
 }
 
+function readdirRecursive(sourcePath, fileList: string[] = []){
+    return new Promise((resolve, reject) => {
+        fs.readdir(sourcePath, (err, files) => {
+            if(err) reject(err);
+            else {
+                let promiseList = [];
+                files.map(file => {
+                    let filePath = path.join(sourcePath, file);
+                    promiseList.push(new Promise((resolve, reject) => {
+                        fs.stat(filePath, (err, stats) => {
+                            if(err) reject(err);
+                            else {
+                                if(stats.isDirectory()) resolve(true);
+                                else resolve(false);
+                            }
+                        })
+                    }));
+                });
+                Promise.all(promiseList).then(async (results) => {
+                    let resultLength = results.length;
+                    for(let i = 0; i < resultLength; i++){
+                        let result = results[i];
+                        if(result){
+                            try{
+                                await readdirRecursive(path.join(sourcePath, files[i]), fileList) as string[];
+                            }
+                            catch(e){
+                                log(e, "error");
+                            }
+                        }
+                        else{
+                            fileList.push(path.join(sourcePath, files[i]));
+                        }
+                    }
+                    resolve(fileList);
+                });
+            }
+        });
+    });
+}
+
 export function buildModule(name: string, src?: string){
     let storePath = getRootBasePath();
     let sourcePath = process.cwd();
@@ -87,10 +129,69 @@ export function buildModule(name: string, src?: string){
             return import(path.join(destPath, "tsconfig.json")).then(tsconfigObject => {
                 let compilerOptions = tsconfigObject.compilerOptions;
                 delete compilerOptions.outDir;
+                delete compilerOptions.paths;
+                delete compilerOptions.include;
                 let newTsconfigObject = {
                     compilerOptions: compilerOptions
                 }
                 return fs.writeFileSync(path.join(destPath, "tsconfig.json"), JSON.stringify(newTsconfigObject, null, 2));
+            });
+        }).then(() => {
+            return replace({
+                files: [path.join(destPath, "index.js")],
+                from: /addAlias\(.+\);/g,
+                to: ""
+            })
+        }).then(() => {
+            return readdirRecursive(destPath).then((fileList: string[]) => {
+                let filteredFileList = fileList;
+                let filteredListLength = filteredFileList.length;
+                let promiseList = [];
+
+                for(let i = 0; i < filteredListLength; i++){
+                    let filteredFile = filteredFileList[i];
+                    let localFilePath = filteredFile.replace(destPath, "");
+                    localFilePath = path.join("@app", localFilePath);
+                    localFilePath = localFilePath.replace(/\\/g, "/");
+                    let localFilePathSegment = localFilePath.split("/");
+                    let localFilePathLength = localFilePathSegment.length;
+                    promiseList.push(replace({
+                        files: filteredFile,
+                        from: /["']@app.*[^"']["']/g,
+                        to: function(match, file){
+                            match = match.match(/["']@app.*[^"']["']/g)[0];
+                            let tempMatch = match.replace(/["']/g, "");
+                            let tempMatchSegment = tempMatch.split("/");
+                            let tempMatchLength = tempMatchSegment.length;
+                            let replacedPath = "";
+                            let transformedPath = "";
+                            let diffIndex = -1;
+                            for(let j = 0; j < tempMatchLength - 1; j++){
+                                if(localFilePathSegment[j] !== tempMatchSegment[j]){
+                                    diffIndex = j;
+                                    break;
+                                }
+                                else {
+                                    replacedPath = path.join(replacedPath, tempMatchSegment[j]);
+                                }
+                            }
+                            if(diffIndex === -1){
+                                diffIndex = tempMatchLength - 1;
+                            }
+                            if(diffIndex >= 0){
+                                let restDot = Math.abs(localFilePathLength - 1 - diffIndex);
+                                for(let j = 0; j < restDot; j++){
+                                    transformedPath += "/..";
+                                }
+                            }
+                            if(!transformedPath) transformedPath = ".";
+                            else transformedPath = transformedPath.substring(1, transformedPath.length);
+                            replacedPath = replacedPath.replace(/\\/g, "/");
+                            return match.replace(replacedPath, transformedPath);
+                        }
+                    }));
+                }
+                return Promise.all(promiseList);
             });
         }).catch(err => {
             throw err;

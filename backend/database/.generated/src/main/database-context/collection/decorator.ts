@@ -1,7 +1,7 @@
 import { Property, getDependency, checkConstant, registerConstant } from "@base/class";
-import { getDbContextMetadata, DbContextMetadata } from "../decorator";
-import { DBCONTEXT_KEY, COLLECTION_KEY } from "../../../infrastructure/constant";
-import { IBaseEntity, IDbContextMetadata, ICollectionMetadata, IDatabaseContext, ICollection } from "../../../interface";
+import { getDbContextMetadata, DbContextMetadata } from "@app/main/database-context/decorator";
+import { DBCONTEXT_KEY, COLLECTION_KEY } from "@app/infrastructure/constant";
+import { IBaseEntity, IDbContextMetadata, ICollectionMetadata, IDatabaseContext, ICollection } from "@app/interface";
 import { ILogger } from "@base/logger";
 import { COLLECTION_SERVICE } from ".";
 

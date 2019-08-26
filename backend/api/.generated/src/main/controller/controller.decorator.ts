@@ -1,12 +1,12 @@
 import express from "express";
-import { CONTROLLER_KEY } from "../../shared/constant";
+import { CONTROLLER_KEY } from "@app/shared/constant";
 import { Property, getProperties, Injectable, getDependency, mapData, IBaseError, assignData } from "@base/class";
-import { IController, IControllerMetadata, IRoute, IMiddlewareInput, IControllerProperty } from "../../interface";
+import { IController, IControllerMetadata, IRoute, IMiddlewareInput, IControllerProperty } from "@app/interface";
 import { IncomingHttpHeaders } from "http";
 import { Stream, Readable } from "stream";
 import { ILogger, LOGGER_SERVICE } from "@base/logger";
-import { ResponseBody } from "../response";
-import { ResponseTemplate as Resp } from "../../main/response";
+import { ResponseBody } from "@app/main/response";
+import { ResponseTemplate as Resp } from "@app/main/response";
 
 export const CONTROLLER_SERVICE = "IController";
 

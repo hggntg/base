@@ -1,6 +1,6 @@
 import { EventEmitter } from "events";
 import { getDependency, Injectable } from "@base/class";
-import { ILogger, ILog, IMessageStyle, ILoggerProperty } from "./interface";
+import { ILogger, ILog, IMessageStyle, ILoggerProperty } from "@app/interface";
 import chalk from "chalk";
 
 const FONT_COLOR_DEFAULT = [

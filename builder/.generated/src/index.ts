@@ -1,6 +1,6 @@
 import "./core";
 import "./declare";
+addAlias("@app", __dirname);
 process.env.SUPPRESS_NO_CONFIG_WARNING = 'y';
-
-export * from "./interface";
-export * from "./domain";
+export * from "@app/interface";
+export * from "@app/domain";

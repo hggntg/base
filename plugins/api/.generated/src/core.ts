@@ -1,35 +1,81 @@
 import "reflect-metadata";
+import { join, sep, resolve, basename } from "path";
+import BuiltInModule from "module";
 const typeKey = "Type";
-function getClass(target: any): { new(...args: any[]): any } {
-    if (target) {
-        if (typeof target === "object" && typeof target.constructor === "function") {
-            return target.constructor;
+
+if("undefined" === typeof global["addAlias"]){
+    const Module = module.constructor || BuiltInModule;
+    const moduleAliasNames = [];
+    const moduleAliases = {
+
+    };
+
+    global["addAlias"] = function addAlias (alias: string, target: string){
+        moduleAliases[alias] = target;
+        if(!moduleAliasNames.includes(alias)) moduleAliasNames.push(alias);
+    }
+
+    global["isPathMatchesAlias"] = function isPathMatchesAlias (path: string, alias: string) {
+        // Matching /^alias(/|$)/
+        if (path.indexOf(alias) === 0) {
+            if (path.length === alias.length) return true
+            if (path[alias.length] === '/') return true
+        }
+
+        return false
+    }
+
+    const oldResolveFilename = (<any>Module)._resolveFilename;
+    (<any>Module)._resolveFilename = function (request, parentModule, isMain, options) {
+        for (var i = moduleAliasNames.length; i-- > 0;) {
+            var alias = moduleAliasNames[i];
+            if (isPathMatchesAlias(request, alias)) {
+                var aliasTarget = moduleAliases[alias];
+                // Custom function handler
+                if (typeof moduleAliases[alias] === 'function') {
+                    let fromPath = parentModule.filename;
+                    aliasTarget = moduleAliases[alias](fromPath, request, alias);
+                    if (!aliasTarget || typeof aliasTarget !== 'string') {
+                        throw new Error('[module-alias] Expecting custom handler function to return path.');
+                    }
+                }
+                request = join(aliasTarget, request.substr(alias.length));
+                // Only use the first match
+                break;
+            }
+        }
+        return oldResolveFilename.call(this, request, parentModule, isMain, options)
+    }
+}
+
+if("undefined" === typeof global["getClass"]){
+    global["getClass"] = function getClass(target: any): { new(...args: any[]): any } {
+        if (target) {
+            if (typeof target === "object" && typeof target.constructor === "function") {
+                return target.constructor;
+            }
+            else {
+                return target;
+            }
         }
         else {
-            return target;
+            throw new Error("Error target is undefined cannot identify a class");
         }
     }
-    else {
-        throw new Error("Error target is undefined cannot identify a class");
+}
+
+if("undefined" === typeof global["getMetadata"]){
+    global["getMetadata"] = function getMetadata<T>(key: string | Symbol, target: any) {
+        return Reflect.getMetadata(key, getClass(target)) as T;
     }
 }
-if("undefined" === typeof global["getClass"]){
-    global["getClass"] = getClass;
-}
 
-function getMetadata<T>(key: string | Symbol, target: any) {
-    return Reflect.getMetadata(key, getClass(target)) as T;
-}
-if("undefined" === typeof global["getMetadata"]){
-    global["getMetadata"] = getMetadata;
-}
-
-function defineMetadata (key: string | Symbol, value: any, target: any) {
-    return Reflect.defineMetadata(key, value, getClass(target));
-}
 if("undefined" === typeof global["defineMetadata"]){
-    global["defineMetadata"] = defineMetadata;
+    global["defineMetadata"] = function defineMetadata (key: string | Symbol, value: any, target: any) {
+        return Reflect.defineMetadata(key, value, getClass(target));
+    }
 }
+
 
 if("undefined" === typeof global["Type"]){
     type TType = {

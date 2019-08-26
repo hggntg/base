@@ -1,10 +1,10 @@
 import mongoose, { Document, HookSyncCallback } from "mongoose";
-import { getForeignField, BASE_ENTITY_SERVICE, getEntitySchema } from "../../../main/entity";
-import { IBaseEntity, ICollection, IDocumentChange, IQueryable, IWherable, ICollectionRestCommand, IDocumentQuery, IDbContextMetadata, IAfterQueryable, IQueryResult, TEntityForeignField, IFakePreDocument } from "../../../interface";
-import { getCollectionMetadata } from "./decorator";
-import { getDbContextMetadata } from "../decorator";
+import { getForeignField, BASE_ENTITY_SERVICE, getEntitySchema } from "@app/main/entity";
+import { IBaseEntity, ICollection, IDocumentChange, IQueryable, IWherable, ICollectionRestCommand, IDocumentQuery, IDbContextMetadata, IAfterQueryable, IQueryResult, IFakePreDocument } from "@app/interface";
+import { getCollectionMetadata } from "@app/main/database-context/collection/decorator";
+import { getDbContextMetadata } from "@app/main/database-context/decorator";
 import { Injectable, getDependency, assignData } from "@base/class";
-import { generateSet } from "../../../infrastructure/utilities";
+import { generateSet } from "@app/infrastructure/utilities";
 import objectPath from "object-path";
 
 type TRemovedFieldType = {
@@ -606,7 +606,7 @@ export class CollectionRestCommand<T> implements ICollectionRestCommand<T> {
 						end: false,
 						numOfRecords: queryInput.limit,
 						value: [],
-						page: Math.ceil(queryInput.skip / queryInput.limit) || 1,
+						page: Math.ceil(queryInput.skip / queryInput.limit),
 						total: total
 					}
 					queryResult.value = [value];
@@ -619,6 +619,7 @@ export class CollectionRestCommand<T> implements ICollectionRestCommand<T> {
 						queryResult.value = [];
 						queryResult.end = true;
 					}
+					
 					return queryResult;
 				}).catch(e => Promise.reject(e));
 			}

@@ -1,13 +1,14 @@
 import { LOGGER_SERVICE } from "@base/logger";
 import { ILogger } from "@base/logger"
 import { Injectable, getDependency } from "@base/class";
-import { SERVER_API_KEY, SERVER_WORKER_KEY, SERVER_ZONE_KEY } from "../../shared/constant";
-import { IAPIOptions, IAPI, IAPIMetadata, IWorkerMetadata, IWorker, IMiddlewareInput, IZone, IAPIZoneMetadata } from "../../interface";
+import { SERVER_API_KEY, SERVER_WORKER_KEY, SERVER_ZONE_KEY } from "@app/shared/constant";
+import { IAPIOptions, IAPI, IAPIMetadata, IWorkerMetadata, IWorker, IMiddlewareInput, IZone, IAPIZoneMetadata } from "@app/interface";
 import express, { Express, Request, Response, NextFunction } from "express";
 import { Namespace } from "@base/class/utilities/namespace";
-import { getController } from "../controller";
+import { getController } from "@app/main/controller";
 import { RequestHandler } from "express-serve-static-core";
-import { LogMiddleware } from "../middleware";
+import { LogMiddleware } from "@app/main/middleware";
+import SwaggerUi from "swagger-ui-express";
 
 function checkByPass(byPassPaths: string[], middleware: (req: Request, res: Response, next: NextFunction) => any) {
     if (!byPassPaths) byPassPaths = [];
@@ -77,7 +78,7 @@ export namespace Server {
                     });
                     this.zoneRoot.use(controllerProperty.routeBase, controller.subApp);
                     Object.values(controllerProperty.routes).map(route => {
-                        if(route){
+                        if (route) {
                             Object.values(route.list).map((r) => {
                                 Object.values(r.middlewares).map(middleware => {
                                     this.zoneRoot.use([controllerProperty.routeBase, r.url].join(""), middleware);
@@ -154,6 +155,110 @@ export namespace Server {
     export class API implements IAPI {
         private serverRoot: Express;
         protected logger: ILogger;
+        private swaggerDocument = {
+            swagger: "2.0",
+            info: {
+                description: "This is a sample server Petstore server. You can find out more about Swagger at [http://swagger.io](http://swagger.io) or on [irc.freenode.net, #swagger](http://swagger.io/irc/). For this sample, you can use the api key `special-key` to test the authorization filters.",
+                title: "This is just an api"
+            },
+            basePath: "/api",
+            tags: [
+                {
+                    name: "provider",
+                    description: "about provider"
+                }
+            ],
+            schemes: [
+                "http",
+                "https"
+            ],
+            paths: {
+                "/provider/create": {
+                    post: {
+                        tags: ["provider"],
+                        summary: "Create new provider",
+                        description: "Create new provider. It's mean register a new provider",
+                        operationId: "createProvider",
+                        consumes: [
+                            "application/json"
+                        ],
+                        produces: [
+                            "application/json"
+                        ],
+                        parameters: [
+                            {
+                                in: "body",
+                                name: "body",
+                                description: "Pet object that needs to be added to the store",
+                                required: true,
+                                schema: {
+                                    $ref: "#/definitions/Pet"
+                                }
+                            }
+                        ],
+                        responses: {
+                            405: {
+                                description: "Invalid input"
+                            }
+                        }
+                    }
+                }
+            },
+            definitions: {
+                Pet: {
+                    type: "object",
+                    required: [
+                        "name",
+                        "photoUrls"
+                    ],
+                    properties: {
+                        id: {
+                            type: "integer",
+                            format: "int64"
+                        },
+                        category: {
+                            $ref: "#/definitions/Category"
+                        },
+                        name: {
+                            type: "string",
+                            example: "doggie"
+                        },
+                        photoUrls: {
+                            type: "array",
+                            xml: {
+                                name: "photoUrl",
+                                wrapped: true
+                            },
+                            items: {
+                                type: "string"
+                            }
+                        },
+                        tags: {
+                            type: "array",
+                            xml: {
+                                name: "tag",
+                                wrapped: true
+                            },
+                            items: {
+                                $ref: "#/definitions/Tag"
+                            }
+                        },
+                        status: {
+                            type: "string",
+                            description: "pet status in the store",
+                            enum: [
+                                "available",
+                                "pending",
+                                "sold"
+                            ]
+                        }
+                    },
+                    xml: {
+                        name: "Pet"
+                    }
+                }
+            }
+        };
         start(): Promise<boolean> {
             let apiMetadata = getAPIMetadata(this);
             let logMiddleware = new LogMiddleware();
@@ -172,6 +277,7 @@ export namespace Server {
                 this.serverRoot.use(zoneKeys[index], zone.establish());
             });
             return new Promise((resolve, reject) => {
+                this.serverRoot.use("/documents", SwaggerUi.serve, SwaggerUi.setup(this.swaggerDocument));
                 this.serverRoot.listen(apiMetadata.options.port, () => {
                     this.logger.pushLog({
                         level: "info",

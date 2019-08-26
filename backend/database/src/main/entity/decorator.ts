@@ -1,14 +1,14 @@
 import { Property, getDependency } from "@base/class";
-import { SCHEMA_KEY, FOREIGN_KEY, PRE_SCHEMA_KEY, PRE_SCHEMA_LIST } from "../../infrastructure/constant";
+import { SCHEMA_KEY, FOREIGN_KEY, PRE_SCHEMA_KEY, PRE_SCHEMA_LIST } from "@app/infrastructure/constant";
 import {
 	IEntitySchema, IFakePreAggregate,
 	IFakePreDocument, HookDocumentType, HookModelType, IFakePreModel,
 	HookAggregateType, HookQueryType, IFakePreQuery, IFakePlugin, ForeignFieldOptions, IFakeSchemaFunction, TEntityForeignField, IBaseEntity
-} from "../../interface";
-import { ensureEntitySchemaInitiate, getEntitySchema, getPreEntitySchemaList } from "./entity-schema";
+} from "@app/interface";
+import { ensureEntitySchemaInitiate, getEntitySchema, getPreEntitySchemaList } from "@app/main/entity/entity-schema";
 import mongoose from "mongoose";
-import { mapSchemaMiddleware } from "../internal";
-import { BASE_ENTITY_SERVICE } from ".";
+import { mapSchemaMiddleware } from "@app/main/internal";
+import { BASE_ENTITY_SERVICE } from "@app/main/entity";
 
 
 export function Id() {

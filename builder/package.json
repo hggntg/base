@@ -1,6 +1,6 @@
 {
 	"name": "@base/builder",
-	"version": "1.0.66",
+	"version": "1.0.84",
 	"description": "Main core of base project",
 	"scripts": {
 		"test": "echo \"Error: no test specified\" && exit 1"
@@ -11,7 +11,7 @@
 	],
 	"license": "ISC",
 	"dependencies": {
-		"@base/logger": "^1.0.95",
+		"@base/logger": "^1.0.109",
 		"@types/config": "0.0.34",
 		"@types/dotenv": "^6.1.1",
 		"config": "^3.1.0",
@@ -19,12 +19,12 @@
 		"object-path": "^0.11.4"
 	},
 	"devDependencies": {
-		"@base/class": "^1.0.102",
-		"@types/node": "^10.14.9",
+		"@base/class": "^1.0.121",
+		"@types/node": "^10.14.16",
 		"@types/object-path": "^0.11.0",
 		"nodemon": "^1.19.1",
 		"ts-node": "^8.3.0",
-		"typescript": "^3.5.2"
+		"typescript": "^3.5.3"
 	},
 	"main": "index.js",
 	"types": "index.d.ts",

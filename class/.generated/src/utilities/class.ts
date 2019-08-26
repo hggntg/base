@@ -1,9 +1,9 @@
 import "reflect-metadata";
-import { PROPERTIES_KEY } from "../shared/constant";
-import { IProperty } from "../interface";
+import { PROPERTIES_KEY } from "@app/shared/constant";
+import { IProperty } from "@app/interface";
 import { Container } from "inversify";
-import { Property } from "../main/property";
-import { PropertyType } from "../internal";
+import { Property } from "@app/main/property";
+import { PropertyType } from "@app/internal";
 
 
 export function getProperties(target: any): IProperty[] {

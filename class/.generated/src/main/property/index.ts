@@ -1,2 +1,2 @@
-export * from "./class.decorator";
-export * from "./property.decorator";
+export * from "@app/main/property/class.decorator";
+export * from "@app/main/property/property.decorator";

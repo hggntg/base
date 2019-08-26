@@ -9,11 +9,11 @@ import {
 } from "../../interface";
 import mongoose, { Mongoose } from "mongoose";
 import { Injectable, getDependency, BaseError } from "@base/class";
-import { getDbContextMetadata } from "./decorator";
-import { DBCONTEXT_KEY, SCHEMA_KEY } from "../../infrastructure/constant";
-import { getEntitySchema } from "../entity";
+import { getDbContextMetadata } from "@app/main/database-context/decorator";
+import { DBCONTEXT_KEY, SCHEMA_KEY } from "@app/infrastructure/constant";
+import { getEntitySchema } from "@app/main/entity";
 import { LOGGER_SERVICE, ILogger } from "@base/logger";
-import { generateSchema, mapSchemaMiddleware, DbContextSession } from "../internal";
+import { generateSchema, mapSchemaMiddleware, DbContextSession } from "@app/main/internal";
 
 export const DATABASE_CONTEXT_SERVICE = "IDatabaseContext";
 

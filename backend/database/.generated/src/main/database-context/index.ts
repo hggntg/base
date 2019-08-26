@@ -8,12 +8,12 @@ import {
 	IEntitySchema
 } from "../../interface";
 import mongoose, { Mongoose } from "mongoose";
-import { Injectable, getDependency } from "@base/class";
-import { getDbContextMetadata } from "./decorator";
-import { DBCONTEXT_KEY, SCHEMA_KEY } from "../../infrastructure/constant";
-import { getEntitySchema } from "../entity";
+import { Injectable, getDependency, BaseError } from "@base/class";
+import { getDbContextMetadata } from "@app/main/database-context/decorator";
+import { DBCONTEXT_KEY, SCHEMA_KEY } from "@app/infrastructure/constant";
+import { getEntitySchema } from "@app/main/entity";
 import { LOGGER_SERVICE, ILogger } from "@base/logger";
-import { generateSchema, mapSchemaMiddleware, DbContextSession } from "../internal";
+import { generateSchema, mapSchemaMiddleware, DbContextSession } from "@app/main/internal";
 
 export const DATABASE_CONTEXT_SERVICE = "IDatabaseContext";
 
@@ -58,7 +58,19 @@ export class DatabaseContext implements IDatabaseContext {
 					}
 					promiseList.push(cmd);
 				}
-				return Promise.all(promiseList);
+				return Promise.all(promiseList).catch(err => {
+					if(err.name === 'MongoError'){
+						if(err.code === 11000){
+							throw new BaseError(409, 11000, "Conflict", "Duplicate document");
+						}
+						else {
+							throw new BaseError(500, err.code, err.name, err.message);
+						}
+					}
+					else{
+						throw err;
+					}
+				});
 			}
 			catch (e) {
 				throw e;
@@ -173,10 +185,6 @@ export class DatabaseContext implements IDatabaseContext {
 	constructor() {
 		this.logger = getDependency<ILogger>(LOGGER_SERVICE);
 	}
-
-    static getType(): IClassType {
-        return Type.get("DatabaseContext", "class") as IClassType;
-    }
 }
 
 export * from "./decorator";

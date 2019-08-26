@@ -1,9 +1,9 @@
 import { Connection, Channel } from "amqplib";
 import { queue, ErrorCallback } from "async";
 import { EventEmitter } from "events";
-import { Communication } from "../main";
+import { Communication } from "@app/main";
 import { ILogger } from "@base/logger";
-import { IOwner, IOwnerTask, IOwnerJobRequest } from "../interface";
+import { IOwner, IOwnerTask, IOwnerJobRequest } from "@app/interface";
 
 export class Owner implements IOwner{
     private readonly conn: Connection;

@@ -1,8 +1,8 @@
 import { Property, getDependency } from "@base/class";
-import { UNIT_OF_WORK_KEY } from "../../../infrastructure/constant";
-import { getUnitOfWorkMetadata } from "../decorator";
-import { IUnitOfWorkMetadata, IBaseRepository, IBaseEntity } from "../../../interface";
-import { BASE_REPOSITORY_SERVICE } from "../../repository";
+import { UNIT_OF_WORK_KEY } from "@app/infrastructure/constant";
+import { getUnitOfWorkMetadata } from "@app/main/unit-of-work/decorator";
+import { IUnitOfWorkMetadata, IBaseRepository, IBaseEntity } from "@app/interface";
+import { BASE_REPOSITORY_SERVICE } from "@app/main/repository";
 
 export function RepositoryProperty<K, T extends IBaseRepository<K, IBaseEntity<K>>>(classImp: { new(): T }) {
 	return function (target: any, propertyKey: string) {

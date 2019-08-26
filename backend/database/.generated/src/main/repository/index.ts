@@ -1,8 +1,8 @@
-import { ICollection, IBaseEntity, IBaseRepository, IWherable, IQueryable, IRepositoryAfterQueryable, IRepositoryQuery, IRepositoryRestCommand, IDbContextMetadata, IQueryResult, IRepositoryRestCommandableForOne } from "../../interface";
+import { ICollection, IBaseEntity, IBaseRepository, IWherable, IQueryable, IRepositoryAfterQueryable, IRepositoryQuery, IRepositoryRestCommand, IDbContextMetadata, IQueryResult, IRepositoryRestCommandableForOne } from "@app/interface";
 import { Injectable, getDependency, getConstant, assignData } from "@base/class";
-import { COLLECTION_SERVICE, getDbContextMetadata } from "../database-context";
-import { getRepositoryMetadata } from "./decorator";
-import { getCollectionMetadata } from "../database-context/collection/decorator";
+import { COLLECTION_SERVICE, getDbContextMetadata } from "@app/main/database-context";
+import { getRepositoryMetadata } from "@app/main/repository/decorator";
+import { getCollectionMetadata } from "@app/main/database-context/collection/decorator";
 
 export const BASE_REPOSITORY_SERVICE = "IBaseRepository";
 

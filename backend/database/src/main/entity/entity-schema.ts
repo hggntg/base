@@ -1,13 +1,13 @@
 import mongoose from "mongoose";
 import { Property } from "@base/class";
-import { ensureNew } from "../../infrastructure/utilities";
-import { SCHEMA_KEY, PRE_SCHEMA_KEY, PRE_SCHEMA_LIST } from "../../infrastructure/constant";
+import { ensureNew } from "@app/infrastructure/utilities";
+import { SCHEMA_KEY, PRE_SCHEMA_LIST } from "@app/infrastructure/constant";
 import {
 	EntitySchemaDefinition,
 	IFakePreAggregate, IFakePreModel,
 	IFakePreDocument, IFakePreQuery, IFakePlugin,
 	IEntitySchema
-} from "../../interface";
+} from "@app/interface";
 
 export class EntitySchema<T> implements IEntitySchema<T> {
 	@Property(String)

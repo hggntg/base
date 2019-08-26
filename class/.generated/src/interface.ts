@@ -1,4 +1,4 @@
-import { PropertyType } from "./internal";
+import { PropertyType } from "@app/internal";
 
 export interface IPropertyDecorator{
     (target: object, propertyKey: string): any;

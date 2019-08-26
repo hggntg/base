@@ -1,5 +1,6 @@
-export * from "./server";
-export * from "./client";
-export * from "./worker";
-export * from "./main";
-export * from "./interface";
+addAlias("@app", __dirname);
+export * from "@app/server";
+export * from "@app/client";
+export * from "@app/worker";
+export * from "@app/main";
+export * from "@app/interface";

@@ -1,6 +1,6 @@
 import * as asyncHooks from "async_hooks";
-import { INamespace, IContext, IContextValue, IContextOriginValue, IContextProperty } from "../interface";
-import { assignData } from "./data";
+import { INamespace, IContext, IContextValue, IContextOriginValue, IContextProperty } from "@app/interface";
+import { assignData } from "@app/utilities/data";
 
 const AsyncFunction = Object.getPrototypeOf(async function(){}).constructor;
 

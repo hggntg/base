@@ -24,7 +24,7 @@ declare const commander : CommanderStatic;
             return compile();
         }
         else if(action === "fix"){
-            return fix();
+            return fix(scope);
         }
         else if(action === "generate"){
             if(scope === "live") return generate(scope);

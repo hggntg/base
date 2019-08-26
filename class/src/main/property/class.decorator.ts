@@ -1,5 +1,5 @@
 import { injectable, inject, named } from "inversify";
-import { registerDependency, generateNewableIdentifier, checkDependency, registerDependencyAgain } from "../../utilities/class";
+import { registerDependency, generateNewableIdentifier, checkDependency, registerDependencyAgain } from "@app/utilities/class";
 
 export function Injectable<T>(serviceName: string, newable?: boolean, isDefault?: boolean) {
     return (target: any) => {

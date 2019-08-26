@@ -1,6 +1,6 @@
-import { IProperty } from "../../interface";
-import { PROPERTIES_KEY, REAL_DATA_TYPE_KEY } from "../../shared/constant";
-import { PropertyType, PropertyTypeValue } from "../../internal";
+import { IProperty } from "@app/interface";
+import { PROPERTIES_KEY, REAL_DATA_TYPE_KEY } from "@app/shared/constant";
+import { PropertyType, PropertyTypeValue } from "@app/internal";
 
 
 export function PropertyArray(type: { new(...args: any[]): any }): PropertyType {

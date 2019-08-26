@@ -4,6 +4,8 @@ import { log } from "../../infrastructure/logger";
 import { join } from "path";
 import rimraf, { Options } from "rimraf";
 
+const TypescriptRoot = join(__dirname, "../../node_modules/typescript/bin");
+
 function clean(path, options: Options, retry = 0, cb) {
     if (retry > 0) {
         log("Retry remove build folder " + retry + " time(s).");
@@ -41,13 +43,13 @@ export function compile() {
             fs.copyFileSync(join(dockerPath, "Dockerfile"), join(buildFolder, "Dockerfile"));
         }
 
-        let output = shell.exec(`tsc -p ${tsconfigPath} --declaration false --outDir ${buildFolder}/src`);
+        let output = shell.exec(`tsc -p ${tsconfigPath} --declaration false --outDir ${buildFolder}/src`, { cwd: TypescriptRoot });
         if (output.stderr) {
             log(output.stderr, "error");
         }
         else {
             log(output.stdout);
-            log("Build done....");
+            log("Compile done....");
         }
     }
     else {
@@ -73,13 +75,13 @@ export function compile() {
                 fs.copyFileSync(join(dockerPath, "Dockerfile"), join(buildFolder, "Dockerfile"));
             }
 
-            let output = shell.exec(`tsc -p ${tsconfigPath} --declaration false --outDir ${buildFolder}/src`);
+            let output = shell.exec(`tsc -p ${tsconfigPath} --declaration false --outDir ${buildFolder}/src`, {cwd: TypescriptRoot});
             if (output.stderr) {
                 log(output.stderr, "error");
             }
             else {
                 log(output.stdout);
-                log("Build done....");
+                log("Compile done....");
             }
         });
     }

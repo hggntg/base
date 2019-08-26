@@ -1,5 +1,5 @@
-import { IBaseEntity, IRepositoryMetadata } from "../../interface";
-import { REPOSITORY_KEY } from "../../infrastructure/constant";
+import { IBaseEntity, IRepositoryMetadata } from "@app/interface";
+import { REPOSITORY_KEY } from "@app/infrastructure/constant";
 
 export function Repository<K, T extends IBaseEntity<K>>(entity: { new(): T}): (target: any) => any{
 	return function(target: any){

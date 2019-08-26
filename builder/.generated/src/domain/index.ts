@@ -2,7 +2,7 @@ import * as dotenv from "dotenv";
 import { IConfig } from "config";
 import * as objectPath from "object-path";
 import { mapData, Injectable, getDependency, use } from "@base/class";
-import { IApp, IConfig as IBaseConfig, IAppProperty} from "../interface";
+import { IApp, IConfig as IBaseConfig, IAppProperty} from "@app/interface";
 import { LOGGER_SERVICE, ILogger } from "@base/logger";
 import { INamespaceStatic } from "@base/class/interface";
 import { Namespace } from "@base/class/utilities/namespace";
@@ -84,6 +84,12 @@ export class App implements IApp {
         this.logger.trace(true);
         this.logTag = input.logTag;
         this.logger.initValue({appName : input.appName});
+        if(input.aliases){
+            let aliases = Object.keys(input.aliases);
+            Object.values(input.aliases).map((target, index) => {
+                addAlias("@" + aliases[index], target);
+            });
+        }
     }
     constructor(@use(LOGGER_SERVICE) private logger: ILogger) {
         this.event = new EventEmitter();
