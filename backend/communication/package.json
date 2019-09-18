@@ -1,6 +1,6 @@
 {
 	"name": "@base/communication",
-	"version": "1.0.89",
+	"version": "1.0.96",
 	"description": "Message queue use Rabbitmq",
 	"main": "index.js",
 	"types": "index.d.ts",
@@ -17,8 +17,9 @@
 		"uuid": "^3.3.2"
 	},
 	"devDependencies": {
-		"@base/class": "^1.0.121",
-		"@base/logger": "^1.0.109",
+		"@base/class": "^1.0.124",
+		"@base/logger": "^1.0.116",
+		"@types/amqplib": "^0.5.13",
 		"@types/async": "^2.4.2",
 		"@types/node": "^12.7.2",
 		"nodemon": "^1.19.1",

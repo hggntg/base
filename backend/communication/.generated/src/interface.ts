@@ -33,6 +33,7 @@ export interface IRPCRequest extends IRPCBody{
 export interface IRPCOption{
     retry?: number;
     timeout?: number;
+    durable?: boolean;
 }
 
 export interface ITask{
@@ -107,6 +108,7 @@ export interface IWorkerOptions{
     timeout?: number;
     maxPriority?: number;
     prefetch?: number;
+    durable?: boolean;
 }
 
 export interface IWorker {
@@ -132,4 +134,5 @@ export type ConnectionOption = string | IConnectionOptionObject;
 
 export interface IListenOption{
     prefecth: number;
+    durable?: boolean;
 }

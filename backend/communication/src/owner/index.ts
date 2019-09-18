@@ -5,7 +5,7 @@ import { Communication } from "@app/main";
 import { ILogger } from "@base/logger";
 import { IOwner, IOwnerTask, IOwnerJobRequest } from "@app/interface";
 
-export class Owner implements IOwner{
+export class Owner implements IOwner {
     private readonly conn: Connection;
     private channel: Channel;
     private readonly logger: ILogger;
@@ -33,21 +33,26 @@ export class Owner implements IOwner{
     }
 
     private sendJobInBack(task: IOwnerTask, callback: ErrorCallback) {
-        this.channel.assertQueue(task.jobQueue, { durable: true, maxPriority: 10 });
-        let priority = task.ownerJobRequest.priority;
-        let jobRequest = {
-            method : task.ownerJobRequest.method,
-            args: task.ownerJobRequest.args
-        };
-        Communication.compress(Communication.ensureBodyString({
-            from: task.jobQueue,
-            content: jobRequest
-        })).then(sendingBuffer => {
-            this.channel.sendToQueue(task.jobQueue, sendingBuffer, { persistent: true, priority: priority });
-            setTimeout(() => {
-                callback();
-            }, 1);
-        }); 
+        Communication.checkAndAssertQueue(this.channel, task.jobQueue, { durable: true, maxPriority: 10 }).then(() => {
+            let priority = task.ownerJobRequest.priority;
+            let jobRequest = {
+                method: task.ownerJobRequest.method,
+                args: task.ownerJobRequest.args
+            };
+            Communication.compress(Communication.ensureBodyString({
+                from: task.jobQueue,
+                content: jobRequest
+            })).then(sendingBuffer => {
+                this.channel.sendToQueue(task.jobQueue, sendingBuffer, { persistent: true, priority: priority });
+                setTimeout(() => {
+                    callback();
+                }, 1);
+            }).catch(e => {
+                callback(e);
+            });
+        }).catch(e => {
+            callback(e);
+        });
     }
 
     pushJob(jobQueue: string, jobRequest: IOwnerJobRequest) {

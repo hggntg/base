@@ -180,6 +180,10 @@ class FakeSchemaFunction<T> implements IFakeSchemaFunction<T>{
 		this.middleware = _middleware;
 		this.indexes = _indexes;
 	}
+
+    static getType(): IClassType {
+        return Type.get("FakeSchemaFunction", "class") as IClassType;
+    }
 }
 
 function isSchemaOptions(input): input is mongoose.SchemaOptions {

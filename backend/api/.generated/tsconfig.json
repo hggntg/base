@@ -21,6 +21,9 @@
         }
     },
     "include": [
-        "src"
+        "src/*.ts",
+        "src/**/*.ts",
+        "src/*.json",
+        "src/**/*.json"
     ]
 }

@@ -96,41 +96,42 @@ export class Worker implements IWorker {
         retry: 1,
         timeout: 5000
     }, onReceive: (receivedJob: IWorkerJobRequest) => void ) : Promise<boolean>{
-        return this.conn.createChannel().then(channel => {
+        return this.conn.createChannel().then((channel) => {
             this.logger.pushDebug("Ready to receive job from " + jobQueue, this.logTag);
-            channel.assertQueue(jobQueue, { durable: true, maxPriority: options.maxPriority });
-            channel.prefetch(options.prefetch);
-            let consumerTag = null;
-            return channel.consume(jobQueue, async (msg) => {
-                msg.content = await Communication.decompress(msg.content);
-                let data = Communication.reverseBody(msg.content.toString());
-                let content = data.content;
-                let jobRequest = new WorkerJobRequest({...content, retry: options.retry, timeout: options.timeout}, this.logger);
-                this.logger.pushDebug("Received a job", this.logTag);
-                jobRequest.once("finish", (thing) => {
-                    if(thing instanceof Error){
-                        this.logger.pushError(thing, this.logTag);
+            return Communication.checkAndAssertQueue(channel, jobQueue, {durable: true, maxPriority: options.maxPriority}).then(() => {
+                channel.prefetch(options.prefetch);
+                let consumerTag = null;
+                return channel.consume(jobQueue, async (msg) => {
+                    msg.content = await Communication.decompress(msg.content);
+                    let data = Communication.reverseBody(msg.content.toString());
+                    let content = data.content;
+                    let jobRequest = new WorkerJobRequest({...content, retry: options.retry, timeout: options.timeout}, this.logger);
+                    this.logger.pushDebug("Received a job", this.logTag);
+                    jobRequest.once("finish", (thing) => {
+                        if(thing instanceof Error){
+                            this.logger.pushError(thing, this.logTag);
+                        }
+                        else{
+                            this.logger.pushDebug(JSON.stringify(thing), this.logTag);
+                        }
+                        channel.ack(msg);
+                    });
+                    return onReceive(jobRequest);
+                }, { noAck: false }).then(ok => {
+                    consumerTag = ok.consumerTag;
+                    return true;
+                }).catch(err => {
+                    if(consumerTag){
+                        return channel.cancel(consumerTag).then(() => {
+                            throw new Error(err);
+                        }).catch(e => {
+                            throw new Error(e);
+                        });
                     }
                     else{
-                        this.logger.pushDebug(JSON.stringify(thing), this.logTag);
-                    }
-                    channel.ack(msg);
-                });
-                return onReceive(jobRequest);
-            }, { noAck: false }).then(ok => {
-                consumerTag = ok.consumerTag;
-                return true;
-            }).catch(err => {
-                if(consumerTag){
-                    return channel.cancel(consumerTag).then(() => {
                         throw new Error(err);
-                    }).catch(e => {
-                        throw new Error(e);
-                    });
-                }
-                else{
-                    throw new Error(err);
-                }
+                    }
+                });
             });
         });
     }

@@ -15,13 +15,18 @@ interface IAppendHttpHeader {
     headers: { [key in string]: string }
 }
 
+interface IControllerContext {
+    req: express.Request,
+    res: express.Response
+}
+
 function generateRouteExecution(this: IController, property) {
     return async (req: express.Request, res: express.Response) => {
         let controllerProperty = getController(this);
         let index = controllerProperty.routes[property.name].listMapping[req.route.path];
         let currentRoute = controllerProperty.routes[property.name].list[index];
         try {
-            let input = checkInput<typeof currentRoute.bodyType, typeof currentRoute.queryType, typeof currentRoute.paramType>(currentRoute.bodyType, currentRoute.queryType, currentRoute.paramType, req);
+            let input = checkInput<typeof currentRoute.bodyType, typeof currentRoute.queryType, typeof currentRoute.paramType>(currentRoute.bodyType, currentRoute.queryType, currentRoute.paramType, {req: req, res: res});
             let result = this[property.name](input);
             if (result instanceof Stream || result instanceof Readable) {
                 result.once("response-error", (err: IBaseError) => {
@@ -60,7 +65,7 @@ function generateRouteExecution(this: IController, property) {
                     }
                 });
             }
-            else if (typeof result.then === "function" && typeof result.catch === "function") {
+            else if (result && typeof result.then === "function" && typeof result.catch === "function") {
                 try {
                     return await result.then((value: ResponseBody | Readable | Stream) => {
                         if (value instanceof Readable || value instanceof Stream) {
@@ -268,29 +273,31 @@ export interface IRequestParam<T = any, K = any, L = any> {
     query: K;
     params: L;
     body: T,
-    headers: IncomingHttpHeaders
+    headers: IncomingHttpHeaders,
+    context: IControllerContext
 }
 
 
 
-function checkInput<T, K, L>(bodyClass: { new(): T }, queryClass: { new(): K }, paramClass: { new(): L }, req: express.Request) {
+function checkInput<T, K, L>(bodyClass: { new(): T }, queryClass: { new(): K }, paramClass: { new(): L }, context: IControllerContext) {
     try {
         let input: IRequestParam<T, K> = {
             query: {} as K,
             params: {},
             body: {} as T,
-            headers: req.headers
+            headers: context.req.headers,
+            context: context
         }
         if (bodyClass) {
-            let body = mapData(bodyClass, req.body || {});
+            let body = mapData(bodyClass, context.req.body || {});
             input.body = body;
         }
         if (queryClass) {
-            let query = mapData(queryClass, req.query || {});
+            let query = mapData(queryClass, context.req.query || {});
             input.query = query;
         }
         if (paramClass) {
-            let params = mapData(paramClass, req.params || {});
+            let params = mapData(paramClass, context.req.params || {});
             input.params = params;
         }
         return input;

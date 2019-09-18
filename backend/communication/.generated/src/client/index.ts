@@ -14,12 +14,12 @@ export class RPCResult<T> implements IRPCResult<T>{
     body: IRPCResultListBody<T> | IRPCResultSingleBody<T>;
     constructor();
     constructor(input: IRPCResult<T>);
-    constructor(arg0?: IRPCResult<T>){
+    constructor(arg0?: IRPCResult<T>) {
         this.status = arg0.status;
         this.message = arg0.message;
         this.body = arg0.body;
     }
-    result(){
+    result() {
         return new RPCPlainResult(this.body);
     }
 
@@ -30,25 +30,25 @@ export class RPCResult<T> implements IRPCResult<T>{
 
 class RPCPlainResult<T>{
     private body: IRPCResultListBody<T> | IRPCResultSingleBody<T>;
-    list(): IRPCResultListBody<T>{
-        if(Array.isArray(this.body.content)){
+    list(): IRPCResultListBody<T> {
+        if (Array.isArray(this.body.content)) {
             return this.body as IRPCResultListBody<T>;
         }
-        else{
+        else {
             throw new Error("RPC Result is not a list");
         }
     }
-    single(): IRPCResultSingleBody<T>{
-        if(!Array.isArray(this.body.content)){
+    single(): IRPCResultSingleBody<T> {
+        if (!Array.isArray(this.body.content)) {
             return this.body as IRPCResultSingleBody<T>;
         }
-        else{
+        else {
             throw new Error("RPC Result is not a single");
         }
     }
     constructor();
     constructor(input: IRPCResultListBody<T> | IRPCResultSingleBody<T>);
-    constructor(arg0?: IRPCResultListBody<T> | IRPCResultSingleBody<T>){
+    constructor(arg0?: IRPCResultListBody<T> | IRPCResultSingleBody<T>) {
         this.body = arg0;
     }
 
@@ -71,7 +71,7 @@ export class Client implements IClient {
                 }
                 callback();
             }).catch(err => {
-                this.logger.pushError(err, this.logTag);    
+                this.logger.pushError(err, this.logTag);
                 callback();
             });
         }
@@ -119,7 +119,7 @@ export class Client implements IClient {
             let resultQueue = context.get<string>("queueNameResult");
             let outerId = context.getCurrentId();
             context.holdById(outerId);
-            return await channel.assertQueue(resultQueue, { exclusive: true, autoDelete: true }).then(q => {
+            return await Communication.checkAndAssertQueue(channel, resultQueue, { exclusive: true, autoDelete: true }).then((q) => {
                 this.logger.pushDebug("Ready to receive result", this.logTag);
                 channel.prefetch(1);
                 context.cloneById(outerId);
@@ -132,7 +132,7 @@ export class Client implements IClient {
                         self.logger.pushDebug("Receive a result from " + q.queue, self.logTag);
                         msg.content = await Communication.decompress(msg.content);
                         let data = Communication.reverseBody(msg.content.toString());
-                        self.event.emit(msg.properties.correlationId, { err: null, data: data.content});
+                        self.event.emit(msg.properties.correlationId, { err: null, data: data.content });
                         let consumerTag = context.get<string>("consumerTag");
                         if (consumerTag) {
                             channel.cancel(consumerTag).then(() => { });
@@ -147,11 +147,11 @@ export class Client implements IClient {
                 let consumerTag = ok.consumerTag;
                 let flag = 0;
                 let watcher = setTimeout((consumerTag: string, correlationId: string, options: IRPCOption) => {
-                    if(flag++ < options.retry){
+                    if (flag++ < options.retry) {
                         watcher.refresh();
                         this.logger.pushDebug("Request " + correlationId + " retries " + flag + " time(s)", this.logTag);
                     }
-                    else{
+                    else {
                         if (consumerTag) {
                             channel.cancel(consumerTag).then(() => {
                                 this.logger.pushError("Request " + correlationId + " reached the timeout", this.logTag);

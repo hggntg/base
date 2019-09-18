@@ -40,10 +40,6 @@ export class EntitySchema<T> implements IEntitySchema<T> {
 		this.virutals = [];
 		this.indexes = [];
 	}
-
-    static getType(): IClassType {
-        return Type.get("EntitySchema", "class") as IClassType;
-    }
 }
 
 export function ensureEntitySchemaInitiate<T>(input: EntitySchema<T>) {

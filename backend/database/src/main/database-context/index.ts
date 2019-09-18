@@ -7,7 +7,7 @@ import {
 	IDatabaseContextSession,
 	IEntitySchema
 } from "../../interface";
-import mongoose, { Mongoose } from "mongoose";
+import mongoose from "mongoose";
 import { Injectable, getDependency, BaseError } from "@base/class";
 import { getDbContextMetadata } from "@app/main/database-context/decorator";
 import { DBCONTEXT_KEY, SCHEMA_KEY } from "@app/infrastructure/constant";
@@ -19,6 +19,8 @@ export const DATABASE_CONTEXT_SERVICE = "IDatabaseContext";
 
 @Injectable(DATABASE_CONTEXT_SERVICE, true, true)
 export class DatabaseContext implements IDatabaseContext {
+	private processId: string = "database";
+	private processListener: NodeJS.MessageListener;
 	list<K, T extends IBaseEntity<K>>(name: string): ICollection<K, T> {
 		return this[name];
 	}
@@ -123,6 +125,20 @@ export class DatabaseContext implements IDatabaseContext {
 		this.logger.pushInfo("Ready to connect to database", "database-context");
 		return new Promise<boolean>((resolve, reject) => {
 			mongoose.createConnection(connectionInfo.uri, connectionInfo.connectionOptions).then(connection => {
+				if(!this.processListener){
+					this.processListener = (message) => {
+						if(message && message.event === "STOP"){
+							connection.close().then(() => {
+								this.logger.pushInfo("Disconnect to database", "database");
+								process.watcher.emit("STOP", this.processId);
+							}).catch(e => {
+								this.logger.pushError(e, "database");
+								process.watcher.emit("STOP", this.processId);
+							})
+						}
+					}
+					process.on("message", this.processListener);
+				}
 				dbContext.connection = connection;
 				defineMetadata(DBCONTEXT_KEY, dbContext, getClass(this));
 				try {
@@ -184,6 +200,7 @@ export class DatabaseContext implements IDatabaseContext {
 	protected logger: ILogger
 	constructor() {
 		this.logger = getDependency<ILogger>(LOGGER_SERVICE);
+		process.watcher.joinFrom(this.processId);
 	}
 }
 

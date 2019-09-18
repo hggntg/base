@@ -154,6 +154,8 @@ export namespace Server {
     @Injectable(API_SERVICE, true, true)
     export class API implements IAPI {
         private serverRoot: Express;
+        private processListener: NodeJS.MessageListener;
+        private processId = "api-server";
         protected logger: ILogger;
         private swaggerDocument = {
             swagger: "2.0",
@@ -278,7 +280,7 @@ export namespace Server {
             });
             return new Promise((resolve, reject) => {
                 this.serverRoot.use("/documents", SwaggerUi.serve, SwaggerUi.setup(this.swaggerDocument));
-                this.serverRoot.listen(apiMetadata.options.port, () => {
+                const server = this.serverRoot.listen(apiMetadata.options.port, () => {
                     this.logger.pushLog({
                         level: "info",
                         message: {
@@ -296,7 +298,23 @@ export namespace Server {
                                 }
                             ]
                         }
-                    })
+                    });
+                    if(!this.processListener){
+                        this.processListener = (message, sendHandle) => {
+                            if(message && message.event === "STOP"){
+                                server.close((err) => {
+                                    if(err) {
+                                        this.logger.pushError(err, "api");
+                                    }
+                                    else {
+                                        this.logger.pushInfo("Disconnect to server", "api");
+                                    }
+                                    process.watcher.emit("STOP", this.processId);
+                                });
+                            }
+                        }
+                        process.on("message", this.processListener);
+                    }
                     resolve(true);
                 }).once("error", (err) => {
                     reject(err);
@@ -314,6 +332,7 @@ export namespace Server {
         constructor() {
             this.serverRoot = express();
             this.logger = getDependency<ILogger>(LOGGER_SERVICE);
+            process.watcher.joinFrom(this.processId);
         }
     }
     export function DWorker() {

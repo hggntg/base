@@ -242,7 +242,7 @@ export class BaseRepository<K, T extends IBaseEntity<K>> implements IBaseReposit
 	private repositoryCommandOne: IRepositoryRestCommandableForOne<K>;
 	private get dbContext() {
 		let repositoryMetadata = getRepositoryMetadata<K, T>(this);
-		let collectionMetadata = getCollectionMetadata(repositoryMetadata.entity);
+		let collectionMetadata = repositoryMetadata ? getCollectionMetadata(repositoryMetadata.entity) : null;
 		let dbContextMetadata = getDbContextMetadata(collectionMetadata.dbContextClass);
 		return dbContextMetadata;
 	}

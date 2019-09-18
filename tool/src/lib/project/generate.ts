@@ -16,6 +16,9 @@ export function generate(live?: "live"){
     if (isValid) {
         let isLive = live ? true : false;
         mainEventSource.emit("start", cwd, false, isLive);
+        mainEventSource.once("end", () => {
+            process.exit(0);
+        });
     }
     else {
         throw new Error("You must be stay in your base project folder");

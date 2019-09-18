@@ -1,6 +1,6 @@
 {
 	"name": "@base/logger",
-	"version": "1.0.109",
+	"version": "1.0.116",
 	"description": "Asynchronous logger",
 	"main": "index.js",
 	"types": "index.d.ts",
@@ -13,7 +13,7 @@
 	],
 	"license": "ISC",
 	"dependencies": {
-		"@base/class": "^1.0.121",
+		"@base/class": "^1.0.124",
 		"chalk": "^2.4.2",
 		"winston": "^3.2.1"
 	},

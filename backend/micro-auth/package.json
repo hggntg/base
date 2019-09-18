@@ -1,0 +1,29 @@
+{
+	"name": "@base/micro-auth",
+	"version": "1.0.7",
+	"description": "",
+	"main": "index.js",
+	"types": "index.d.ts",
+	"scripts": {
+		"test": "echo \"Error: no test specified\" && exit 1"
+	},
+	"author": "",
+	"license": "ISC",
+	"devDependencies": {
+		"@base/class": "^1.0.124",
+		"@types/jsonwebtoken": "^8.3.3",
+		"@types/lru-cache": "^5.1.0",
+		"@types/node": "^12.7.5",
+		"typescript": "^3.6.3"
+	},
+	"baseDependencies": [
+		"@base/class",
+		"@base/logger"
+	],
+	"dependencies": {
+		"@base/logger": "^1.0.116",
+		"jsonwebtoken": "^8.5.1",
+		"lru-cache": "^5.1.1",
+		"node-json-db": "^1.0.1"
+	}
+}

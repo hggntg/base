@@ -1,6 +1,6 @@
 {
 	"name": "@base/builder",
-	"version": "1.0.84",
+	"version": "1.0.96",
 	"description": "Main core of base project",
 	"scripts": {
 		"test": "echo \"Error: no test specified\" && exit 1"
@@ -11,15 +11,11 @@
 	],
 	"license": "ISC",
 	"dependencies": {
-		"@base/logger": "^1.0.109",
-		"@types/config": "0.0.34",
-		"@types/dotenv": "^6.1.1",
-		"config": "^3.1.0",
-		"dotenv": "^6.2.0",
+		"@base/logger": "^1.0.116",
 		"object-path": "^0.11.4"
 	},
 	"devDependencies": {
-		"@base/class": "^1.0.121",
+		"@base/class": "^1.0.124",
 		"@types/node": "^10.14.16",
 		"@types/object-path": "^0.11.0",
 		"nodemon": "^1.19.1",

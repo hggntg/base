@@ -147,8 +147,12 @@ export class Logger implements ILogger {
                 this.pushLog(message, "error", tag, errorStyle);
             }
             else if(message instanceof Error){
-                let errorMessage = `${message.message}\n${message.stack}`;
+                let errorMessage = `${message.message}`;
                 this.pushLog(errorMessage.trim(), "error", tag, errorStyle);
+                let stacks = message.stack.split("\n");
+                stacks.map(stack => {
+                    this.pushLog(stack.trim(), "error", tag, errorStyle);
+                });
             }
         }
     }
@@ -167,14 +171,20 @@ export class Logger implements ILogger {
     constructor() {
         this.eventInstance = new EventEmitter();
         this.on("data", (data) => {
-            let outputString = null;
+            let message: string = "";
             if(typeof data !== "string"){
-                outputString = JSON.stringify(data);
+                message = JSON.stringify(data);
             }
             else{
-                outputString = data;
+                message = data;
             }
-            process.stdout.write(outputString + "\n");
+            if(message !== "\n"){
+                message = message.replace(/[\n\n]/g, "\n");
+                if(message.lastIndexOf("\n") !== message.length - 1){
+                    message += "\n";
+                }
+            }
+            process.stdout.write(message);
         });
     }
     initValue(input: Partial<ILoggerProperty>){

@@ -5,6 +5,7 @@ import { build } from "./build";
 import { fix } from "./fix";
 import { generate } from "./generate";
 import { compile } from "./compile";
+import { bundle } from "./bundle";
 
 declare const commander : CommanderStatic;
 
@@ -29,6 +30,9 @@ declare const commander : CommanderStatic;
         else if(action === "generate"){
             if(scope === "live") return generate(scope);
             else return generate();
+        }
+        else if(action === "bundle"){
+            return bundle();
         }
         throw new Error("Missing arguments");
     });

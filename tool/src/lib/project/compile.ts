@@ -3,6 +3,8 @@ import shell from "shelljs";
 import { log } from "../../infrastructure/logger";
 import { join } from "path";
 import rimraf, { Options } from "rimraf";
+import replace from "replace-in-file";
+import { readdirRecursive } from "./internal";
 
 const TypescriptRoot = join(__dirname, "../../node_modules/typescript/bin");
 
@@ -80,8 +82,67 @@ export function compile() {
                 log(output.stderr, "error");
             }
             else {
-                log(output.stdout);
-                log("Compile done....");
+                buildFolder = join(buildFolder, "src");
+                replace({
+                    files: [join(buildFolder, "index.js")],
+                    from: /addAlias\(.+\);/g,
+                    to: ""
+                }).then(() => {
+                    return readdirRecursive(buildFolder).then((fileList: string[]) => {
+                        let filteredFileList = fileList;
+                        let filteredListLength = filteredFileList.length;
+                        let promiseList = [];
+        
+                        for(let i = 0; i < filteredListLength; i++){
+                            let filteredFile = filteredFileList[i];
+                            let localFilePath = filteredFile.replace(buildFolder, "");
+                            localFilePath = join("@app", localFilePath);
+                            localFilePath = localFilePath.replace(/\\/g, "/");
+                            let localFilePathSegment = localFilePath.split("/");
+                            let localFilePathLength = localFilePathSegment.length;
+                            promiseList.push(replace({
+                                files: filteredFile,
+                                from: /["']@app.*[^"']["']/g,
+                                to: function(match, file){
+                                    match = match.match(/["']@app.*[^"']["']/g)[0];
+                                    let tempMatch = match.replace(/["']/g, "");
+                                    let tempMatchSegment = tempMatch.split("/");
+                                    let tempMatchLength = tempMatchSegment.length;
+                                    let replacedPath = "";
+                                    let transformedPath = "";
+                                    let diffIndex = -1;
+                                    for(let j = 0; j < tempMatchLength - 1; j++){
+                                        if(localFilePathSegment[j] !== tempMatchSegment[j]){
+                                            diffIndex = j;
+                                            break;
+                                        }
+                                        else {
+                                            replacedPath = join(replacedPath, tempMatchSegment[j]);
+                                        }
+                                    }
+                                    if(diffIndex === -1){
+                                        diffIndex = tempMatchLength - 1;
+                                    }
+                                    if(diffIndex >= 0){
+                                        let restDot = Math.abs(localFilePathLength - 1 - diffIndex);
+                                        for(let j = 0; j < restDot; j++){
+                                            transformedPath += "/..";
+                                        }
+                                    }
+                                    if(!transformedPath) transformedPath = ".";
+                                    else transformedPath = transformedPath.substring(1, transformedPath.length);
+                                    replacedPath = replacedPath.replace(/\\/g, "/");
+                                    return match.replace(replacedPath, transformedPath);
+                                }
+                            }));
+                        }
+                        return Promise.all(promiseList);
+                    });
+                }).then(() => {
+                    log("Compile done....");
+                }).catch(e => {
+                    log(e, "error");
+                });
             }
         });
     }

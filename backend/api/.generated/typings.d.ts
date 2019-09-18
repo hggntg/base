@@ -59,6 +59,20 @@ interface IGlobalType{
     has(name: string, kind: string): boolean;
 }
 
+type TWatcherEvent = "STOP"; 
+
+declare interface IWatcher {
+    emit(events: TWatcherEvent, id: string): void;
+    init(): void;
+    joinFrom(id: string): void;
+}
+
+declare module NodeJS {
+    interface Process {
+        watcher: IWatcher;
+    }
+}
+
 declare let Type: IGlobalType;
 
 declare function isPathMatchesAlias(path: string, alias: string): boolean;

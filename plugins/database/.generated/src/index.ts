@@ -11,9 +11,5 @@ export interface IExtendDatabase{
 }
 
 export class ExtendDatabase extends App implements IExtendDatabase{
-    db: IUnitOfWork;
-
-    static getType(): IClassType {
-        return Type.get("ExtendDatabase", "class") as IClassType;
-    }
+    db: IUnitOfWork;    
 }

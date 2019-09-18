@@ -1,19 +1,24 @@
 import { gzip, gunzip } from "zlib";
 import { ICommunication, ConnectionOption } from "@app/interface"
-import { ILogger } from "@base/logger";
-import { connect, Connection } from "amqplib";
+import { ILogger, LOGGER_SERVICE } from "@base/logger";
+import { connect, Connection, Channel, Options, Replies } from "amqplib";
 import { Server } from "@app/server";
 import { Client } from "@app/client";
 import { Worker } from "@app/worker";
 import { Owner } from "@app/owner";
+import { getDependency } from "@base/class";
 
 export class Communication implements ICommunication{
     private options: ConnectionOption;
     private conn: Connection;
     private readonly logger: ILogger;
+    private static logger: ILogger;
     constructor(_options : ConnectionOption, _logger: ILogger){
         this.options = _options;
         this.logger = _logger;
+        if(!Communication.logger){
+            Communication.logger = getDependency<ILogger>(LOGGER_SERVICE);
+        }
     }
     static ensureBodyString(body: any) {
         if (Array.isArray(body) || typeof body === "object") {
@@ -80,6 +85,19 @@ export class Communication implements ICommunication{
                         }
                     });
                 }
+            });
+        });
+    }
+    static checkAndAssertQueue(channel: Channel, queueName: string, options: Options.AssertQueue): Promise<Replies.AssertQueue>{
+        return channel.assertQueue(queueName, options).then((queueResult) => {
+            return queueResult;
+        }).catch(e => {
+            this.logger.pushError(e, "communication");
+            return channel.checkQueue(queueName).then((queueResult) => {
+                return channel.assertQueue(queueResult.queue).then(() => {
+                    this.logger.pushInfo("You assert to queue " + queueName + " but not with your configs", "communication");
+                    return queueResult;            
+                });
             });
         });
     }

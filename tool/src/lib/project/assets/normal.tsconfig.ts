@@ -1,5 +1,5 @@
 export const tsconfig =
-    `{
+`{
     "compilerOptions": {
         "target": "es5",
         "module": "commonjs",
@@ -15,13 +15,16 @@ export const tsconfig =
         "experimentalDecorators": true,
         "emitDecoratorMetadata": true,
         "resolveJsonModule": true,
-        "rootDir": "src",
+        "rootDir": ".",
         "paths": {
             "@app/*": ["src/*"],
             "@app": ["src/index.ts"]
         }
     },
     "include": [
-        "src"
+        "src/*.ts",
+        "src/**/*.ts",
+        "src/*.json",
+        "src/**/*.json"
     ]
 }`;

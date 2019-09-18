@@ -1,16 +1,15 @@
-import * as dotenv from "dotenv";
-import { IConfig } from "config";
 import * as objectPath from "object-path";
+import fs from "fs";
 import { mapData, Injectable, getDependency, use } from "@base/class";
-import { IApp, IConfig as IBaseConfig, IAppProperty} from "@app/interface";
+import { IApp, IConfig as IBaseConfig, IAppProperty } from "@app/interface";
 import { LOGGER_SERVICE, ILogger } from "@base/logger";
 import { INamespaceStatic } from "@base/class/interface";
 import { Namespace } from "@base/class/utilities/namespace";
 import { EventEmitter } from "events";
+import { join } from "path";
 
 export const CONFIG = Symbol.for("Config");
 export const APP = Symbol.for("App");
-
 export const CONFIG_SERVICE = "IBaseConfig";
 
 @Injectable(CONFIG_SERVICE, true)
@@ -18,7 +17,7 @@ abstract class AConfig implements IBaseConfig {
     abstract setConfig(config: any);
     abstract getSection<T>(classImp: { new(): T }, sectionName: string): T;
     protected configRoot: any;
-    constructor() {}
+    constructor() { }
 }
 
 @Injectable(CONFIG_SERVICE, true, true)
@@ -26,7 +25,7 @@ class DoubleConfig extends AConfig {
     constructor() {
         super();
     }
-    setConfig(_configRoot: IConfig) {
+    setConfig(_configRoot) {
         this.configRoot = _configRoot;
     }
     getSection<T>(ClassImp: { new(): T }, sectionName: string): T {
@@ -46,10 +45,10 @@ export class App implements IApp {
     log(message: string);
     log(obj: object);
     log(arg0: any) {
-        if(typeof arg0 === "string"){
+        if (typeof arg0 === "string") {
             this.logger.pushLog(arg0, "silly", this.logTag);
         }
-        else{
+        else {
             this.logger.pushLog(JSON.stringify(arg0), "silly", this.logTag);
         }
     }
@@ -72,11 +71,11 @@ export class App implements IApp {
     context: INamespaceStatic;
     type: "Worker" | "API";
     config: IBaseConfig;
-    initValue(input: Partial<IAppProperty>){
+    initValue(input: Partial<IAppProperty>) {
         this.logger.trace(true);
         this.logTag = input.logTag;
-        this.logger.initValue({appName : input.appName});
-        if(input.aliases){
+        this.logger.initValue({ appName: input.appName });
+        if (input.aliases) {
             let aliases = Object.keys(input.aliases);
             Object.values(input.aliases).map((target, index) => {
                 addAlias("@" + aliases[index], target);
@@ -104,18 +103,58 @@ export class App implements IApp {
         });
     }
     loadConfig(path: string) {
-        this.info("Reading config from " + path);
-        let envConfig = dotenv.config({ path: path });
-        if (envConfig.error) {
-            throw envConfig.error;
+        if (fs.existsSync(path)) {
+            this.info("Reading config from " + path);
+            let env = fs.readFileSync(path, { encoding: "utf8" }).toString();
+            let envSegment = env.split("\n");
+            envSegment = envSegment.map(envItem => {
+                let envItemSegment = envItem.split("=");
+                envItemSegment = envItemSegment.map(innerEnvItem => {
+                    return innerEnvItem.trim();
+                });
+                return envItemSegment.join("=");
+            })
+            envSegment.map(envItem => {
+                let envItemSegment = envItem.split("=");
+                if (envItemSegment[0] === "NODE_ENV" || !process.env[envItemSegment[0]]) {
+                    process.env[envItemSegment[0]] = envItemSegment[1];
+                }
+            });
         }
-        let configPath = envConfig.parsed.NODE_CONFIG_DIR;
-        if (!configPath) {
-            throw new Error("Missing NODE_CONFIG_DIR in .env");
+        if (!process.env.NODE_ENV) {
+            process.env.NODE_ENV = "development";
         }
-        let config = require("config");
-        this.config = getDependency<IBaseConfig>(CONFIG_SERVICE, true);
-        this.config.setConfig(config);
+        if (!process.env.NODE_CONFIG_DIR) {
+            throw new Error("Missing config directory");
+        }
+        let configDir = join(process.cwd(), process.env.NODE_CONFIG_DIR);
+        if(fs.existsSync(configDir)){
+            let configFileName = process.env.NODE_ENV + ".json";
+            if (configFileName === "development.json") {
+                if (!fs.existsSync(join(configDir, configFileName))) {
+                    configFileName = "default.json";
+                }
+            }
+            let configFilePath = join(configDir, configFileName);
+            if (fs.existsSync(configFilePath)) {
+                let configString = fs.readFileSync(configFilePath, { encoding: "utf8" });
+                configString = configString.replace(/\n/g, " ").replace(/\s\s/g, " ");
+                try {
+                    let config = JSON.parse(configString);
+                    this.config = getDependency(CONFIG_SERVICE, true);
+                    this.config.setConfig(config);
+                }
+                catch(e){
+                    throw e;
+                }
+            }
+            else {
+                throw new Error("Missing config file for environment " + process.env.NODE_ENV);
+            }
+        }
+        else {
+            throw new Error("Missing config dir at path " + process.env.NODE_CONFIG_DIR);
+        }
     }
     serveAs(_type: "Worker" | "API") {
         this.type = _type;

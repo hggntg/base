@@ -5,10 +5,9 @@ import queue from "queue";
 import chokidar from "chokidar";
 import { ChildProcess, spawn } from "child_process";
 import { corets } from "../assets/normal.corets";
-import { log, clear } from "../../../infrastructure/logger";
+import { log } from "../../../infrastructure/logger";
 
 import fsNode from "fs";
-import npmRun from "npm-run";
 import sysPath from "path";
 import { parallelLimit } from "async";
 import { cpus } from "os";
@@ -19,7 +18,7 @@ const q = queue({
 });
 
 export const mainEventSource = new EventEmitter();
-
+const tsNodePath = sysPath.join(__dirname, "../../../node_modules/ts-node/dist/bin.js");
 
 
 interface IFileItem {
@@ -70,7 +69,7 @@ async function main(sourceFiles: string[], generatedPath, isFirstTime: boolean) 
     let divideTime = Math.ceil(sourceFiles.length / 9);
     let taskSegment = divideTask(sourceFiles, divideTime);
     log("Divide in " + divideTime + " segments");
-    if(taskSegment.length > 1){
+    if (taskSegment.length > 1) {
         log("Has " + taskSegment.length + " tasks");
     }
     else {
@@ -78,7 +77,7 @@ async function main(sourceFiles: string[], generatedPath, isFirstTime: boolean) 
     }
     let parallelTasks = taskSegment.map((sourceSegmentList, index) => {
         let tempSourceSegmentList = sourceSegmentList.slice(0);
-        if(tempSourceSegmentList.length > 1){
+        if (tempSourceSegmentList.length > 1) {
             log("Has " + tempSourceSegmentList.length + " files in task " + (index + 1));
         }
         else {
@@ -229,6 +228,16 @@ mainEventSource.once("start", (_appPath: string, _isRun: boolean, _isLive: boole
     });
 });
 
+function checkProcessKilled(processServer: ChildProcess): Promise<boolean> {
+    return new Promise((resolve, reject) => {
+        processServer.once("exit", (code) => {
+            resolve(true);
+        }).on("error", (err) => {
+            reject(err);
+        })
+    });
+}
+
 mainEventSource.on("change", async (isFirstTime: boolean) => {
     let sourceFilePaths = [];
     Object.values(fileList).map(fileItem => {
@@ -236,43 +245,43 @@ mainEventSource.on("change", async (isFirstTime: boolean) => {
             sourceFilePaths.push(fileItem.path);
         }
     });
-    log("Ready to generate source files........");
-    await main(sourceFilePaths, generatePath, isFirstTime).then(() => {
-        Object.keys(fileList).map(key => {
-            fileList[key].status = "NOT_CHANGED";
-        });
-        pending = false;
-        log("Generating done........");
-        if (isLive) {
-            log("Waiting for changes.....");
-            if (firstTimeStartServer && isRun) {
-                log("Starting to run app");
-                startServerProcess = npmRun("nodemon", {cwd: ""});
-                startServerProcess.stdout.off("data", () => { }).on("data", (chunk) => {
-                    log(chunk.toString());
-                });
-                startServerProcess.stdout.off("error", () => { }).on("error", (chunk) => {
-                    log(chunk.toString());
-                });
-                startServerProcess.stderr.off("data", (err) => { }).on("data", (chunk) => {
-                    log(chunk.toString());
-                });
-                startServerProcess.stderr.off("error", (err) => { }).on("error", (chunk) => {
-                    log(chunk.toString());
-                });
-                startServerProcess.off("error", (err) => { }).on("error", (err) => {
-                    log(err.message + "\n" + err.stack, "error");
-                });
-                startServerProcess.unref();
-                firstTimeStartServer = false;
+    if (startServerProcess) {
+        startServerProcess.send({ event: "STOP" });
+        try{
+            let isKilled = await checkProcessKilled(startServerProcess);
+            if (isKilled) {
+                log("Kill old process done.........");
+                startServerProcess = null;
             }
         }
-        else {
-            process.exit(0);
+        catch(e){
+            log(e, "error");
+            process.exit(1);
         }
-    }).catch(err => {
-        throw err;
-    });
+    }
+    log("Ready to generate source files........");
+    if (!startServerProcess) {
+        await main(sourceFilePaths, generatePath, isFirstTime).then(() => {
+            Object.keys(fileList).map(key => {
+                fileList[key].status = "NOT_CHANGED";
+            });
+            pending = false;
+            log("Generating done........");
+            if (isLive) {
+                log("Waiting for changes.....");
+                if (isRun) {
+                    log("Starting to run app");
+                    startServerProcess = spawn("node", [tsNodePath, "./.generated/src"], { cwd: process.cwd(), env: { NPM_CONFIG_COLOR: "always", FORCE_COLOR: "1" }, stdio: ['inherit', 'inherit', 'inherit', 'ipc'] });
+                    startServerProcess.unref();
+                }
+            }
+            else {
+                mainEventSource.emit("end");
+            }
+        }).catch(err => {
+            throw err;
+        });
+    }
 });
 
 process.on("SIGINT", () => {

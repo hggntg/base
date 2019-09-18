@@ -48,23 +48,24 @@ export class Server implements IServer {
         let self = this;
         this.conn.createChannel().then(channel => {
             this.channel = channel;
-            channel.assertQueue(this.queueName, { durable: false, maxPriority: 10 });
-            channel.prefetch(options.prefecth);
-            return channel.consume(this.queueName, async function (msg) {
-                msg.content = await Communication.decompress(msg.content);
-                let data = Communication.reverseBody(msg.content.toString());
-                let body: IRPCBody = data.content;
-                let request: IRPCRequest = new RPCRequest({
-                    server: self,
-                    args: body.args,
-                    hasCallback: body.hasCallback,
-                    method: body.method,
-                    rawMessage: msg
+            return Communication.checkAndAssertQueue(channel, this.queueName, {durable: false, maxPriority: 10}).then(() => {
+                channel.prefetch(options.prefecth);
+                return channel.consume(this.queueName, async function (msg) {
+                    msg.content = await Communication.decompress(msg.content);
+                    let data = Communication.reverseBody(msg.content.toString());
+                    let body: IRPCBody = data.content;
+                    let request: IRPCRequest = new RPCRequest({
+                        server: self,
+                        args: body.args,
+                        hasCallback: body.hasCallback,
+                        method: body.method,
+                        rawMessage: msg
+                    });
+                    self.event.emit("REQUEST", request);
+                }).then(ok => {
+                    this.logger.pushInfo(JSON.stringify(ok), this.logTag);
                 });
-                self.event.emit("REQUEST", request);
-            }).then(ok => {
-                this.logger.pushInfo(JSON.stringify(ok), this.logTag);
-            })
+            });
         }).catch((err: Error) => {
             this.logger.pushError(err, this.logTag);
         });
