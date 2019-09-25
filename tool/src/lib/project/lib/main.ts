@@ -56,8 +56,11 @@ interface IUpdateSourceFile {
     text: string
 }
 const appPath = args.appPath;
+const target = args.target;
+const targetName = target === "root" ? "index.ts" : args.target + ".ts";
+const tsconfig = args.tsconfig;
 const project = new Project({
-    tsConfigFilePath: sysPath.resolve(sysPath.join(appPath, "tsconfig.json"))
+    tsConfigFilePath: sysPath.resolve(sysPath.join(appPath, tsconfig))
 });
 const fs: FileSystemHost = project.getFileSystem();
 const typeDeclares: (IInterfaceType | IClassType)[] = [];
@@ -155,7 +158,11 @@ async function processSourceFile(sourceFile: SourceFile, generatedPath: string){
     let filePath = sourceFile.getFilePath().substring(srcIndex, sourceFile.getFilePath().length);
     log("Generating file " + filePath);
     try {
-        let destPath = `${generatedPath}/${filePath}`;
+        let destPathName = filePath;
+        if(filePath === `src/${targetName}`){
+            destPathName = "src/index.ts";
+        }
+        let destPath = `${generatedPath}/${destPathName}`;
         if (await fs.fileExists(destPath)) {
             await fs.delete(destPath);
         }
@@ -210,7 +217,7 @@ async function processSourceFile(sourceFile: SourceFile, generatedPath: string){
             throw e;
         }
 
-        if (filePath === "src/index.ts") {
+        if (filePath === `src/${targetName}`) {
             let importCoreText = `import "./core";\n`;
             copiedSourceFile.insertText(0, `import "./core";\n`);
             copiedSourceFile.insertText(importCoreText.length, `import "./declare";\n`);

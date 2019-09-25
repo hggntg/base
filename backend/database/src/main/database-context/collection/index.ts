@@ -228,8 +228,8 @@ function replaceSearchKeys(input: object, key: string, replaceKey){
 			delete input[key];
 		}
 		else {
-			if(typeof input[key] === "object"){
-				input = replaceSearchKeys(input[key], key, replaceKey);
+			if(typeof input[keys[i]] === "object"){
+				input[keys[i]] = replaceSearchKeys(input[keys[i]], key, replaceKey);
 			}
 		}
 	}
@@ -740,6 +740,8 @@ export class Collection<K, T extends IBaseEntity<K>> implements ICollection<K, T
 		try {
 			let model = this.model;
 			let document = new model(doc);
+			let entity = this.entity;
+			let entitySchema = getEntitySchema(entity);
 			let newDoc = document.toObject();
 			this.setChanges(document);
 			let removedFields: TRemovedFieldType[] = generateRemovedFields<K, T>([], getClass(this.entity), document);
@@ -765,6 +767,21 @@ export class Collection<K, T extends IBaseEntity<K>> implements ICollection<K, T
 					}
 					delete newDoc[removedField.localField];
 				});
+				entitySchema.middleware.map(middleware => {
+					if (middleware.type === "preDocument") {
+						let preDocumentMiddleware = middleware as IFakePreDocument<typeof entity>;
+						if (preDocumentMiddleware.hook === "save") {
+							(<HookSyncCallback<Document & typeof entity>>preDocumentMiddleware.arg0).apply(newDoc, [(err) => {
+								if (err) {
+									throw err;
+								}
+								else {
+									return;
+								}
+							}]);
+						}
+					}
+				});
 				newDoc.id = newDoc._id;
 				newDoc = removeMongooseField(newDoc);
 				return newDoc;
@@ -781,6 +798,8 @@ export class Collection<K, T extends IBaseEntity<K>> implements ICollection<K, T
 		try {
 			let model = this.model;
 			let documents = [];
+			let entity = this.entity;
+			let entitySchema = getEntitySchema(entity);
 			docs.map((doc, index) => {
 				let document = new model(doc);
 				this.setChanges(document);
@@ -807,6 +826,21 @@ export class Collection<K, T extends IBaseEntity<K>> implements ICollection<K, T
 							}
 						}
 						delete newDoc[removedField.localField];
+					});
+					entitySchema.middleware.map(middleware => {
+						if (middleware.type === "preDocument") {
+							let preDocumentMiddleware = middleware as IFakePreDocument<typeof entity>;
+							if (preDocumentMiddleware.hook === "save") {
+								(<HookSyncCallback<Document & typeof entity>>preDocumentMiddleware.arg0).apply(newDoc, [(err) => {
+									if (err) {
+										throw err;
+									}
+									else {
+										return;
+									}
+								}]);
+							}
+						}
 					});
 					newDoc.id = newDoc._id;
 					newDoc = removeMongooseField(newDoc);

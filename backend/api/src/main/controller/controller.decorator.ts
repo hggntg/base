@@ -1,6 +1,6 @@
 import express from "express";
 import { CONTROLLER_KEY } from "@app/shared/constant";
-import { Property, getProperties, Injectable, getDependency, mapData, IBaseError, assignData } from "@base/class";
+import { Property, getProperties, Injectable, getDependency, mapData, IBaseError, assignData, BaseError } from "@base/class";
 import { IController, IControllerMetadata, IRoute, IMiddlewareInput, IControllerProperty } from "@app/interface";
 import { IncomingHttpHeaders } from "http";
 import { Stream, Readable } from "stream";
@@ -299,7 +299,7 @@ function checkInput<T, K, L>(bodyClass: { new(): T }, queryClass: { new(): K }, 
         return input;
     }
     catch (e) {
-        throw e;
+        throw new BaseError(400, 400, e.name, e.message);
     }
 }
 

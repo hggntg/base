@@ -69,7 +69,7 @@ export function buildModule(name: string, src?: string){
     shell.exec("npm version patch");
     copy(sourcePath, destPath, "package.json", "README.md", "logo");
     sourcePath = src ? path.join(sourcePath, src) : sourcePath;
-    copy(sourcePath, destPath,"tsconfig.json", "typings.d.ts");
+    copy(sourcePath, destPath,"tsconfig.json", "typings.d.ts", "hooks");
     let tsconfigPath = path.join(sourcePath, "tsconfig.json");
     let output = null;
     output = shell.exec(`tsc -p ${tsconfigPath} --outDir ${destPath}`);
@@ -117,10 +117,10 @@ export function buildModule(name: string, src?: string){
                     let localFilePathLength = localFilePathSegment.length;
                     promiseList.push(replace({
                         files: filteredFile,
-                        from: /["']@app.*[^"']["']/g,
+                        from: /from\s*["']@app.*[^"']["']|require\(["']@app.*[^"']["']/g,
                         to: function(match, file){
-                            match = match.match(/["']@app.*[^"']["']/g)[0];
-                            let tempMatch = match.replace(/["']/g, "");
+                            match = match.match(/from\s*["']@app.*[^"']["']|require\(["']@app.*[^"']["']/g)[0];
+                            let tempMatch = match.replace(/from\s*["']|require\(["']|["']/g, "");
                             let tempMatchSegment = tempMatch.split("/");
                             let tempMatchLength = tempMatchSegment.length;
                             let replacedPath = "";
@@ -147,7 +147,9 @@ export function buildModule(name: string, src?: string){
                             if(!transformedPath) transformedPath = ".";
                             else transformedPath = transformedPath.substring(1, transformedPath.length);
                             replacedPath = replacedPath.replace(/\\/g, "/");
-                            return match.replace(replacedPath, transformedPath);
+                            match = match.replace(replacedPath, transformedPath);
+                            
+                            return match;
                         }
                     }));
                 }

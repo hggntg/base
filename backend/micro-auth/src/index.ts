@@ -1,10 +1,11 @@
 import jwt from "jsonwebtoken";
 import LRU from "lru-cache";
 import { JwtObject, IJwToken } from "./model/jwt.model";
-import { getDependency, Injectable } from "@base/class";
+import { getDependency, Injectable, BaseError } from "@base/class";
 import { ILogger, LOGGER_SERVICE } from "@base/logger";
 import { JsonDB } from "node-json-db";
 import { Config } from "node-json-db/dist/lib/JsonDBConfig";
+import express from "express";
 
 const changeLetters = [
     { from: "E", to: "\$" },
@@ -178,6 +179,38 @@ export class MicroAuth implements IBaseClass<IMicroAuth>{
                 }
                 catch (e) {
                     this.logger.pushError(e, "auth");
+                }
+            }
+        }
+    }
+    toMiddleware(): (req: express.Request, res: express.Response, next: express.NextFunction) => void {
+        return (req: express.Request, res: express.Response, next: express.NextFunction) => {
+            let token = req.headers.token;
+            if (!token) {
+                let error = new BaseError(403, 403, "Forbidden", "Have no permission");
+                res.status(error.code).json({
+                    message: error.message,
+                    status: error.name
+                });
+            }
+            else {
+                try {
+                    let jwtObject = this.check(token as string);
+                    let tempReq = <any>req;
+                    if(!tempReq.user){
+                        tempReq.user = {};
+                    }
+                    tempReq.user.uniqueId = jwtObject.idt;
+                    tempReq.user.name = jwtObject.inf.name;
+                    req = tempReq;
+                    next();
+                }
+                catch (e) {
+                    let error = new BaseError(400, 400, e.name, e.message);
+                    res.status(error.code).json({
+                        message: error.message,
+                        status: error.name
+                    });
                 }
             }
         }

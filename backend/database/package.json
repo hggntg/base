@@ -1,6 +1,6 @@
 {
 	"name": "@base/database",
-	"version": "1.0.344",
+	"version": "1.0.355",
 	"description": "Database use mongoose",
 	"scripts": {
 		"dev": "ts-node src/main/adapter",
@@ -20,8 +20,8 @@
 		"queue": "^6.0.1"
 	},
 	"devDependencies": {
-		"@base/class": "^1.0.124",
-		"@base/logger": "^1.0.116",
+		"@base/class": "^1.0.127",
+		"@base/logger": "^1.0.118",
 		"@types/node": "^12.7.2",
 		"@types/node-ipc": "^9.1.1",
 		"@types/object-path": "^0.11.0",

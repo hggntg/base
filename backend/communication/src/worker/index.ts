@@ -86,15 +86,10 @@ export class Worker implements IWorker {
         this.logger = _logger;
     }
 
-    getJob(jobQueue: string, options: IWorkerOptions = {
-        maxPriority: 10,
-        prefetch: 1,
-        retry: 1,
-        timeout: 5000
-    }, onReceive: (receivedJob: IWorkerJobRequest) => void ) : Promise<boolean>{
+    private assertQueue(jobQueue: string, options: IWorkerOptions,  onReceive: (receivedJob: IWorkerJobRequest) => void, usedToFail?: boolean): Promise<boolean>{
         return this.conn.createChannel().then((channel) => {
             this.logger.pushDebug("Ready to receive job from " + jobQueue, this.logTag);
-            return Communication.checkAndAssertQueue(channel, jobQueue, {durable: true, maxPriority: options.maxPriority}).then(() => {
+            return Communication.checkAndAssertQueue(channel, jobQueue, {durable: true, maxPriority: options.maxPriority}, usedToFail).then(() => {
                 channel.prefetch(options.prefetch);
                 let consumerTag = null;
                 return channel.consume(jobQueue, async (msg) => {
@@ -129,6 +124,25 @@ export class Worker implements IWorker {
                     }
                 });
             });
+        }).catch(e => {
+            if(e.name === "WRONG_QUEUE_OPTIONS"){
+                return this.assertQueue(jobQueue, options, onReceive, true).then(() => {
+                    this.logger.pushSilly(e.message, "communication");
+                    return true;
+                });
+            }
+            else {
+                return Promise.reject(e);
+            }
         });
+    }
+
+    getJob(jobQueue: string, options: IWorkerOptions = {
+        maxPriority: 10,
+        prefetch: 1,
+        retry: 1,
+        timeout: 5000
+    }, onReceive: (receivedJob: IWorkerJobRequest) => void ) : Promise<boolean>{
+        return this.assertQueue(jobQueue, options, onReceive);
     }
 }

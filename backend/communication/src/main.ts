@@ -6,7 +6,7 @@ import { Server } from "@app/server";
 import { Client } from "@app/client";
 import { Worker } from "@app/worker";
 import { Owner } from "@app/owner";
-import { getDependency } from "@base/class";
+import { getDependency, use } from "@base/class";
 
 export class Communication implements ICommunication{
     private options: ConnectionOption;
@@ -88,24 +88,34 @@ export class Communication implements ICommunication{
             });
         });
     }
-    static checkAndAssertQueue(channel: Channel, queueName: string, options: Options.AssertQueue): Promise<Replies.AssertQueue>{
-        return channel.assertQueue(queueName, options).then((queueResult) => {
-            return queueResult;
-        }).catch(e => {
-            this.logger.pushError(e, "communication");
-            return channel.checkQueue(queueName).then((queueResult) => {
-                return channel.assertQueue(queueResult.queue).then(() => {
-                    this.logger.pushInfo("You assert to queue " + queueName + " but not with your configs", "communication");
-                    return queueResult;            
-                });
-            });
+    static checkAndAssertQueue(channel: Channel, queueName: string, options: Options.AssertQueue, usedToFail?: boolean): Promise<Replies.AssertQueue>{
+        channel.on("error", (err) => {
+            this.logger.pushError(err.code, "RabbitMQ(Channel)");
         });
+        if(usedToFail){
+            return channel.checkQueue(queueName).then((checkQueueResult) => {
+                return checkQueueResult;
+            });
+        }
+        else {
+            return channel.assertQueue(queueName, options).then((queueResult) => {
+                return queueResult;
+            }).catch(e => {
+                this.logger.pushError(e.code, "communication");
+                let error = new Error("Warning: You assert to queue " + queueName + " with wrong queue options, current options is " + JSON.stringify(options));
+                error.name = "WRONG_QUEUE_OPTIONS";
+                return Promise.reject(error);
+            });
+        }
     }
 
     connect(){
         return new Promise((resolve, reject) => {
             connect(this.options).then(conn => {
                 this.conn = conn;
+                this.conn.on("error", (err) => {
+                    this.logger.pushError(err.code, "Rabbitmq(Connect)");
+                });
                 resolve(true);
             }).catch(err => {
                 reject(err);

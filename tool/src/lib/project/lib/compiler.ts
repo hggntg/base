@@ -8,7 +8,7 @@ import { corets } from "../assets/normal.corets";
 import { log } from "../../../infrastructure/logger";
 
 import fsNode from "fs";
-import sysPath from "path";
+import sysPath, { join } from "path";
 import { parallelLimit } from "async";
 import { cpus } from "os";
 
@@ -47,6 +47,9 @@ let fs: FileSystemHost = null;
 
 let isRun: boolean = false;
 let isLive: boolean = false;
+let target: string = "";
+let tsconfig: string = "";
+let excludes: string[] = [];
 
 const fileList: IFileList = {};
 
@@ -65,6 +68,38 @@ function divideTask(tasks: string[], divideTime: number = 2) {
 }
 
 async function main(sourceFiles: string[], generatedPath, isFirstTime: boolean) {
+    if(isFirstTime){
+        await new Promise((innerResolve, innerReject) => {
+            fsNode.exists(tsconfig, async (exists) => {
+                let tsconfigObject = await import(sysPath.join(appPath, tsconfig));
+                if(tsconfigObject.exclude){
+                    excludes = tsconfigObject.exclude.slice(0);
+                    delete tsconfigObject.exclude;
+                }
+                delete tsconfigObject.default;
+                if(target !== "root"){
+                    if(tsconfigObject.compilerOptions){
+                        if(tsconfigObject.compilerOptions.paths){
+                            if(tsconfigObject.compilerOptions.paths["@app"]) tsconfigObject.compilerOptions.paths["@app"] = ["src/index.ts"];
+                        }
+                    }
+                }
+                if (exists) {
+                    fsNode.writeFile(`${generatePath}/tsconfig.json`, JSON.stringify(tsconfigObject, null, 2), (err: NodeJS.ErrnoException) => {
+                        if(err && err.code !== "ENOENT") innerReject(err);
+                        else innerResolve(true);
+                    })
+                }
+                else {
+                    innerResolve(true);
+                }
+            });
+        });
+    }
+    excludes.map(exclude => {
+        let index = sourceFiles.indexOf(join(process.cwd(), exclude));
+        sourceFiles.splice(index, 1);
+    });
     log("File total: " + sourceFiles.length);
     let divideTime = Math.ceil(sourceFiles.length / 9);
     let taskSegment = divideTask(sourceFiles, divideTime);
@@ -84,7 +119,7 @@ async function main(sourceFiles: string[], generatedPath, isFirstTime: boolean) 
             log("Has " + tempSourceSegmentList.length + " file in task " + (index + 1));
         }
         return function (callback) {
-            let childProcess = spawn("node", ["main.js", "--appPath=" + appPath, "--src=" + tempSourceSegmentList.join(","), "--genPath=" + generatedPath], { cwd: __dirname, detached: true });
+            let childProcess = spawn("node", ["main.js", "--appPath=" + appPath, "--src=" + tempSourceSegmentList.join(","), "--genPath=" + generatedPath, "--target=" + target, "--tsconfig=" + tsconfig], { cwd: __dirname, detached: true });
             childProcess.stdout.pipe(process.stdout);
             childProcess.unref();
             childProcess.stdout.once("end", () => {
@@ -104,19 +139,6 @@ async function main(sourceFiles: string[], generatedPath, isFirstTime: boolean) 
     if (isFirstTime) {
         let promise = new Promise((resolve, reject) => {
             let promiseList = [];
-            promiseList.push(new Promise((innerResolve, innerReject) => {
-                fsNode.exists("tsconfig.json", (exists) => {
-                    if (exists) {
-                        fsNode.copyFile("tsconfig.json", `${generatedPath}/tsconfig.json`, (err: NodeJS.ErrnoException) => {
-                            if (err && err.code !== "ENOENT") innerReject(err);
-                            else innerResolve(true);
-                        });
-                    }
-                    else {
-                        innerResolve(true);
-                    }
-                });
-            }));
             promiseList.push(new Promise((innerResolve, innerReject) => {
                 fsNode.exists("typings.d.ts", (exists) => {
                     if (exists) {
@@ -165,22 +187,28 @@ async function main(sourceFiles: string[], generatedPath, isFirstTime: boolean) 
     await promise;
     return project.save();
 }
-mainEventSource.once("start", (_appPath: string, _isRun: boolean, _isLive: boolean) => {
+mainEventSource.once("start", (_appPath: string, _isRun: boolean, _isLive: boolean, _target: string, _tsconfig: string) => {
     isRun = _isRun;
     isLive = _isLive;
+    target = _target ? _target : "root";
+    tsconfig = _tsconfig ? _tsconfig : "tsconfig.json";
     if (isRun) {
         isLive = true;
     }
     appPath = _appPath;
     project = new Project({
-        tsConfigFilePath: sysPath.resolve(sysPath.join(appPath, "tsconfig.json"))
+        tsConfigFilePath: sysPath.resolve(sysPath.join(appPath, tsconfig))
     });
     fs = project.getFileSystem();
     sourcePath = sysPath.join(appPath, "src");
 
-    generatePath = sysPath.join(appPath, ".generated");
-    let srcGeneratedPath = sysPath.join(generatePath, "src");
+    let targetPath = sysPath.join(appPath, ".generated");
+    if (!fsNode.existsSync(targetPath)) fsNode.mkdirSync(targetPath);
+
+    generatePath = sysPath.join(targetPath, target);
     if (!fsNode.existsSync(generatePath)) fsNode.mkdirSync(generatePath);
+
+    let srcGeneratedPath = sysPath.join(generatePath, "src");
     if (!fsNode.existsSync(srcGeneratedPath)) fsNode.mkdirSync(srcGeneratedPath);
     bouncer = setInterval(() => {
         let current = (+ new Date());
@@ -271,7 +299,7 @@ mainEventSource.on("change", async (isFirstTime: boolean) => {
                 log("Waiting for changes.....");
                 if (isRun) {
                     log("Starting to run app");
-                    startServerProcess = spawn("node", [tsNodePath, "./.generated/src"], { cwd: process.cwd(), env: { NPM_CONFIG_COLOR: "always", FORCE_COLOR: "1" }, stdio: ['inherit', 'inherit', 'inherit', 'ipc'] });
+                    startServerProcess = spawn("node", [tsNodePath, join(generatePath, "src", "index.ts")], { cwd: process.cwd(), env: { NPM_CONFIG_COLOR: "always", FORCE_COLOR: "1" }, stdio: ['inherit', 'inherit', 'inherit', 'ipc'] });
                     startServerProcess.unref();
                 }
             }

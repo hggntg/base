@@ -14,13 +14,16 @@
         "experimentalDecorators": true,
         "emitDecoratorMetadata": true,
         "resolveJsonModule": true,
-        "rootDir": "src",
+        "rootDir": ".",
         "paths": {
-            "@app/*": ["src/*"],
+            "../../../*": ["src/*"],
             "@app": ["src/index.ts"]
         }
     },
     "include": [
-        "src"
+        "src/*.ts",
+        "src/**/*.ts",
+        "src/*.json",
+        "src/**/*.json"
     ]
 }

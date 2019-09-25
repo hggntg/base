@@ -9,12 +9,12 @@ const webpackPath = path.join(__dirname, "../../node_modules/webpack/bin/webpack
 
 function cleanBundle(retryTime = 0) {
     let bundlePath = path.join(process.cwd(), "bundle");
-    if(fs.existsSync(bundlePath)){
-        try{
+    if (fs.existsSync(bundlePath)) {
+        try {
             rimraf.sync(bundlePath);
         }
-        catch(e){
-            if(retryTime++ > 10){
+        catch (e) {
+            if (retryTime++ > 10) {
                 return cleanBundle(retryTime);
             }
             throw e;
@@ -22,9 +22,11 @@ function cleanBundle(retryTime = 0) {
     }
 }
 
-export function bundle() {
+export function bundle(target?: string, config?: string) {
+    if (!target) target = "root";
+    if (!config) config = "webpack.config.ts";
     let cwd = process.cwd();
-    let webpackConfigFile = path.join(cwd, "webpack.config.ts");
+    let webpackConfigFile = path.join(cwd, config);
     let nodeModulePath = path.join(cwd, "node_modules");
     if (fs.existsSync(webpackConfigFile)) {
         let dirs = fs.readdirSync(nodeModulePath);
@@ -48,8 +50,18 @@ export function bundle() {
             promiseList.push(new Promise((resolve, reject) => {
                 import(path.join(innerDir, "package.json")).then((info) => {
                     if (info.bundleHook) {
-                        if (info.bundleHook.pre) bundlesHook.pre.push({ cmd: info.bundleHook.pre, cwd: innerDir });
-                        if (info.bundleHook.post) bundlesHook.post.push({ cmd: info.bundleHook.post, cwd: innerDir });
+                        let preCmd;
+                        let postCmd;
+                        if (innerDir === cwd) {
+                            if (info.bundleHook[target]) preCmd = info.bundleHook[target].pre;
+                            if (info.bundleHook[target]) postCmd = info.bundleHook[target].post;
+                        }
+                        else {
+                            preCmd = info.bundleHook.pre;
+                            postCmd = info.bundleHook.post;
+                        }
+                        if (preCmd) bundlesHook.pre.push({ cmd: preCmd, cwd: innerDir });
+                        if (postCmd) bundlesHook.post.push({ cmd: postCmd, cwd: innerDir });
                     }
                     resolve();
                 }).catch(e => {
@@ -74,7 +86,7 @@ export function bundle() {
                 }
             }
             let cmd = `${webpackPath} --config ${webpackConfigFile}`;
-            log(`webpack --config ${webpackConfigFile}`);
+            log(`> webpack --config ${webpackConfigFile}`);
             let bundleProcess = spawn("node", cmd.split(" "), { cwd: cwd, detached: true, env: { NPM_CONFIG_COLOR: "always", FORCE_COLOR: "1" } });
             bundleProcess.unref();
             bundleProcess.stdout.on("error", (err) => {
@@ -111,8 +123,12 @@ export function bundle() {
                     cmdSegments.splice(0, 1);
                     let argument = cmdSegments.join(" ");
                     argument = argument.replace(/\$pwd/, post.cwd);
-                    let resultProcess = spawn(cmd, argument.split(" "), {cwd: cwd, env: { NPM_CONFIG_COLOR: "always", FORCE_COLOR: "1" } });
+                    log(`> ${cmd} ${argument}`);
+                    let resultProcess = spawn(cmd, argument.split(" "), { cwd: cwd, env: { NPM_CONFIG_COLOR: "always", FORCE_COLOR: "1" } });
                     resultProcess.stdout.on("data", (chunk: Buffer) => {
+                        log(chunk.toString());
+                    });
+                    resultProcess.stderr.on("data", (chunk: Buffer) => {
                         log(chunk.toString());
                     });
                 }

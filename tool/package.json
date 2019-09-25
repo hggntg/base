@@ -1,6 +1,6 @@
 {
   "name": "@base/tool",
-  "version": "1.0.381",
+  "version": "1.0.420",
   "description": "Commandline tool for base project",
   "main": "index.js",
   "types": "index.d.ts",
