@@ -1,1 +1,0 @@
-export * from "@app/main/unit-of-work/repository/decorator";

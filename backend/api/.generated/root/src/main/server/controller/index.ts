@@ -1,1 +1,0 @@
-export * from "@app/main/server/controller/controller.decorator";

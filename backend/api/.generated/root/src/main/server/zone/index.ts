@@ -1,1 +1,0 @@
-export * from "@app/main/server/zone/zone.decorator";
