@@ -1,6 +1,6 @@
 {
 	"name": "@base/class",
-	"version": "1.0.127",
+	"version": "1.0.132",
 	"description": "Class decorator for base project",
 	"scripts": {
 		"test": "echo \"Error: no test specified\" && exit 1"

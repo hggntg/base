@@ -73,7 +73,6 @@ async function main(sourceFiles: string[], generatedPath, isFirstTime: boolean) 
             fsNode.exists(tsconfig, async (exists) => {
                 let tsconfigObject = await import(sysPath.join(appPath, tsconfig));
                 if(tsconfigObject.exclude){
-                    excludes = tsconfigObject.exclude.slice(0);
                     delete tsconfigObject.exclude;
                 }
                 delete tsconfigObject.default;
@@ -96,10 +95,6 @@ async function main(sourceFiles: string[], generatedPath, isFirstTime: boolean) 
             });
         });
     }
-    excludes.map(exclude => {
-        let index = sourceFiles.indexOf(join(process.cwd(), exclude));
-        sourceFiles.splice(index, 1);
-    });
     log("File total: " + sourceFiles.length);
     let divideTime = Math.ceil(sourceFiles.length / 9);
     let taskSegment = divideTask(sourceFiles, divideTime);
@@ -187,11 +182,11 @@ async function main(sourceFiles: string[], generatedPath, isFirstTime: boolean) 
     await promise;
     return project.save();
 }
-mainEventSource.once("start", (_appPath: string, _isRun: boolean, _isLive: boolean, _target: string, _tsconfig: string) => {
+mainEventSource.once("start", async (_appPath: string, _isRun: boolean, _isLive: boolean, _target: string, _tsconfig: string) => {
     isRun = _isRun;
     isLive = _isLive;
     target = _target ? _target : "root";
-    tsconfig = _tsconfig ? _tsconfig : "tsconfig.json";
+    tsconfig = _tsconfig ? _tsconfig : "tsconfig.root.json";
     if (isRun) {
         isLive = true;
     }
@@ -199,6 +194,14 @@ mainEventSource.once("start", (_appPath: string, _isRun: boolean, _isLive: boole
     project = new Project({
         tsConfigFilePath: sysPath.resolve(sysPath.join(appPath, tsconfig))
     });
+    let tsconfigObject = await import(sysPath.join(appPath, tsconfig));
+    if(tsconfigObject.exclude){
+        excludes = tsconfigObject.exclude.slice(0);
+        excludes = excludes.map((exclude) => {
+            return join(process.cwd(), exclude);
+        });
+    }
+
     fs = project.getFileSystem();
     sourcePath = sysPath.join(appPath, "src");
 
@@ -233,11 +236,15 @@ mainEventSource.once("start", (_appPath: string, _isRun: boolean, _isLive: boole
         atomic: 1000
     });
     watcher.on('add', (path, stats) => {
-        fileList[path] = { path: path, status: "CHANGED" };
-        lastChange = (+new Date());
+        if(!excludes.includes(path)){
+            fileList[path] = { path: path, status: "CHANGED" };
+            lastChange = (+new Date());
+        }
     }).on('change', (path, stats) => {
-        fileList[path].status = "CHANGED";
-        lastChange = (+ new Date());
+        if(!excludes.includes(path)){
+            fileList[path].status = "CHANGED";
+            lastChange = (+ new Date());
+        }
     }).on('unlink', (path) => {
         q.push((callback) => {
             delete fileList[path];
@@ -265,50 +272,57 @@ function checkProcessKilled(processServer: ChildProcess): Promise<boolean> {
         })
     });
 }
-
+let sourceFileChanged = false;
 mainEventSource.on("change", async (isFirstTime: boolean) => {
     let sourceFilePaths = [];
     Object.values(fileList).map(fileItem => {
         if (fileItem.status === "CHANGED") {
+            sourceFileChanged = true;
             sourceFilePaths.push(fileItem.path);
         }
     });
-    if (startServerProcess) {
-        startServerProcess.send({ event: "STOP" });
-        try{
-            let isKilled = await checkProcessKilled(startServerProcess);
-            if (isKilled) {
-                log("Kill old process done.........");
-                startServerProcess = null;
-            }
-        }
-        catch(e){
-            log(e, "error");
-            process.exit(1);
-        }
-    }
-    log("Ready to generate source files........");
-    if (!startServerProcess) {
-        await main(sourceFilePaths, generatePath, isFirstTime).then(() => {
-            Object.keys(fileList).map(key => {
-                fileList[key].status = "NOT_CHANGED";
-            });
-            pending = false;
-            log("Generating done........");
-            if (isLive) {
-                log("Waiting for changes.....");
-                if (isRun) {
-                    log("Starting to run app");
-                    startServerProcess = spawn("node", [tsNodePath, join(generatePath, "src", "index.ts")], { cwd: process.cwd(), env: { NPM_CONFIG_COLOR: "always", FORCE_COLOR: "1" }, stdio: ['inherit', 'inherit', 'inherit', 'ipc'] });
-                    startServerProcess.unref();
+    if(sourceFileChanged){
+        sourceFileChanged = false;
+        if (startServerProcess) {
+            startServerProcess.send({ event: "STOP" });
+            try{
+                let isKilled = await checkProcessKilled(startServerProcess);
+                if (isKilled) {
+                    log("Kill old process done.........");
+                    startServerProcess = null;
                 }
             }
-            else {
-                mainEventSource.emit("end");
+            catch(e){
+                log(e, "error");
+                process.exit(1);
             }
-        }).catch(err => {
-            throw err;
-        });
+        }
+        log("Ready to generate source files........");
+        if (!startServerProcess) {
+            await main(sourceFilePaths, generatePath, isFirstTime).then(() => {
+                Object.keys(fileList).map(key => {
+                    fileList[key].status = "NOT_CHANGED";
+                });
+                pending = false;
+                log("Generating done........");
+                if (isLive) {
+                    log("Waiting for changes.....");
+                    if (isRun) {
+                        log("Starting to run app");
+                        startServerProcess = spawn("node", [tsNodePath, join(generatePath, "src", "index.ts")], { cwd: process.cwd(), env: { NPM_CONFIG_COLOR: "always", FORCE_COLOR: "1" }, stdio: ['inherit', 'inherit', 'inherit', 'ipc'] });
+                        startServerProcess.unref();
+                    }
+                }
+                else {
+                    mainEventSource.emit("end");
+                }
+            }).catch(err => {
+                throw err;
+            });
+        }
+    }
+    else{
+        sourceFileChanged = false;
     }
 });
 

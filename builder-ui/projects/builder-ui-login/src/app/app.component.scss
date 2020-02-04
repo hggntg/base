@@ -1,0 +1,22 @@
+.fh {
+    height: 100%;
+    align-items: center;
+}
+.fw {
+    width: 100%;
+    justify-content: center;
+}
+.vertical {
+    display: flex;
+    flex-direction: column;
+}
+.horizontal {
+    display: flex;
+    flex-direction: row;
+}
+.p0 {
+    padding: 0 !important;
+}
+.m5 {
+    margin: 5px;
+}

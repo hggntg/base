@@ -1,6 +1,5 @@
 import mongoose from "mongoose";
 import { getEntitySchema } from "@app/main/entity/entity-schema";
-import { mapData, Injectable } from "@base/class";
 import { IEntitySchema, IBaseEntity } from "@app/interface";
 
 export const BASE_ENTITY_SERVICE = "IBaseEntity";
@@ -28,5 +27,6 @@ export class BaseEntity<T> implements IBaseEntity<T>{
 	}
 }
 
-export * from "./decorator";
-export * from "./entity-schema";
+export * from "@app/main/entity/decorator";
+export * from "@app/main/entity/entity-schema";
+export * from "@app/main/entity/entity-ui";

@@ -1,8 +1,6 @@
 import mongoose from "mongoose";
 import { DBCONTEXT_KEY } from "@app/infrastructure/constant";
 import { IDbContextMetadata, ICollection, IBaseEntity } from "@app/interface";
-import { INamespace } from "@base/class/interface";
-import { Namespace } from "@base/class/utilities/namespace";
 
 export function DBContext(uri: string, connectionOptions: mongoose.ConnectionOptions) {
 	return function (target: object) {
@@ -37,5 +35,6 @@ export class DbContextMetadata implements IDbContextMetadata {
 	classes: { [key: string]:  {new () : IBaseEntity}; };
 	collections: {
 		[key: string]: ICollection<any, IBaseEntity>
-	}
+	};
+	tracker?: any;
 }

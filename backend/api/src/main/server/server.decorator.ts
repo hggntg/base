@@ -1,21 +1,35 @@
-import { LOGGER_SERVICE } from "@base/logger";
-import { ILogger } from "@base/logger"
-import { Injectable, getDependency } from "@base/class";
 import { SERVER_API_KEY, SERVER_WORKER_KEY, SERVER_ZONE_KEY } from "@app/shared/constant";
 import { IAPIOptions, IAPI, IAPIMetadata, IWorkerMetadata, IWorker, IMiddlewareInput, IZone, IAPIZoneMetadata } from "@app/interface";
 import express, { Express, Request, Response, NextFunction } from "express";
-import { Namespace } from "@base/class/utilities/namespace";
 import { getController } from "@app/main/controller";
 import { RequestHandler } from "express-serve-static-core";
 import { LogMiddleware } from "@app/main/middleware";
 import SwaggerUi from "swagger-ui-express";
+import { OpenAPIV3 } from "openapi-types";
+import http from "http";
+import { getAPIDocumentMetadata, setAPIDocumentMetadata } from "@app/main/server/document";
 
 function checkByPass(byPassPaths: string[], middleware: (req: Request, res: Response, next: NextFunction) => any) {
     if (!byPassPaths) byPassPaths = [];
     return (req: Request, res: Response, next: NextFunction) => {
         let checked = false;
         byPassPaths.map(byPassPath => {
-            if (req.path.indexOf(byPassPath) === 0) {
+            let byPassSegments = byPassPath.split("/");
+            let realByPassSegments = [];
+            let numOfParams = 0;
+            byPassSegments.splice(0, 1);
+            byPassSegments.map(byPassSegment => {
+                if(byPassSegment.indexOf(":") !== 0){
+                    realByPassSegments.push(byPassSegment);
+                }
+                else {
+                    numOfParams++;
+                }
+            });
+            let realByPassPath = "/" + realByPassSegments.join("/");
+            let reqPathLength = req.path.split("/").length;
+            let realByPassLength = realByPassPath.split("/").length + numOfParams;
+            if (req.path.indexOf(realByPassPath) === 0 && realByPassLength === reqPathLength) {
                 checked = true;
             }
         });
@@ -147,120 +161,23 @@ export namespace Server {
             }
             apiMetadata.options = options;
             defineMetadata(SERVER_API_KEY, apiMetadata, getClass(target));
+            if(options.documentSection){
+                setAPIDocumentMetadata(options.documentSection);
+            }
         }
     }
 
     export const API_SERVICE = "IAPI";
     @Injectable(API_SERVICE, true, true)
     export class API implements IAPI {
+        private httpServerInstance: http.Server;
         private serverRoot: Express;
         private processListener: NodeJS.MessageListener;
         private processId = "api-server";
         protected logger: ILogger;
-        private swaggerDocument = {
-            swagger: "2.0",
-            info: {
-                description: "This is a sample server Petstore server. You can find out more about Swagger at [http://swagger.io](http://swagger.io) or on [irc.freenode.net, #swagger](http://swagger.io/irc/). For this sample, you can use the api key `special-key` to test the authorization filters.",
-                title: "This is just an api"
-            },
-            basePath: "/api",
-            tags: [
-                {
-                    name: "provider",
-                    description: "about provider"
-                }
-            ],
-            schemes: [
-                "http",
-                "https"
-            ],
-            paths: {
-                "/provider/create": {
-                    post: {
-                        tags: ["provider"],
-                        summary: "Create new provider",
-                        description: "Create new provider. It's mean register a new provider",
-                        operationId: "createProvider",
-                        consumes: [
-                            "application/json"
-                        ],
-                        produces: [
-                            "application/json"
-                        ],
-                        parameters: [
-                            {
-                                in: "body",
-                                name: "body",
-                                description: "Pet object that needs to be added to the store",
-                                required: true,
-                                schema: {
-                                    $ref: "#/definitions/Pet"
-                                }
-                            }
-                        ],
-                        responses: {
-                            405: {
-                                description: "Invalid input"
-                            }
-                        }
-                    }
-                }
-            },
-            definitions: {
-                Pet: {
-                    type: "object",
-                    required: [
-                        "name",
-                        "photoUrls"
-                    ],
-                    properties: {
-                        id: {
-                            type: "integer",
-                            format: "int64"
-                        },
-                        category: {
-                            $ref: "#/definitions/Category"
-                        },
-                        name: {
-                            type: "string",
-                            example: "doggie"
-                        },
-                        photoUrls: {
-                            type: "array",
-                            xml: {
-                                name: "photoUrl",
-                                wrapped: true
-                            },
-                            items: {
-                                type: "string"
-                            }
-                        },
-                        tags: {
-                            type: "array",
-                            xml: {
-                                name: "tag",
-                                wrapped: true
-                            },
-                            items: {
-                                $ref: "#/definitions/Tag"
-                            }
-                        },
-                        status: {
-                            type: "string",
-                            description: "pet status in the store",
-                            enum: [
-                                "available",
-                                "pending",
-                                "sold"
-                            ]
-                        }
-                    },
-                    xml: {
-                        name: "Pet"
-                    }
-                }
-            }
-        };
+        get httpServer(): http.Server {
+            return this.httpServerInstance;
+        }
         start(): Promise<boolean> {
             let apiMetadata = getAPIMetadata(this);
             let logMiddleware = new LogMiddleware();
@@ -279,8 +196,9 @@ export namespace Server {
                 this.serverRoot.use(zoneKeys[index], zone.establish());
             });
             return new Promise((resolve, reject) => {
-                this.serverRoot.use("/documents", SwaggerUi.serve, SwaggerUi.setup(this.swaggerDocument));
-                const server = this.serverRoot.listen(apiMetadata.options.port, () => {
+                let swaggerDocument: OpenAPIV3.Document = getAPIDocumentMetadata();
+                this.serverRoot.use("/documents", SwaggerUi.serve, SwaggerUi.setup(swaggerDocument));
+                this.httpServerInstance.listen(apiMetadata.options.port, () => {
                     this.logger.pushLog({
                         level: "info",
                         message: {
@@ -299,11 +217,11 @@ export namespace Server {
                             ]
                         }
                     });
-                    if(!this.processListener){
+                    if (!this.processListener) {
                         this.processListener = (message, sendHandle) => {
-                            if(message && message.event === "STOP"){
-                                server.close((err) => {
-                                    if(err) {
+                            if (message && message.event === "STOP") {
+                                this.httpServerInstance.close((err) => {
+                                    if (err) {
                                         this.logger.pushError(err, "api");
                                     }
                                     else {
@@ -366,8 +284,12 @@ export namespace Server {
             this.serverRoot = newServerRoot;
             return this.serverRoot;
         }
+        attach(path: string, expressInstance: Express): void {
+            this.serverRoot.use(path, expressInstance);
+        }
         constructor() {
             this.serverRoot = express();
+            this.httpServerInstance = http.createServer(this.serverRoot);
             this.logger = getDependency<ILogger>(LOGGER_SERVICE);
             process.watcher.joinFrom(this.processId);
         }

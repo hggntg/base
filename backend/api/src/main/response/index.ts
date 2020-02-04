@@ -1,5 +1,3 @@
-import { assignData } from "@base/class";
-
 export interface ResponseBody {
     code: number;
     status: string;

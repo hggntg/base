@@ -1,0 +1,11 @@
+<mat-toolbar>
+  <mat-toolbar-row>
+    <div id="left">
+        <button *ngIf="isHome === 'false'" mat-icon-button mat-button (click)="back()"><mat-icon aria-hidden="false" aria-label="Example home icon">arrow_back</mat-icon></button>
+        <span>{{headTitle}}</span>
+    </div>
+    <div id="right">
+        <button mat-button (click)="signout()">Logout</button>
+    </div>
+  </mat-toolbar-row>
+</mat-toolbar>

@@ -6,7 +6,6 @@ Object.values(CustomTypes).map((type) => {
     mongoose.Schema.Types[type.name] = type;
 });
 import { IQueryInput } from "@app/interface";
-import { Property } from "@base/class";
 export { CustomTypes };
 export * from "@app/main/database-context";
 export * from "@app/main/entity";
@@ -68,7 +67,7 @@ export class QueryInput implements IQueryInput {
         this.limit = eval(mappings.limit);
         this.select = eval(mappings.select) || undefined;
         this.sort = eval(mappings.sort) || undefined;
-        this.where = eval(mappings.where) || undefined;
+        this.where = JSON.parse(eval(mappings.where) || {}) || undefined;
         return input;
     }
 }

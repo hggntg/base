@@ -2,7 +2,6 @@ import { Connection, Channel } from "amqplib";
 import { queue, ErrorCallback } from "async";
 import { EventEmitter } from "events";
 import { Communication } from "@app/main";
-import { ILogger } from "@base/logger";
 import { IOwner, IOwnerTask, IOwnerJobRequest } from "@app/interface";
 
 export class Owner implements IOwner {
@@ -12,13 +11,35 @@ export class Owner implements IOwner {
     private event: EventEmitter;
     private q = queue((task: IOwnerTask, callback) => {
         if (this.channel) {
-            this.sendJobInBack(task, callback);
+            return this.sendJobInBack(task, callback).catch(e => {
+                if(e.name === "WRONG_QUEUE_OPTIONS"){
+                    this.logger.pushSilly(e.message, "communication");
+                    return this.conn.createChannel().then(channel => {
+                        this.channel = channel;
+                        return this.sendJobInBack(task, callback, true);
+                    })
+                }
+                else {
+                    return callback(e);
+                }
+            });
         }
         else {
-            this.conn.createChannel().then(channel => {
+            return this.conn.createChannel().then(channel => {
                 this.channel = channel;
-                this.sendJobInBack(task, callback);
                 this.q.concurrency = this.concurrency;
+                return this.sendJobInBack(task, callback).catch(e => {
+                    if(e.name === "WRONG_QUEUE_OPTIONS"){
+                        this.logger.pushSilly(e.message, "communication");
+                        return this.conn.createChannel().then(channel => {
+                            this.channel = channel;
+                            return this.sendJobInBack(task, callback, true);
+                        })
+                    }
+                    else {
+                        return callback(e);
+                    }
+                });
             });
         }
     }, 1);
@@ -32,8 +53,8 @@ export class Owner implements IOwner {
         });
     }
 
-    private sendJobInBack(task: IOwnerTask, callback: ErrorCallback) {
-        Communication.checkAndAssertQueue(this.channel, task.jobQueue, { durable: true, maxPriority: 10 }).then(() => {
+    private sendJobInBack(task: IOwnerTask, callback: ErrorCallback, usedToFail?: boolean) {
+        return Communication.checkAndAssertQueue(this.channel, task.jobQueue, { durable: true, maxPriority: 10 }, usedToFail).then(() => {
             let priority = task.ownerJobRequest.priority;
             let jobRequest = {
                 method: task.ownerJobRequest.method,
@@ -45,13 +66,11 @@ export class Owner implements IOwner {
             })).then(sendingBuffer => {
                 this.channel.sendToQueue(task.jobQueue, sendingBuffer, { persistent: true, priority: priority });
                 setTimeout(() => {
-                    callback();
+                    return callback();
                 }, 1);
             }).catch(e => {
-                callback(e);
+                return callback(e);
             });
-        }).catch(e => {
-            callback(e);
         });
     }
 

@@ -1,12 +1,12 @@
-import express from "express";
+import express, { Response, response } from "express";
 import { CONTROLLER_KEY } from "@app/shared/constant";
-import { Property, getProperties, Injectable, getDependency, mapData, IBaseError, assignData, BaseError } from "@base/class";
-import { IController, IControllerMetadata, IRoute, IMiddlewareInput, IControllerProperty } from "@app/interface";
+import { IController, IControllerMetadata, IRoute, IMiddlewareInput, IControllerProperty, IRouteDocumentSection, IControllerDocumentSection } from "@app/interface";
 import { IncomingHttpHeaders } from "http";
 import { Stream, Readable } from "stream";
-import { ILogger, LOGGER_SERVICE } from "@base/logger";
 import { ResponseBody } from "@app/main/response";
 import { ResponseTemplate as Resp } from "@app/main/response";
+import { OpenAPIV3 } from "openapi-types";
+import { setAPIDocumentMetadata } from "../server/document";
 
 export const CONTROLLER_SERVICE = "IController";
 
@@ -27,122 +27,142 @@ function generateRouteExecution(this: IController, property) {
         let currentRoute = controllerProperty.routes[property.name].list[index];
         try {
             let input = checkInput<typeof currentRoute.bodyType, typeof currentRoute.queryType, typeof currentRoute.paramType>(currentRoute.bodyType, currentRoute.queryType, currentRoute.paramType, {req: req, res: res});
-            let result = this[property.name](input);
-            if (result instanceof Stream || result instanceof Readable) {
-                result.once("response-error", (err: IBaseError) => {
-                    let code = err.code || 500;
-                    let error = Resp.error(code, err.message);
-                    if(!res.headersSent){
-                        res.status(code).json({
-                            status: error.status,
-                            message: error.message,
-                            error: error.error || undefined
-                        });
-                    }
-                }).on("append-http-header", (httpHeader: IAppendHttpHeader) => {
-                    if(!res.headersSent){
-                        if(httpHeader.code) res.status(httpHeader.code);
-                        if(httpHeader.headers) {
-                            let headerKeys = Object.keys(httpHeader.headers);
-                            Object.values((httpHeader.headers)).map((header, index) => {
-                                let headerKey = headerKeys[index];
-                                res.setHeader(headerKey, header);
+            let responseResult = this[property.name](input);
+            if(responseResult){
+                if (typeof (<any>responseResult).pipe === "function") {
+                    let result = responseResult as Readable;
+                    result.once("response-error", (err: IBaseError) => {
+                        let code = err.code || 500;
+                        let error = Resp.error(code, err.message);
+                        if(!res.headersSent){
+                            res.status(code).json({
+                                status: error.status,
+                                message: error.message,
+                                error: error.error || undefined
                             });
                         }
-                    }
-                }).pipe(res);
-                res.once("drain", () => {
-                    console.log("It's was drain");
-                }).on("error", (err: IBaseError) => {
-                    let code = err.code || 500;
-                    let error = Resp.error(code, err.message);
-                    if(!res.headersSent){
-                        res.status(code).json({
-                            status: error.status,
-                            message: error.message,
-                            error: error.error || undefined
-                        });
-                    }
-                });
-            }
-            else if (result && typeof result.then === "function" && typeof result.catch === "function") {
-                try {
-                    return await result.then((value: ResponseBody | Readable | Stream) => {
-                        if (value instanceof Readable || value instanceof Stream) {
-                            value.once("response-error", (err: IBaseError) => {
-                                let code = err.code || 500;
-                                let error = Resp.error(code, err.message);
-                                if(!res.headersSent){
-                                    res.status(code).json({
-                                        status: error.status,
-                                        message: error.message,
-                                        error: error.error || undefined
-                                    });
-                                }
-                            }).on("append-http-header", (httpHeader: IAppendHttpHeader) => {
-                                if(!res.headersSent){
-                                    if(httpHeader.code) res.status(httpHeader.code);
-                                    if(httpHeader.headers) {
-                                        let headerKeys = Object.keys(httpHeader.headers);
-                                        Object.values((httpHeader.headers)).map((header, index) => {
-                                            let headerKey = headerKeys[index];
-                                            res.setHeader(headerKey, header);
-                                        });
-                                    }
-                                }
-                            }).pipe(res);
-                            res.once("drain", () => {
-                                console.log("It's was drain");
-                            }).on("error", (err: IBaseError) => {
-                                let code = err.code || 500;
-                                let error = Resp.error(code, err.message);
-                                if(!res.headersSent){
-                                    res.status(code).json({
-                                        status: error.status,
-                                        message: error.message,
-                                        error: error.error || undefined
-                                    });
-                                }
+                    }).on("append-http-header", (httpHeader: IAppendHttpHeader) => {
+                        if(!res.headersSent){
+                            if(httpHeader.code) res.status(httpHeader.code);
+                            if(httpHeader.headers) {
+                                let headerKeys = Object.keys(httpHeader.headers);
+                                Object.values((httpHeader.headers)).map((header, index) => {
+                                    let headerKey = headerKeys[index];
+                                    res.setHeader(headerKey, header);
+                                });
+                            }
+                        }
+                    }).pipe(res);
+                    res.once("drain", () => {
+                        console.log("It's was drain");
+                    }).on("error", (err: IBaseError) => {
+                        let code = err.code || 500;
+                        let error = Resp.error(code, err.message);
+                        if(!res.headersSent){
+                            res.status(code).json({
+                                status: error.status,
+                                message: error.message,
+                                error: error.error || undefined
                             });
                         }
-                        else {
-                            let body = assignData(value);
-                            delete body.code;
-                            res.status(value.code).json(body);
-                        }
-                    }).catch(err => {
-                        throw err;
                     });
                 }
-                catch (e) {
-                    let err: IBaseError = e;
-                    let code = err.code || 500;
-                    let error = Resp.error(code, err.message);
-                    if(!res.headersSent){
-                        res.status(code).json({
-                            status: error.status,
-                            message: error.message,
-                            error: error.error || undefined
+                else if(typeof responseResult.then === "function" && typeof responseResult.catch === "function") {
+                    try {
+                        let result = responseResult;
+                        return await result.then((responseValue: ResponseBody | Readable | Stream) => {
+                            if(responseValue){
+                                if (typeof (<any>responseValue).pipe === "function") {
+                                    let value = responseValue as Readable;
+                                    value.once("response-error", (err: IBaseError) => {
+                                        let code = err.code || 500;
+                                        let error = Resp.error(code, err.message);
+                                        if(!res.headersSent){
+                                            res.status(code).json({
+                                                status: error.status,
+                                                message: error.message,
+                                                error: error.error || undefined
+                                            });
+                                        }
+                                    }).on("append-http-header", (httpHeader: IAppendHttpHeader) => {
+                                        if(!res.headersSent){
+                                            if(httpHeader.code) res.status(httpHeader.code);
+                                            if(httpHeader.headers) {
+                                                let headerKeys = Object.keys(httpHeader.headers);
+                                                Object.values((httpHeader.headers)).map((header, index) => {
+                                                    let headerKey = headerKeys[index];
+                                                    res.setHeader(headerKey, header);
+                                                });
+                                            }
+                                        }
+                                    }).pipe(res);
+                                    res.once("drain", () => {
+                                        console.log("It's was drain");
+                                    }).on("error", (err: IBaseError) => {
+                                        let code = err.code || 500;
+                                        let error = Resp.error(code, err.message);
+                                        if(!res.headersSent){
+                                            res.status(code).json({
+                                                status: error.status,
+                                                message: error.message,
+                                                error: error.error || undefined
+                                            });
+                                        }
+                                    });
+                                }
+                                else {
+                                    let value = responseValue as ResponseBody;
+                                    let body = assignData(value);
+                                    delete body.code;
+                                    res.status(value.code).json(body);
+                                }
+                            }
+                            else {
+                                res.status(200).send();
+                            }
+                        }).catch(err => {
+                            throw err;
                         });
+                    }
+                    catch (e) {
+                        let err: IBaseError = e;
+                        let code = err.code || 500;
+                        let error = Resp.error(code, err.message);
+                        if(!res.headersSent){
+                            res.status(code).json({
+                                status: error.status,
+                                message: error.message,
+                                error: error.error || undefined
+                            });
+                        }
+                    }
+                }
+                else {
+                    if(!res.headersSent){
+                        res.send(responseResult);
                     }
                 }
             }
             else {
                 if(!res.headersSent){
-                    res.send(result);
+                    
                 }
             }
         }
         catch (e) {
             let err: IBaseError = e;
-            let code = err.code || 500;
-            let error = Resp.error(code, err.message);
+            let code = typeof err.code === "number"? err.code : 500;
+            let message = err.message || (<any>err).code as string;
+            let error = Resp.error(code, message);
             if(!res.headersSent){
                 res.status(code).json({
                     status: error.status,
                     message: error.message,
                     error: error.error || undefined
                 });
+            }
+            else {
+                console.error(error);
             }
         }
     }
@@ -194,7 +214,7 @@ export class ControllerImp implements IController {
     }
 }
 
-export function Controller(routeBase: string) {
+export function Controller(routeBase: string, documentSection?: IControllerDocumentSection) {
     return function (target: any) {
         let classImp = getClass(target);
         let controllerProperty: IControllerMetadata = getController(target);
@@ -213,10 +233,13 @@ export function Controller(routeBase: string) {
         controllerProperty.name = classImp.name;
         controllerProperty.routeBase = routeBase;
         defineMetadata(CONTROLLER_KEY, controllerProperty, target.constructor);
+        if(documentSection){
+            setAPIDocumentMetadata(documentSection);
+        }
     }
 }
 
-export function Route<T = any, K = any, L = any>(routeConfig: Omit<IRoute<T, K, L>, "middlewares" | "byPasses">) {
+export function Route<T = any, K = any, L = any>(routeConfig: Omit<IRoute<T, K, L>, "middlewares" | "byPasses">, documentSection?: IRouteDocumentSection) {
     return function (target: any, propertyKey: string, descriptor: PropertyDescriptor) {
         Property(Object)(target, propertyKey);
         let controllerProperty: IControllerMetadata = getController(target);
@@ -256,6 +279,9 @@ export function Route<T = any, K = any, L = any>(routeConfig: Omit<IRoute<T, K, 
         controllerProperty.routes[propertyKey].list[lastIndex] = route;
         controllerProperty.routes[propertyKey].listMapping[route.url] = lastIndex;
         defineMetadata(CONTROLLER_KEY, controllerProperty, target.constructor);
+        if(documentSection){
+            setAPIDocumentMetadata(documentSection);
+        }
     }
 }
 

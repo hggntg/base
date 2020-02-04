@@ -1,5 +1,4 @@
-import { ICollection, IBaseEntity, IBaseRepository, IWherable, IQueryable, IRepositoryAfterQueryable, IRepositoryQuery, IRepositoryRestCommand, IDbContextMetadata, IQueryResult, IRepositoryRestCommandableForOne } from "@app/interface";
-import { Injectable, getDependency, getConstant, assignData } from "@base/class";
+import { ICollection, IBaseEntity, IBaseRepository, IWherable, IQueryable, IRepositoryAfterQueryable, IRepositoryQuery, IRepositoryRestCommand, IDbContextMetadata, IQueryResult, IRepositoryRestCommandableForOne, IAggregateOption, IAfterAggregate } from "@app/interface";
 import { COLLECTION_SERVICE, getDbContextMetadata } from "@app/main/database-context";
 import { getRepositoryMetadata } from "@app/main/repository/decorator";
 import { getCollectionMetadata } from "@app/main/database-context/collection/decorator";
@@ -275,6 +274,9 @@ export class BaseRepository<K, T extends IBaseEntity<K>> implements IBaseReposit
 		this.buildQuery("findOne", null);
 		return this.repositoryCommandOne;
 	}
+	aggregate(pipelines: any[], options?: IAggregateOption): IAfterAggregate<K>{
+		return this.collection.aggregate(pipelines, options);
+	}
 	insert(document: Partial<K>): Promise<Partial<K>> {
 		return this.collection.insert(document);
 	}
@@ -283,4 +285,4 @@ export class BaseRepository<K, T extends IBaseEntity<K>> implements IBaseReposit
 	}
 }
 
-export * from "./decorator";
+export * from "@app/main/repository/decorator";

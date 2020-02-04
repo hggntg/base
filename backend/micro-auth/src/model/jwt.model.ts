@@ -1,4 +1,3 @@
-import { Property } from "@base/class";
 
 export interface IJwtObject {
     idt: string;

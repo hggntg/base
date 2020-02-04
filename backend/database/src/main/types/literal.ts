@@ -6,9 +6,16 @@ export default class Literal extends mongoose.SchemaType {
         let length = this.optionTypes.length;
         for(let i = 0; i < length; i++){
             let optionType = this.optionTypes[i];
-            if(optionType.name === "Boolean"|| optionType.name === "Number" || optionType.name === "String"){
-                if(typeof input === optionType.name.toLowerCase()){
-                    return input;
+            if(optionType.name === "Boolean"|| optionType.name === "Number" || optionType.name === "String" || optionType.name === "Object" || optionType.name === "Array"){
+                if(optionType.name === "Array"){
+                    if(Array.isArray(input)){
+                        return input;
+                    }
+                }
+                else {
+                    if(typeof input === optionType.name.toLowerCase()){
+                        return input;
+                    }
                 }
             }
             else if(optionType.name === "ObjectId" || optionType.name === "Date"){

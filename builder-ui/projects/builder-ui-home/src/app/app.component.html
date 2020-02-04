@@ -1,0 +1,10 @@
+<mat-grid-list  gutterSize="10px" [cols]="cols" rowHeight="150px">
+    <mat-grid-tile *ngFor="let item of moduleList; let i = index">
+        <mat-card  id="{{i}}" (click)="choose($event)">
+            <mat-card-content>
+                <mat-card-title> {{item.name}}</mat-card-title>
+                <mat-card-subtitle> {{item.itemCounts}} items</mat-card-subtitle>
+            </mat-card-content>
+        </mat-card>
+    </mat-grid-tile>
+</mat-grid-list>

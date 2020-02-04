@@ -4,6 +4,7 @@ import Password from "@app/main/types/password";
 import Struct from "@app/main/types/struct";
 import Literal from "@app/main/types/literal";
 import Json from "@app/main/types/json";
+import CustomMap from "@app/main/types/map";
 
 export const CustomTypes = {
     Email: Email,
@@ -11,5 +12,6 @@ export const CustomTypes = {
     Password: Password,
     Struct: Struct,
     Literal: Literal,
-    Json: Json
+    Json: Json,
+    Map: CustomMap
 }

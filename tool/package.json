@@ -1,6 +1,6 @@
 {
   "name": "@base/tool",
-  "version": "1.0.420",
+  "version": "1.0.471",
   "description": "Commandline tool for base project",
   "main": "index.js",
   "types": "index.d.ts",
@@ -36,7 +36,9 @@
     "@types/npm-run": "^5.0.0",
     "@types/prettyjson": "0.0.28",
     "@types/rimraf": "^2.0.2",
-    "@types/shelljs": "^0.8.3"
+    "@types/shelljs": "^0.8.3",
+    "inversify": "^5.0.1",
+    "reflect-metadata": "^0.1.13"
   },
   "bundleDependencies": [
     "typescript"

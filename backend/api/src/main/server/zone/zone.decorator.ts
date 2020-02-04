@@ -1,5 +1,4 @@
 import { IZone } from "@app/interface";
-import { Property, getDependency } from "@base/class";
 import { Server } from "@app/main/server/server.decorator";
 import { SERVER_API_KEY } from "@app/shared/constant";
 

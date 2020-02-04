@@ -1,9 +1,10 @@
-import mongoose, {
+import {
 	ConnectionOptions, Document, HookSyncCallback, Aggregate, HookErrorCallback,
 	HookAsyncCallback, Model, Schema, Query, SchemaTypeOpts, ClientSession,
-	SchemaOptions, Connection
+	SchemaOptions, Connection, QueryCursor
 } from "mongoose";
-import { INamespace } from "@base/class/interface";
+// import { Express } from "express";
+// import { Server } from "socket.io";
 
 export interface IUnitOfWorkMetadata<T extends IDatabaseContext> {
 	databaseContext: { new(): T },
@@ -16,11 +17,16 @@ export interface IBaseEntity<T = any> extends IBaseClass<T> {
 	getInstance(): any;
 }
 
+export interface ITrackingOption {
+	actor: {new<T extends IBaseEntity>(...args) : T}
+}
+
 export interface IDatabaseContext {
 	list<K, T extends IBaseEntity<K>>(name: string): ICollection<K, T>;
 	saveChanges(): Promise<any>;
 	createConnection(): Promise<boolean>;
 	extend(plugins: Function | Function[]);
+	enableTracking(option: ITrackingOption): Promise<boolean>;
 }
 
 export interface IDatabaseContextSession {
@@ -34,6 +40,21 @@ export interface IWherable<K, T, Z> {
 	findOne(): Z;
 }
 
+export interface IAggregateOption {
+	allowDiskUse: boolean;
+	cursor: {
+		batchSize: number,
+		useMongooseAggCursor: boolean
+	}
+}
+
+export interface IAggregatable<T>{
+	aggregate(pipelines: any[], options?: IAggregateOption): IAfterAggregate<T>;
+}
+
+export interface IAfterAggregate<T>{
+	(fn: (document: Partial<T>) => any): Promise<boolean>;
+}
 
 export interface ILimitable<K, T, Z> extends IWherable<K, T, Z> {
 	limit?<Q extends ILimitable<K, T, Z>>(this: Q, about: number): Omit<Q, "limit">;
@@ -98,34 +119,16 @@ export interface IRepositoryAfterQueryable<T> extends IRepositoryRestCommandable
 
 }
 
-export interface IBaseRepository<K, T extends IBaseEntity<K>> extends IQueryable<K, IRepositoryAfterQueryable<K>, IRepositoryRestCommandableForOne<K>>, IRepositoryInsertable<K> { }
+export interface IBaseRepository<K, T extends IBaseEntity<K>> extends IQueryable<K, IRepositoryAfterQueryable<K>, IRepositoryRestCommandableForOne<K>>, IRepositoryInsertable<K>, IAggregatable<K> { }
 export interface IRepositoryRestCommand<K, T extends IBaseEntity<K>> extends IRepositoryAfterQueryable<K> { }
-
-// export interface IBaseRepository<K, T extends IBaseEntity<K>>{
-// 	aggregate(conditions: any[]): Promise<Partial<K>[]>;
-
-// 	find(conditions?: any): Promise<Partial<K>[]>;
-// 	findOne(conditions?: any): Promise<Partial<K>>;
-// 	findById(_id: string): Promise<Partial<K>>;
-
-// 	insert(doc: Partial<K>): void;
-// 	insertMany(docs: Array<Partial<K>>): void;
-
-// 	remove(conditions?: any): void;
-// 	removeById(_id: string): void;
-// 	removeMany(_ids: Array<string>): void;
-
-// 	update(conditions: any, data: any): void;
-// 	updateById(_id: string, data: any): void;
-// 	updateMany(_ids: Array<string>, data: any): void;
-
-// 	count(conditions: any): Promise<number>;
-// }
 
 export interface IUnitOfWork {
 	getContext(): IDatabaseContext;
 	list<K, T extends IBaseEntity<K>>(name: string): IBaseRepository<K, T>;
 	saveChanges(): Promise<any>;
+	// exposeUI(mode: "standalone", publicFolder: string, port: number): Promise<Express>;
+	// exposeUI(mode: "attachment", publicFolder: string, socketIO: Server): Promise<Express>;
+	// exposeUI(mode: "attachment", publicFolder: string, rootPath: string, socketIO: Server): Promise<Express>;
 }
 
 export interface IDocumentQuery {
@@ -143,29 +146,7 @@ export interface IDocumentChange {
 	data?: any;
 }
 
-// export interface ICollection<K, T extends IBaseEntity<K>> extends IBaseClass<{ classImp: { new(): T } }>, IQueryable<K>, IInsertable<K>  {
-// 	aggregate(conditions: any[]): Promise<Partial<K>[]>;
-
-// 	find(conditions: any): Promise<Partial<K>[]>;
-// 	findOne(conditions: any): Promise<Partial<K>>;
-// 	findById(_id: string): Promise<Partial<K>>;
-// 	findByIds(_ids: Array<string>): Promise<Partial<K>[]>;
-
-// 	insert(doc: Partial<K>): Promise<Partial<K>>;
-// 	insertMany(docs: Array<Partial<K>>): Promise<Partial<K>[]>;
-
-// 	remove(conditions: any): Promise<Partial<K>[]>;
-// 	removeById(_id: string): Promise<Partial<K>>;
-// 	removeMany(_ids: Array<string>): Promise<Partial<K>[]>;
-
-// 	update(conditions: any, data: Partial<K>): Promise<Partial<K>[]>;
-// 	updateById(_id: string, data: any): Promise<Partial<K>>;
-// 	updateMany(_ids: Array<string>, data: any): Promise<Partial<K>[]>;
-
-// 	count(): Promise<number>;
-// }
-
-export interface ICollection<K, T extends IBaseEntity<K>> extends IBaseClass<{ classImp: { new(): T } }>, IQueryable<K, IAfterQueryable<K>, IAfterQueryable<K>>, IInsertable<K> { }
+export interface ICollection<K, T extends IBaseEntity<K>> extends IBaseClass<{ classImp: { new(): T } }>, IQueryable<K, IAfterQueryable<K>, IAfterQueryable<K>>, IInsertable<K>, IAggregatable<K> { }
 export interface ICollectionRestCommand<T> extends IAfterQueryable<T> { }
 
 export interface IFakeSchemaFunction<T>{
@@ -187,6 +168,16 @@ export interface ForeignFieldOptions<T> {
 	load: "eager" | "lazy",
 	refKey: string,
 	localKey?: string,
+	relatedEntity: {new(...args): T}
+}
+
+export interface ForeignFieldOptionsWithBrigde<T> {
+	type: "one-to-many",
+	load: "eager" | "lazy",
+	refKey: string,
+	localKey?: string,
+	bridgeKey: string,
+	bridgeEntity: {new(...args): T},
 	relatedEntity: {new(...args): T}
 }
 
@@ -263,6 +254,37 @@ export interface IFakePlugin<T = any> extends IFakeMiddleware {
 	options?: T;
 }
 
+export interface IFieldUI {
+	name: string;
+	type: "input" | "textarea";
+	hidden?: boolean;
+	disabled?: boolean;
+}
+
+export interface IFieldUIList {
+	[key: string]: IFieldUI
+}
+
+export interface IEntityUI {
+	name: string;
+	slug: string;
+	columns: string[];
+	fields: IFieldUIList;
+}
+
+export interface IEntityUIList {
+	entities: {
+		[key: string]: IEntityUI;
+	};
+}
+
+export interface IUnitOfWorkUI {
+	uow: IUnitOfWork;
+	repositories: {
+		[key: string]: string;
+	};
+	entityUIList: IEntityUIList;
+}
 
 export interface IDbContextMetadata {
 	context: INamespace;
@@ -273,7 +295,8 @@ export interface IDbContextMetadata {
 	connection: Connection;
 	classes: {
 		[key: string]: { new(): IBaseEntity };
-	}
+	};
+	tracker?: any;
 }
 
 export interface ICollectionMetadata {
@@ -304,4 +327,4 @@ export interface IRepositoryQuery {
 	[key: string]: any;
 }
 
-export type TEntityForeignField<T> = ForeignFieldOptions<T> & { name: string; localField: string, hide: "all" | string[] }
+export type TEntityForeignField<T> = (ForeignFieldOptions<T> & { name: string; localField: string, hide: "all" | string[] }) | (ForeignFieldOptionsWithBrigde<T>  & { name: string; localField: string, hide?: "all" | string[] });

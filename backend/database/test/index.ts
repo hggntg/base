@@ -3,9 +3,7 @@ import {
     ICollection, IDatabaseContext, Entity, BaseEntity, DatabaseContext, DBContext, DCollection, AUnitOfWork, BaseRepository,
     RepositoryProperty, Field, UOW, DATABASE_CONTEXT_SERVICE, BASE_ENTITY_SERVICE, BASE_REPOSITORY_SERVICE, UNIT_OF_WORK_SERVICE,
     IUnitOfWork, COLLECTION_SERVICE
-} from "../.generated/src";
-import { LOGGER_SERVICE, ILogger, ILog } from "@base/logger";
-import { Injectable, getDependency } from "@base/class";
+} from "../.generated/root/src/index";
 interface ITest {
     test: string;
 }
@@ -55,7 +53,6 @@ class TestContext extends DatabaseContext {
     public test: ICollection<Test, Test> = getDependency<ICollection<Test, Test>>(COLLECTION_SERVICE, true);
     constructor() {
         super();
-        this.logger = getDependency<ILogger>(LOGGER_SERVICE);
     }
 }
 

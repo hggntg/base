@@ -14,9 +14,9 @@
         "experimentalDecorators": true,
         "emitDecoratorMetadata": true,
         "resolveJsonModule": true,
-        "rootDir": ".",
+        "rootDir": "src",
         "paths": {
-            "../../../*": ["src/*"],
+            "@app/*": ["src/*"],
             "@app": ["src/index.ts"]
         }
     },

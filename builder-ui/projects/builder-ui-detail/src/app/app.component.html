@@ -1,0 +1,11 @@
+<mat-card>
+    <mat-card-content>
+        <mat-form-field *ngFor="let data of displayData; let i = index">
+          <input *ngIf="data.type === 'input'" matInput [placeholder]="data.field" [(ngModel)]="data.value" (ngModelChange)="dataChange(data)" [disabled]="data.disabled">
+          <textarea *ngIf="data.type === 'textarea'" matInput [placeholder]="data.field" [(ngModel)]="data.value" (ngModelChange)="dataChange(data)" [disabled]="data.disabled"></textarea>
+        </mat-form-field>
+    </mat-card-content>
+    <mat-card-actions>
+      <button mat-button (click)="save()">Save</button>
+    </mat-card-actions>
+</mat-card>

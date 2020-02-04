@@ -1,9 +1,26 @@
-import { INamespace } from "@base/class/interface";
 import { RequestHandler, RequestHandlerParams, Express } from "express-serve-static-core";
 import { Request, Response, NextFunction } from "express";
+import http from "http";
+import { OpenAPIV3 } from "openapi-types";
+export interface IAPIDocumentSection {
+    openapi: "3.0.0";
+    info: OpenAPIV3.InfoObject;
+    servers: OpenAPIV3.ServerObject[];
+}
+
+export interface IControllerDocumentSection {
+    tag: OpenAPIV3.TagObject;
+    components: OpenAPIV3.ComponentsObject;
+}
+
+export interface IRouteDocumentSection {
+    name: string;
+    path: OpenAPIV3.PathItemObject
+}
 
 export interface IAPIOptions {
-    port: number
+    port: number;
+    documentSection?: IAPIDocumentSection;
 }
 
 export interface IAPIMetadata {
@@ -20,6 +37,8 @@ export interface IWorkerMetadata {
 export interface IAPI {
     start(): Promise<boolean>;
     registerMiddleware(handler: IMiddlewareInput): Express;
+    attach(path: string, expressInstance: Express): void;
+    readonly httpServer: http.Server;
 }
 
 export interface IZone {

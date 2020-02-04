@@ -1,14 +1,48 @@
 import { Connection } from "amqplib";
-import { ILogger, ILog } from "@base/logger";
 import { EventEmitter } from "events";
 import { IWorkerJobRequest, IWorker, IWorkerOptions } from "@app/interface";
 import { Communication } from "@app/main";
 
 const TIMEOUT = Symbol.for("TIMEOUT");
 
+export interface ICountDown {
+    count(): Promise<any>;
+    update(): void;
+    clear(): void;
+}
+
+class CountDown {
+    private timeout: number;
+    private startTime: number;
+    private interval: NodeJS.Timeout
+    count(){
+        let intervalTimeout = 0;
+        if(this.timeout >= 4) intervalTimeout = Math.floor(this.timeout / 4);
+        return new Promise((resolve, reject) => {
+            this.interval = setInterval(() => {
+                let currentTime = (+ new Date());
+                if(currentTime - this.startTime >= this.timeout){
+                    resolve();
+                    this.clear();
+                }
+            }, intervalTimeout);
+        });
+    }
+    update(){
+        this.startTime = (+ new Date());
+    }
+    clear(){
+        clearInterval(this.interval);
+    }
+    constructor(_timeout: number, _startTime: number){
+        this.timeout = _timeout;
+        this.startTime = _startTime;
+    }
+}
+
 export class WorkerJobRequest implements IWorkerJobRequest{
     method: string;
-    args: [];
+    args: any[];
     private event: EventEmitter;
     private timeout: number;
     private retry: number;
@@ -55,11 +89,13 @@ export class WorkerJobRequest implements IWorkerJobRequest{
         this.event.emit("finish", thing);
     }
     private run(func: Function, root: any, flag: number = 0){
+        let countDown = new CountDown(this.timeout, (+new Date()));
+        this.args.push(countDown);
         let promise = func.apply(root, this.args) as Promise<any>;
         return Promise.race([promise, new Promise((resolve, reject) => {
-            setTimeout(() => {
+            countDown.count().then(() => {
                 resolve(TIMEOUT);
-            }, this.timeout);
+            });
         })]).then((value) => {
             if(value === TIMEOUT){
                 if(flag++ < this.retry){
@@ -71,6 +107,8 @@ export class WorkerJobRequest implements IWorkerJobRequest{
                 }
             }
             else{
+                countDown.clear();
+                countDown = undefined;
                 return value;
             }
         });

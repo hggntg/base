@@ -89,6 +89,11 @@ export function bundle(target?: string, config?: string) {
             log(`> webpack --config ${webpackConfigFile}`);
             let bundleProcess = spawn("node", cmd.split(" "), { cwd: cwd, detached: true, env: { NPM_CONFIG_COLOR: "always", FORCE_COLOR: "1" } });
             bundleProcess.unref();
+            bundleProcess.stderr.on("error", (err) => {
+                throw err;
+            }).on("data", (chunk: Buffer) => {
+                log(chunk.toString(), "error");
+            });
             bundleProcess.stdout.on("error", (err) => {
                 throw err;
             }).on("data", (chunk: Buffer) => {
@@ -115,23 +120,25 @@ export function bundle(target?: string, config?: string) {
                     files: path.join(cwd, "bundle", "index.js"),
                     from: /"production"/g,
                     to: "process.env.NODE_ENV"
-                })
-                for (let i = 0; i < postLength; i++) {
-                    let post = bundlesHook.post[i];
-                    let cmdSegments = post.cmd.split(" ");
-                    let cmd = cmdSegments[0];
-                    cmdSegments.splice(0, 1);
-                    let argument = cmdSegments.join(" ");
-                    argument = argument.replace(/\$pwd/, post.cwd);
-                    log(`> ${cmd} ${argument}`);
-                    let resultProcess = spawn(cmd, argument.split(" "), { cwd: cwd, env: { NPM_CONFIG_COLOR: "always", FORCE_COLOR: "1" } });
-                    resultProcess.stdout.on("data", (chunk: Buffer) => {
-                        log(chunk.toString());
-                    });
-                    resultProcess.stderr.on("data", (chunk: Buffer) => {
-                        log(chunk.toString());
-                    });
-                }
+                });
+                setTimeout(() => {
+                    for (let i = 0; i < postLength; i++) {
+                        let post = bundlesHook.post[i];
+                        let cmdSegments = post.cmd.split(" ");
+                        let cmd = cmdSegments[0];
+                        cmdSegments.splice(0, 1);
+                        let argument = cmdSegments.join(" ");
+                        argument = argument.replace(/\$pwd/, post.cwd);
+                        log(`> ${cmd} ${argument}`);
+                        let resultProcess = spawn(cmd, argument.split(" "), { cwd: cwd, env: { NPM_CONFIG_COLOR: "always", FORCE_COLOR: "1" } });
+                        resultProcess.stdout.on("data", (chunk: Buffer) => {
+                            log(chunk.toString());
+                        });
+                        resultProcess.stderr.on("data", (chunk: Buffer) => {
+                            log(chunk.toString());
+                        });
+                    }
+                }, 1500);
             });
         }).catch(e => {
             throw e;

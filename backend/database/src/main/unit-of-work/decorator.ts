@@ -1,5 +1,6 @@
 import { UNIT_OF_WORK_KEY } from "@app/infrastructure/constant";
-import { IUnitOfWorkMetadata, IDatabaseContext } from "@app/interface";
+import { IUnitOfWorkMetadata, IDatabaseContext, IEntityUIList } from "@app/interface";
+import { getEntityUIList } from "@app/main/entity";
 
 export function UOW<T extends IDatabaseContext>(databaseContext: { new(): T }) {
 	return function (target: object) {

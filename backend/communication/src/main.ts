@@ -1,12 +1,12 @@
 import { gzip, gunzip } from "zlib";
 import { ICommunication, ConnectionOption } from "@app/interface"
-import { ILogger, LOGGER_SERVICE } from "@base/logger";
 import { connect, Connection, Channel, Options, Replies } from "amqplib";
 import { Server } from "@app/server";
 import { Client } from "@app/client";
 import { Worker } from "@app/worker";
 import { Owner } from "@app/owner";
-import { getDependency, use } from "@base/class";
+import { Publisher } from "./publisher";
+import { Subscriber } from "./subscriber";
 
 export class Communication implements ICommunication{
     private options: ConnectionOption;
@@ -133,5 +133,11 @@ export class Communication implements ICommunication{
     }
     createOwner(){
         return new Owner(this.conn, this.logger);
+    }
+    createPublisher(exchangeName: string){
+        return new Publisher(exchangeName, this.conn, this.logger);
+    }
+    createSubscriber(exchangeName: string){
+        return new Subscriber(exchangeName, this.conn, this.logger);
     }
 }

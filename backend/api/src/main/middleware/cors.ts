@@ -1,6 +1,4 @@
 import { Request, Response, NextFunction } from "express";
-import { ILogger, LOGGER_SERVICE } from "@base/logger";
-import { getDependency } from "@base/class";
 import { IMiddlewareChainable } from "@app/interface";
 
 interface ISetCredentials extends ICORSMiddlewareChainable{
@@ -120,7 +118,7 @@ export class CORSMiddleware implements ICORSMiddleware{
             res.header("Access-Control-Allow-Headers", this.headers.join(", "));
             res.header('Access-Control-Allow-Request-Methods', this.requestMethods.join(", "));
             res.header('Access-Control-Allow-Request-Headers', this.requestHeaders.join(", "));
-            res.header('Access-Control-Max-Age', this.maxAge.toString());
+            // res.header('Access-Control-Max-Age', this.maxAge.toString());
             res.header('Access-Control-Allow-Expose-Headers', this.exposeHeaders.join(", "));
 
             this.logger.pushLog({

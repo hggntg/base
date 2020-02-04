@@ -1,6 +1,6 @@
 {
 	"name": "@base-plugins/communication",
-	"version": "1.0.87",
+	"version": "1.0.113",
 	"description": "Plugin for base project to add @base/communication to @base/builder",
 	"main": "index.js",
 	"types": "index.d.ts",
@@ -17,13 +17,12 @@
 		"@base/communication"
 	],
 	"dependencies": {
-		"@base/communication": "^1.0.110"
+		"@base/communication": "^1.0.137"
 	},
 	"devDependencies": {
-		"@base/builder": "^1.0.99",
-		"@types/node": "^12.7.2",
-		"nodemon": "^1.19.1",
-		"ts-node": "^8.3.0",
-		"typescript": "^3.5.3"
+		"@base/builder": "^1.0.121",
+		"@types/node": "^12.12.24",
+		"inversify": "^5.0.1",
+		"reflect-metadata": "^0.1.13"
 	}
 }

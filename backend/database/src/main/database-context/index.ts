@@ -5,17 +5,92 @@ import {
 	IDbContextMetadata,
 	IDatabaseContext,
 	IDatabaseContextSession,
-	IEntitySchema
-} from "../../interface";
+	IEntitySchema,
+	ITrackingOption
+} from "@app/interface";
 import mongoose from "mongoose";
-import { Injectable, getDependency, BaseError } from "@base/class";
 import { getDbContextMetadata } from "@app/main/database-context/decorator";
 import { DBCONTEXT_KEY, SCHEMA_KEY } from "@app/infrastructure/constant";
-import { getEntitySchema } from "@app/main/entity";
-import { LOGGER_SERVICE, ILogger } from "@base/logger";
+import { getEntitySchema, Entity, Field, Id, ForeignField } from "@app/main/entity";
 import { generateSchema, mapSchemaMiddleware, DbContextSession } from "@app/main/internal";
+import { CustomTypes } from "@app/main/types";
 
 export const DATABASE_CONTEXT_SERVICE = "IDatabaseContext";
+
+interface IDatabaseTracking<T extends IBaseEntity> {
+	id: mongoose.Types.ObjectId;
+	record: mongoose.Types.ObjectId;
+	table: string;
+	event: "CREATE" | "UPDATE" | "DELETE",
+	metadata: string;
+	at: Date;
+	by: T;
+}
+
+// const DatabaseTrackingEvent = ["CREATE", "UPDATE", "DELETE"];
+// const ConstDatabaseTrackingEvent = <const>["CREATE", "UPDATE", "DELETE"];
+// type TDatabaseTrackingEvent = typeof ConstDatabaseTrackingEvent[number];
+
+// class DatabaseTracking<T extends IBaseEntity> implements IDatabaseTracking<T>{
+// 	@Id()
+// 	id: mongoose.Types.ObjectId;
+// 	@Field({type: mongoose.Types.ObjectId})
+// 	record: mongoose.Types.ObjectId;
+// 	@Field({type: String})
+// 	table: string;
+// 	@Field({type: CustomTypes.Select, options: DatabaseTrackingEvent})
+// 	event: TDatabaseTrackingEvent;
+// 	@Field({type: CustomTypes.Json})
+// 	metadata: string;
+// 	@Field({type: Date})
+// 	at: Date;
+// 	@ForeignField({
+// 		localKey: "by",
+// 		refKey: "id",
+// 		relatedEntity: null,
+// 		load: "eager",
+// 		type: "one-to-one",
+// 	})
+// 	by: T;
+// }
+
+class DatabaseTracker {
+	private schema: mongoose.Schema;
+	private model: mongoose.Model<mongoose.Document>;
+	constructor(_schema: mongoose.Schema){
+		this.schema = _schema;
+	}
+	init(connection: mongoose.Connection){
+		this.model = connection.model("BaseDatabaseTracker", this.schema);
+	}
+	createDoc(doc: mongoose.Document){
+		return this.model.create({
+			record: doc._id,
+			collection: doc.modelName,
+			event: "CREATE",
+			metdata: JSON.stringify(doc.toObject()),
+			at: new Date()
+		})
+	}
+	updateDoc(doc: mongoose.Document){
+		return this.model.create({
+			record: doc._id,
+			collection: doc.modelName,
+			event: "UPDATE",
+			metdata: JSON.stringify(doc.toObject()),
+			at: new Date()
+		})
+	}
+	deleteDoc(doc: mongoose.Document){
+		return this.model.create({
+			record: doc._id,
+			collection: doc.modelName,
+			event: "REMOVE",
+			metdata: null,
+			at: new Date()
+		});
+	}
+}
 
 @Injectable(DATABASE_CONTEXT_SERVICE, true, true)
 export class DatabaseContext implements IDatabaseContext {
@@ -28,6 +103,7 @@ export class DatabaseContext implements IDatabaseContext {
 		let dbContext: IDbContextMetadata = getDbContextMetadata(this);
 		let dbContextSession = this.getDbContextSession();
 		let session: mongoose.ClientSession = null;
+		let currentId: number = dbContext.context.getCurrentId();
 		return dbContextSession.session.then(_session => {
 			session = _session;
 			session.startTransaction();
@@ -81,8 +157,8 @@ export class DatabaseContext implements IDatabaseContext {
 			return session.commitTransaction().then(() => {
 				return new Promise((resolve, reject) => {
 					session.endSession(function (err, result) {
-						dbContext.context.remove("documents");
-						dbContext.context.remove("session");
+						dbContext.context.removeById(currentId, "documents");
+						dbContext.context.removeById(currentId, "session");
 						if (err) {
 							reject(err);
 						}
@@ -101,8 +177,8 @@ export class DatabaseContext implements IDatabaseContext {
 				return session.abortTransaction().then(() => {
 					return new Promise((resolve, reject) => {
 						session.endSession(function (error, result) {
-							dbContext.context.remove("documents");
-							dbContext.context.remove("session");
+							dbContext.context.removeById(currentId, "documents");
+							dbContext.context.removeById(currentId, "session");
 							if (error) {
 								reject(error);
 							}
@@ -164,6 +240,7 @@ export class DatabaseContext implements IDatabaseContext {
 							})
 						}
 						schemaEntity.model = connection.model(schemaEntity.name, schemaEntity.schema);
+						
 						defineMetadata(SCHEMA_KEY, schemaEntity, getClass(entityClass));
 					});
 					return resolve(true);
@@ -173,6 +250,12 @@ export class DatabaseContext implements IDatabaseContext {
 				}
 			});
 		});
+	}
+	enableTracking(option: ITrackingOption): Promise<boolean> {
+		let actor = option.actor;
+		let dbContext: IDbContextMetadata = getDbContextMetadata(this);
+		// dbContext.tracker = 
+		return Promise.resolve(true);
 	}
 	extend(plugins: Function | Function[]) {
 		let dbContext = getDbContextMetadata(this);
@@ -204,5 +287,5 @@ export class DatabaseContext implements IDatabaseContext {
 	}
 }
 
-export * from "./decorator";
-export * from "./collection";
+export * from "@app/main/database-context/decorator";
+export * from "@app/main/database-context/collection";

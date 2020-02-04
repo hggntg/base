@@ -1,4 +1,5 @@
 export const SCHEMA_KEY = Symbol.for("schema");
+export const UI_KEY = Symbol.for("ui");
 export const PRE_SCHEMA_KEY = Symbol.for("preSchema");
 export const PRE_SCHEMA_LIST = Symbol.for("preSchemaList");
 export const FOREIGN_KEY = Symbol.for("foreignKey")

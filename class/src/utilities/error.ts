@@ -1,6 +1,7 @@
 export interface IBaseError extends Error {
     code: number;
     specificCode: number;
+    toString(): string;
 }
 
 export class BaseError extends Error implements IBaseError{

@@ -4,7 +4,6 @@ export * from "@app/main/controller";
 export * from "@app/main/server";
 import { ResponseTemplate, HttpCode } from "@app/main/response";
 import { IQueryParamInput } from "@app/interface";
-import { Property } from "@base/class";
 export {
     HttpCode,
     ResponseTemplate as Resp

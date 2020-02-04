@@ -3,7 +3,6 @@ import path from "path";
 import { log } from "../../infrastructure/logger";
 export const folders = [
     "package.json",
-    "nodemon.json",
     "tsconfig.json",
     "typings.d.ts",
 ]

@@ -1,5 +1,4 @@
 import mongoose from "mongoose";
-import { defineRealDataType } from "@base/class";
 
 export default class Select extends mongoose.SchemaType{
     private options: any[];

@@ -1,0 +1,31 @@
+<div class="fh">
+    <mat-grid-list cols="4" rowHeight="2:1" class="fh p0 vertical">
+        <mat-grid-tile class="fh p0">
+            <img src="https://picsum.photos/200" />
+        </mat-grid-tile>
+        <mat-grid-tile colspan="3" class="fh p0 vertical">
+            <mat-card class="fw mat-elevation-z0">
+                <mat-card-content class="fw">
+                    <mat-form-field class="fw">
+                        <input matInput placeholder="Enter your email" [formControl]="email" required (keydown.enter)="login()">
+                        <mat-error *ngIf="email.invalid">{{getErrorMessage("email")}}</mat-error>
+                    </mat-form-field>
+                    <mat-form-field class="fw">
+                        <input matInput placeholder="Enter your password" [type]="hide ? 'password' : 'text'" [formControl]="password" (keydown.enter)="login()">
+                        <button mat-icon-button matSuffix (click)="hide = !hide" [attr.aria-label]="'Hide password'" [attr.aria-pressed]="hide">
+                            <mat-icon>{{hide ? 'visibility_off' : 'visibility'}}</mat-icon>
+                        </button>
+                        <mat-error *ngIf="password.invalid">{{getErrorMessage("password")}}</mat-error>
+                    </mat-form-field>
+                </mat-card-content>
+                <mat-card-actions class="fw">
+                    <button mat-stroked-button color="primary" (click)="login()">
+                        <mat-progress-spinner class="m5" *ngIf="loading === 'true'" strokeWidth="2" diameter="20" color="primary" mode="indeterminate"></mat-progress-spinner>
+                        <span *ngIf="loading === 'false'">Login</span>
+                    </button>
+                    <p *ngIf="loginStatus === 'false'" class="mat-error">* Wrong email or password</p>
+                </mat-card-actions>
+            </mat-card>
+        </mat-grid-tile>
+    </mat-grid-list>
+</div>

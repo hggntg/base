@@ -1,4 +1,3 @@
-import { Property, getDependency } from "@base/class";
 import { IController } from "@app/interface"
 import { Server } from "@app/main/server/server.decorator";
 import { SERVER_ZONE_KEY } from "@app/shared/constant";

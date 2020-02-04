@@ -1,14 +1,14 @@
-import { Property, getDependency } from "@base/class";
-import { SCHEMA_KEY, FOREIGN_KEY, PRE_SCHEMA_KEY, PRE_SCHEMA_LIST } from "@app/infrastructure/constant";
+import { SCHEMA_KEY, FOREIGN_KEY, PRE_SCHEMA_KEY, PRE_SCHEMA_LIST, UI_KEY } from "@app/infrastructure/constant";
 import {
 	IEntitySchema, IFakePreAggregate,
 	IFakePreDocument, HookDocumentType, HookModelType, IFakePreModel,
-	HookAggregateType, HookQueryType, IFakePreQuery, IFakePlugin, ForeignFieldOptions, IFakeSchemaFunction, TEntityForeignField, IBaseEntity
+	HookAggregateType, HookQueryType, IFakePreQuery, IFakePlugin, ForeignFieldOptions, IFakeSchemaFunction, TEntityForeignField, IBaseEntity, IEntityUI, IFieldUI, ForeignFieldOptionsWithBrigde
 } from "@app/interface";
 import { ensureEntitySchemaInitiate, getEntitySchema, getPreEntitySchemaList } from "@app/main/entity/entity-schema";
 import mongoose from "mongoose";
 import { mapSchemaMiddleware } from "@app/main/internal";
 import { BASE_ENTITY_SERVICE } from "@app/main/entity";
+import { getEntityUI } from "@app/main/entity/entity-ui";
 
 
 export function Id() {
@@ -16,30 +16,62 @@ export function Id() {
 		Property(mongoose.Types.ObjectId)(target, propertyKey);
 		let classImp = getClass(target);
 		let schema: IEntitySchema<typeof classImp> = getEntitySchema(target);
+		let entityUI: IEntityUI = getEntityUI(target);
 		schema = ensureEntitySchemaInitiate(schema);
 		schema.definition[propertyKey + "::-::_id"] = {
 			type: mongoose.SchemaTypes.ObjectId,
 			auto: true
 		}
+		if(!entityUI.fields["id"]){
+			entityUI.fields["id"] = {
+				disabled: true,
+				name: "id",
+				type: "input"
+			}
+		}
 		defineMetadata(SCHEMA_KEY, schema, classImp);
+		defineMetadata(UI_KEY, entityUI, classImp);
 	}
 }
-
-export function Field(name?: string | mongoose.SchemaTypeOpts<any>, entitySchemaField?: mongoose.SchemaTypeOpts<any>) {
+export function Field(entitySchemaField: mongoose.SchemaTypeOpts<any>): (target: object, propertyKey: string) => void;
+export function Field(entitySchemaField: mongoose.SchemaTypeOpts<any>, ui: IFieldUI): (target: object, propertyKey: string) => void;
+export function Field(name: string, entitySchemaField: mongoose.SchemaTypeOpts<any>): (target: object, propertyKey: string) => void;
+export function Field(name: string, entitySchemaField: mongoose.SchemaTypeOpts<any>, ui: IFieldUI): (target: object, propertyKey: string) => void;
+export function Field(arg0?: string | mongoose.SchemaTypeOpts<any>, arg1?: mongoose.SchemaTypeOpts<any> | IFieldUI, arg2?: IFieldUI) {
 	return function (target: object, propertyKey: string) {
 		let classImp = getClass(target);
 		let schema: IEntitySchema<typeof classImp> = getEntitySchema(classImp);
+		let entityUI: IEntityUI = getEntityUI(classImp);
 		schema = ensureEntitySchemaInitiate(schema);
-		if (!name) {
-			name = propertyKey;
+		let argLength = ((arg0 && arg1 && arg2) ? 3 : (arg0 && arg1) ? 2 : 1);
+		let name, entitySchemaField;
+		if(argLength === 3 && typeof arg0 === "string"){
+			name = arg0;
+			entitySchemaField = arg1;
+			if(!entityUI.fields[name]){
+				entityUI.fields[name] = arg2;
+			}
 		}
-		if (typeof name !== "string") {
-			entitySchemaField = name;
+		else if (argLength === 2 && typeof arg0 === "string"){
+			name = arg0;
+			entitySchemaField = arg1;
+		}
+		else if (argLength === 2){
 			name = propertyKey;
+			entitySchemaField = arg0;
+			if(!entityUI.fields[name]){
+				entityUI.fields[name] = arg1 as IFieldUI;
+			}
+		}
+		else {
+			name = propertyKey;
+			entitySchemaField = arg0;
 		}
 		Property(entitySchemaField.type)(target, propertyKey);
 		schema.definition[propertyKey + "::-::" + name] = entitySchemaField;
+		
 		defineMetadata(SCHEMA_KEY, schema, classImp);
+		defineMetadata(UI_KEY, entityUI, classImp);
 	}
 }
 
@@ -48,23 +80,44 @@ export function getForeignField(target): TEntityForeignField<any>[] {
 	return foreignField;
 }
 
-export function ForeignField<T>(options: ForeignFieldOptions<T> & { hide?: "all" | string[] });
-export function ForeignField<T>(name: string, options: ForeignFieldOptions<T> & { hide?: "all" | string[] });
-export function ForeignField<T>(arg0: ForeignFieldOptions<T> & { hide?: "all" | string[] } | string, arg1?: ForeignFieldOptions<T> & { hide?: "all" | string[] }) {
+export function ForeignField<T>(options: (ForeignFieldOptions<T> & { hide?: "all" | string[] }) | (ForeignFieldOptionsWithBrigde<T>  & { hide?: "all" | string[] }));
+export function ForeignField<T>(options: (ForeignFieldOptions<T> & { hide?: "all" | string[] }) | (ForeignFieldOptionsWithBrigde<T>  & { hide?: "all" | string[] }), uiField: IFieldUI);
+export function ForeignField<T>(name: string, options: (ForeignFieldOptions<T> & { hide?: "all" | string[] }) | (ForeignFieldOptionsWithBrigde<T>  & { hide?: "all" | string[] }));
+export function ForeignField<T>(name: string, options: (ForeignFieldOptions<T> & { hide?: "all" | string[] }) | (ForeignFieldOptionsWithBrigde<T>  & { hide?: "all" | string[] }), uiField: IFieldUI);
+export function ForeignField<T>(
+	arg0: (ForeignFieldOptions<T> & { hide?: "all" | string[] }) | (ForeignFieldOptionsWithBrigde<T>  & { hide?: "all" | string[] }) | string,
+	arg1?: (ForeignFieldOptions<T> & { hide?: "all" | string[] }) | (ForeignFieldOptionsWithBrigde<T>  & { hide?: "all" | string[] }) | IFieldUI,
+	arg2?: IFieldUI) {
 	return function (target: object, propertyKey: string) {
 		Property(Object)(target, propertyKey);
 		let classImp = getClass(target);
 		let schema: IEntitySchema<typeof classImp> = getEntitySchema(classImp);
+		let entityUI: IEntityUI = getEntityUI(classImp);
 		schema = ensureEntitySchemaInitiate(schema);
-		let name = "";
-		let options: ForeignFieldOptions<T> & { hide?: "all" | string[] } = null;
-		if (typeof arg0 === "string") {
+		let argLength = ((arg0 && arg1 && arg2) ? 3 : (arg0 && arg1) ? 2 : 1);
+		let name;
+		let options: (ForeignFieldOptions<T> & { hide?: "all" | string[] }) | (ForeignFieldOptionsWithBrigde<T>  & { hide?: "all" | string[] });
+		if(argLength === 3 && typeof arg0 === "string"){
 			name = arg0;
-			options = arg1;
+			options = arg1 as (ForeignFieldOptions<T> & { hide?: "all" | string[] }) | (ForeignFieldOptionsWithBrigde<T>  & { hide?: "all" | string[] });
+			if(!entityUI.fields[name]){
+				entityUI.fields[name] = arg2;
+			}
+		}
+		else if(argLength === 2 && typeof arg0 === "string"){
+			name = arg0;
+			options = arg1 as (ForeignFieldOptions<T> & { hide?: "all" | string[] }) | (ForeignFieldOptionsWithBrigde<T>  & { hide?: "all" | string[] });
+		}
+		else if(argLength === 2){
+			name = propertyKey;
+			options = arg0 as (ForeignFieldOptions<T> & { hide?: "all" | string[] }) | (ForeignFieldOptionsWithBrigde<T>  & { hide?: "all" | string[] });
+			if(!entityUI.fields[name]){
+				entityUI.fields[name] = arg1 as IFieldUI;
+			}
 		}
 		else {
 			name = propertyKey;
-			options = arg0;
+			options = arg0 as (ForeignFieldOptions<T> & { hide?: "all" | string[] }) | (ForeignFieldOptionsWithBrigde<T>  & { hide?: "all" | string[] });
 		}
 		let localField = "";
 		let hide = options.hide || [];
@@ -117,6 +170,7 @@ export function ForeignField<T>(arg0: ForeignFieldOptions<T> & { hide?: "all" | 
 		});
 		defineMetadata(SCHEMA_KEY, schema, classImp);
 		defineMetadata(FOREIGN_KEY, foreignFields, classImp);
+		defineMetadata(UI_KEY, entityUI, classImp);
 	}
 }
 class FakeSchemaFunction<T> implements IFakeSchemaFunction<T>{
@@ -190,6 +244,14 @@ function isSchemaOptions(input): input is mongoose.SchemaOptions {
 	return !!isSchemaOption;
 }
 
+function isUIOptions(input): input is IEntityUI {
+	let isEntityUI = 1;
+	Object.keys(input).map(key => {
+		isEntityUI *= (<IEntityUI>input)[key] !== undefined ? 1 : 0;
+	});
+	return !! isEntityUI;
+}
+
 export function PreEntity<T>(name: string): (target: any) => void{
 	return function (target: any) {
 		let classImp = getClass(target);
@@ -203,21 +265,49 @@ export function PreEntity<T>(name: string): (target: any) => void{
 }
 
 export function Entity<T>(options: mongoose.SchemaOptions): (target: any) => void;
+export function Entity<T>(options: mongoose.SchemaOptions, uiOptions: IEntityUI): (target: any) => void;
 export function Entity<T>(name: string, options: mongoose.SchemaOptions): (target: any) => void;
+export function Entity<T>(name: string, options: mongoose.SchemaOptions, uiOptions: IEntityUI): (target: any) => void;
 export function Entity<T>(options: mongoose.SchemaOptions, hook: (this: IFakeSchemaFunction<T>) => void): (target: any) => void;
+export function Entity<T>(options: mongoose.SchemaOptions, uiOptions: IEntityUI, hook: (this: IFakeSchemaFunction<T>) => void): (target: any) => void;
 export function Entity<T>(name: string, options: mongoose.SchemaOptions, hook: (this: IFakeSchemaFunction<T>) => void): (target: any) => void;
-export function Entity<T>(arg0: string | mongoose.SchemaOptions, arg1?: mongoose.SchemaOptions | ((this: IFakeSchemaFunction<T>) => void), arg2?: ((this: IFakeSchemaFunction<T>) => void)): (target: any) => void {
+export function Entity<T>(name: string, options: mongoose.SchemaOptions, uiOptions: IEntityUI, hook: (this: IFakeSchemaFunction<T>) => void): (target: any) => void;
+export function Entity<T>(arg0: string | mongoose.SchemaOptions, arg1?: mongoose.SchemaOptions | IEntityUI | ((this: IFakeSchemaFunction<T>) => void), arg2?: IEntityUI | ((this: IFakeSchemaFunction<T>) => void), arg3?: ((this: IFakeSchemaFunction<T>) => void)): (target: any) => void {
 	return function (target: any) {
 		let classImp = getClass(target);
 		let schema: IEntitySchema<T> = getEntitySchema(getClass(target));
+		let entityUI: IEntityUI = getEntityUI(getClass(target));
 		schema = ensureEntitySchemaInitiate(schema);
 		schema.middleware = [];
-		let argLength = ((arg0 && arg1 && arg2) ? 3 : (arg0 && arg1) ? 2 : 1);
+		let argLength = ((arg0 && arg1 && arg2 && arg3) ? 4 : ((arg0 && arg1 && arg2) ? 3 : (arg0 && arg1) ? 2 : 1));
 		let hook: IFakeSchemaFunction<T> = new FakeSchemaFunction(schema.middleware, schema.indexes);
-		if (argLength === 3 && typeof arg0 === "string" && isSchemaOptions(arg1) && typeof arg2 === "function") {
+		if (argLength === 4 && typeof arg0 === "string" && isSchemaOptions(arg1) && isUIOptions(arg2) && typeof arg3 === "function"){
+			schema.name = arg0;
+			schema.schemaOptions = arg1;
+			arg3.apply(hook);
+			entityUI.name = arg2.name;
+			entityUI.slug = arg2.slug;
+			entityUI.columns = arg2.columns;
+		}
+		else if (argLength === 3 && typeof arg0 === "string" && isSchemaOptions(arg1) && typeof arg2 === "function") {
 			schema.name = arg0;
 			schema.schemaOptions = arg1;
 			arg2.apply(hook);
+		}
+		else if (argLength === 3 && isSchemaOptions(arg0) && isUIOptions(arg1) && typeof arg2 === "function"){
+			schema.name = classImp.name;
+			schema.schemaOptions = arg0;
+			arg2.apply(hook);
+			entityUI.name = arg1.name;
+			entityUI.slug = arg1.slug;
+			entityUI.columns = arg1.columns;
+		}
+		else if (argLength === 3 && typeof arg0 === "string" && isSchemaOptions(arg1) && isUIOptions(arg2)){
+			schema.name = arg0;
+			schema.schemaOptions = arg1;
+			entityUI.name = arg2.name;
+			entityUI.slug = arg2.slug;
+			entityUI.columns = arg2.columns;
 		}
 		else if (argLength === 2 && isSchemaOptions(arg0) && typeof arg1 === "function") {
 			schema.name = classImp.name;
@@ -228,6 +318,13 @@ export function Entity<T>(arg0: string | mongoose.SchemaOptions, arg1?: mongoose
 			schema.name = arg0;
 			schema.schemaOptions = arg1;
 		}
+		else if (argLength === 2 && isSchemaOptions(arg0) && isUIOptions(arg1)){
+			schema.name = classImp.name;
+			schema.schemaOptions = arg0;
+			entityUI.name = arg1.name;
+			entityUI.slug = arg1.slug;
+			entityUI.columns = arg1.columns;
+		}
 		else if(argLength === 1 && isSchemaOptions(arg0)){
 			schema.name = classImp.name;
 			schema.schemaOptions = arg0;
@@ -236,18 +333,38 @@ export function Entity<T>(arg0: string | mongoose.SchemaOptions, arg1?: mongoose
 			throw new Error("Something wrong");
 		}
 		let foreignFields: TEntityForeignField<any>[] = getForeignField(target);
-		foreignFields = foreignFields.map(foreignField => {
+		foreignFields = foreignFields.map((foreignField : TEntityForeignField<any>) => {
 			if(foreignField.type === "one-to-many"){
-				foreignField.refKey = schema.name + "_" + foreignField.refKey;
-				let localKey = foreignField.localKey === "id" ? "_id" : foreignField.localKey;
-				let refInstance = getDependency<IBaseEntity>(BASE_ENTITY_SERVICE, foreignField.relatedEntity.name);
-				let ref = getEntitySchema(refInstance);
-				let entitySchemaField = function (schema: mongoose.Schema) {
-					schema.virtual(foreignField.name, {
-						ref: ref.name,
-						localField: localKey,
-						foreignField: foreignField.refKey
-					});
+				let entitySchemaField;
+				if((<any>foreignField).bridgeEntity){
+					let foreginFieldWithBridge: ForeignFieldOptionsWithBrigde<any> & {name: string, localField: string, hide: "all" | string[]} = foreignField as ForeignFieldOptionsWithBrigde<any> & {name: string, localField: string, hide: "all" | string[]};
+					foreginFieldWithBridge.bridgeKey = schema.name + "_" + foreginFieldWithBridge.bridgeKey;
+					let localKey = foreginFieldWithBridge.localKey === "id" ? "_id" : foreginFieldWithBridge.localKey;
+					let bridgeInstance = getDependency<IBaseEntity>(BASE_ENTITY_SERVICE, foreginFieldWithBridge.bridgeEntity.name);
+					let refInstance = getDependency<IBaseEntity>(BASE_ENTITY_SERVICE, foreginFieldWithBridge.relatedEntity.name);
+					let ref = getEntitySchema(refInstance);
+					let bridge = getEntitySchema(bridgeInstance);
+                    foreginFieldWithBridge.refKey = ref.name + "_" + foreginFieldWithBridge.refKey;
+					entitySchemaField = function (schema: mongoose.Schema) {
+						schema.virtual(bridge.name + "_" + foreignField.name, {
+							ref: bridge.name,
+							localField: localKey,
+							foreignField: foreginFieldWithBridge.bridgeKey
+						});
+					}
+				}
+				else {
+					foreignField.refKey = schema.name + "_" + foreignField.refKey;
+					let localKey = foreignField.localKey === "id" ? "_id" : foreignField.localKey;
+					let refInstance = getDependency<IBaseEntity>(BASE_ENTITY_SERVICE, foreignField.relatedEntity.name);
+					let ref = getEntitySchema(refInstance);
+					entitySchemaField = function (schema: mongoose.Schema) {
+						schema.virtual(foreignField.name, {
+							ref: ref.name,
+							localField: localKey,
+							foreignField: foreignField.refKey
+						});
+					}
 				}
 				schema.virutals.push(entitySchemaField);
 			}
@@ -257,6 +374,7 @@ export function Entity<T>(arg0: string | mongoose.SchemaOptions, arg1?: mongoose
 		schema.schemaOptions.toJSON = { virtuals: true };
 		defineMetadata(SCHEMA_KEY, schema, getClass(target));
 		defineMetadata(FOREIGN_KEY, foreignFields, getClass(target));
+		defineMetadata(UI_KEY, entityUI, getClass(target));
 	}
 }
 

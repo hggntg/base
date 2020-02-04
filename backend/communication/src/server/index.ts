@@ -1,6 +1,5 @@
 import { Connection, Channel, Message, ConsumeMessage } from "amqplib";
 import { EventEmitter } from "events";
-import { ILogger } from "@base/logger";
 import { IServer, IListenOption, IRPCResult, IRPCRequest, IRPCBody, IRpcTemplate } from "@app/interface";
 import { Communication } from "@app/main";
 
@@ -44,11 +43,11 @@ export class Server implements IServer {
             this.listenInBack(data);
         });
     }
-    private listenInBack(options: IListenOption) {
+    private listenInBack(options: IListenOption, usedToFail?: boolean) {
         let self = this;
-        this.conn.createChannel().then(channel => {
+        return this.conn.createChannel().then(channel => {
             this.channel = channel;
-            return Communication.checkAndAssertQueue(channel, this.queueName, {durable: false, maxPriority: 10}).then(() => {
+            return Communication.checkAndAssertQueue(channel, this.queueName, {durable: false, maxPriority: 10}, usedToFail).then(() => {
                 channel.prefetch(options.prefecth);
                 return channel.consume(this.queueName, async function (msg) {
                     msg.content = await Communication.decompress(msg.content);
@@ -67,7 +66,15 @@ export class Server implements IServer {
                 });
             });
         }).catch((err: Error) => {
-            this.logger.pushError(err, this.logTag);
+            if(err.name === "WRONG_QUEUE_OPTIONS"){
+                return this.listenInBack(options, true).then(() => {
+                    this.logger.pushSilly(err.message, "communication");
+                    return true;
+                });
+            }
+            else {
+                this.logger.pushError(err, this.logTag);
+            }
         });
     }
     publish() {

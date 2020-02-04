@@ -1,8 +1,6 @@
 import jwt from "jsonwebtoken";
 import LRU from "lru-cache";
 import { JwtObject, IJwToken } from "./model/jwt.model";
-import { getDependency, Injectable, BaseError } from "@base/class";
-import { ILogger, LOGGER_SERVICE } from "@base/logger";
 import { JsonDB } from "node-json-db";
 import { Config } from "node-json-db/dist/lib/JsonDBConfig";
 import express from "express";
@@ -43,8 +41,15 @@ interface IMicroAuth {
     hasStore: boolean;
 }
 
-@Injectable(MICRO_AUTH_SERVICE, false, true)
-export class MicroAuth implements IBaseClass<IMicroAuth>{
+interface IMicroAuthMethod {
+    create(info: JwtObject, options: jwt.SignOptions, secret?: string): string;
+    check(token: string, secret?: string): JwtObject;
+    toBlacklist(token: string, secret?: string): boolean;
+    toMiddleware(): (req: express.Request, res: express.Response, next: express.NextFunction) => void;
+}
+
+@Injectable(MICRO_AUTH_SERVICE, true)
+export class MicroAuth implements IBaseClass<IMicroAuth>, IMicroAuthMethod{
     private localDb: JsonDB;
     private storePath: string;
     private cache: LRU<string, string>;
@@ -52,11 +57,11 @@ export class MicroAuth implements IBaseClass<IMicroAuth>{
     private secret: string;
     private isInited: boolean = false;
     private hasStore: boolean = false;
-    create(info: JwtObject, options: jwt.SignOptions): string {
+    create(info: JwtObject, options: jwt.SignOptions, secret?: string): string {
         if (this.hasStore) {
             let token = this.cache.get(info.idt);
             if (!token) {
-                token = jwt.sign(info, this.secret, options);
+                token = jwt.sign(info, secret || this.secret, options);
                 this.logger.pushDebug(`Create token ${token}`, "auth");
                 let cacheMaxAge = (options.expiresIn as number) * 1000;
                 this.cache.set(info.idt, token, cacheMaxAge);
@@ -67,13 +72,15 @@ export class MicroAuth implements IBaseClass<IMicroAuth>{
             return encode(token);
         }
         else {
-            return null;
+            let token = jwt.sign(info, this.secret, options);
+            this.logger.pushDebug(`Create token ${token}`, "auth");
+            return encode(token);
         }
     }
-    check(token: string): JwtObject {
+    check(token: string, secret?: string): JwtObject {
         try {
             token = decode(token);
-            let decodedObject = jwt.verify(token, this.secret) as JwtObject;
+            let decodedObject = jwt.verify(token, secret || this.secret) as JwtObject;
             if (this.hasStore) {
                 if (this.cache.get(decodedObject.idt)) {
                     return decodedObject;
@@ -90,10 +97,10 @@ export class MicroAuth implements IBaseClass<IMicroAuth>{
             throw e;
         }
     }
-    toBlacklist(token: string): boolean {
+    toBlacklist(token: string, secret?: string): boolean {
         if (this.hasStore) {
             try {
-                let jwtObject = this.check(token);
+                let jwtObject = this.check(token, secret);
                 if (jwtObject) {
                     this.cache.del(jwtObject.idt);
                     return true;
@@ -154,10 +161,11 @@ export class MicroAuth implements IBaseClass<IMicroAuth>{
                         data = this.localDb.getData(this.storePath);
                     }
                     catch (e) {
-
+                        console.warn(e.message);
                     }
                     let current = (+new Date());
                     let removedIndexes = [];
+                    let keys = Object.keys(data);
                     this.logger.pushDebug(JSON.stringify(data), "auth");
                     Object.values(data).map((jwToken: IJwToken, index) => {
                         let expire = jwToken.exp;
@@ -171,8 +179,8 @@ export class MicroAuth implements IBaseClass<IMicroAuth>{
                         }
                     });
                     removedIndexes.map(index => {
-                        this.logger.pushDebug("Removing expired token " + data[index], "auth");
-                        delete data[index];
+                        this.logger.pushDebug("Removing expired token " + data[keys[index]].token, "auth");
+                        delete data[keys[index]];
                     });
                     this.logger.pushDebug(JSON.stringify(this.cache.values()), "auth");
                     this.localDb.push(this.storePath, data, true);
@@ -185,7 +193,7 @@ export class MicroAuth implements IBaseClass<IMicroAuth>{
     }
     toMiddleware(): (req: express.Request, res: express.Response, next: express.NextFunction) => void {
         return (req: express.Request, res: express.Response, next: express.NextFunction) => {
-            let token = req.headers.token;
+            let token = req.headers.token || req.header("token");
             if (!token) {
                 let error = new BaseError(403, 403, "Forbidden", "Have no permission");
                 res.status(error.code).json({
@@ -195,13 +203,19 @@ export class MicroAuth implements IBaseClass<IMicroAuth>{
             }
             else {
                 try {
-                    let jwtObject = this.check(token as string);
                     let tempReq = <any>req;
+                    let secret;
+                    if(tempReq.systemSecret){
+                        secret = tempReq.systemSecret;
+                    }
+                    let jwtObject = this.check(token as string, secret);
                     if(!tempReq.user){
                         tempReq.user = {};
                     }
-                    tempReq.user.uniqueId = jwtObject.idt;
-                    tempReq.user.name = jwtObject.inf.name;
+                    tempReq.jwtData = {
+                        idt: jwtObject.idt,
+                        inf: jwtObject.inf
+                    }
                     req = tempReq;
                     next();
                 }

@@ -25,14 +25,14 @@ declare const commander : CommanderStatic;
             return compile();
         }
         else if(action === "fix"){
-            return fix(scope);
+            return fix();
         }
         else if(action === "generate"){
             if(scope === "live") return generate(scope, scope2, scope3);
             else return generate(null, scope, scope2);
         }
         else if(action === "bundle"){
-            return bundle();
+            return bundle(scope, scope2);
         }
         throw new Error("Missing arguments");
     });

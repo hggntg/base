@@ -1,4 +1,3 @@
-import { mapData } from "@base/class";
 import mongoose from "mongoose";
 
 export function ensureNew<T>(classImp: { new(): T }, input: T): T {
@@ -88,7 +87,10 @@ export function generateSet(input, single, list, parent: boolean = true, parentK
 				}
 			}
 			else if (typeof value === "object") {
-				let output = generateSet(value, single, list, false, keys[i]);
+				if(parentKey){
+					key = [parentKey, key].join(".");
+				}
+				let output = generateSet(value, single, list, false, key);
 				list = output.list;
 				single = output.single;
 			}

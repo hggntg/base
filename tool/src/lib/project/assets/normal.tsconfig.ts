@@ -15,7 +15,38 @@ export const tsconfig =
         "experimentalDecorators": true,
         "emitDecoratorMetadata": true,
         "resolveJsonModule": true,
-        "rootDir": ".",
+        "rootDir": "src",
+        "paths": {
+            "@app/*": ["src/*"],
+            "@app": ["src/index.ts"]
+        }
+    },
+    "include": [
+        "src/*.ts",
+        "src/**/*.ts",
+        "src/*.json",
+        "src/**/*.json"
+    ]
+}`;
+
+export const tsconfigRoot = 
+`{
+    "compilerOptions": {
+        "target": "es5",
+        "module": "commonjs",
+        "lib": ["es6"],
+        "declaration": true,
+        "removeComments": true,
+        "noImplicitReturns": true,
+        "noFallthroughCasesInSwitch": true,
+        "moduleResolution": "node",
+        "baseUrl": ".",
+        "types": ["./typings"],
+        "esModuleInterop": true,
+        "experimentalDecorators": true,
+        "emitDecoratorMetadata": true,
+        "resolveJsonModule": true,
+        "rootDir": "src",
         "paths": {
             "@app/*": ["src/*"],
             "@app": ["src/index.ts"]

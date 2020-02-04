@@ -1,5 +1,4 @@
 import mongoose from "mongoose";
-import { Property } from "@base/class";
 import { ensureNew } from "@app/infrastructure/utilities";
 import { SCHEMA_KEY, PRE_SCHEMA_LIST } from "@app/infrastructure/constant";
 import {

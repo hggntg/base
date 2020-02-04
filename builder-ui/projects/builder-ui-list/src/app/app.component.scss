@@ -1,0 +1,13 @@
+.table-container {
+    height: 100%;
+    width: 100%;
+}
+table{
+    width: 100%;
+}
+tr {
+    cursor: pointer;
+}
+tr:not(.mat-header-row):hover {
+    background: #efefef;
+}

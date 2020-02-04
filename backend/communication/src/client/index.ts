@@ -3,8 +3,6 @@ import { Connection, Channel } from "amqplib";
 import { EventEmitter } from "events";
 import { v4 } from "uuid";
 import { queue } from "async"
-import { ILogger } from "@base/logger";
-import { Namespace } from "@base/class";
 import { Communication } from "@app/main";
 import { IClient, IRpcTemplate, IRPCBody, IRPCOption, ITask, IRPCResult, IRPCResultListBody, IRPCResultSingleBody } from "@app/interface";
 
@@ -57,28 +55,60 @@ export class Client implements IClient {
         let rpcMessage: IRpcTemplate = task.message;
         let options: IRPCOption = task.options;
         if (this.channel) {
-            this.rpcCallInBack(rpcMessage, options, this.channel).then(status => {
+            return this.rpcCallInBack(rpcMessage, options, this.channel).then(status => {
                 if (status) {
                     this.logger.pushDebug("Successfully preparing message for rpc request", this.logTag);
                 }
                 callback();
             }).catch(err => {
-                this.logger.pushError(err, this.logTag);
-                callback();
+                if(err.name === "WRONG_QUEUE_OPTIONS"){
+                    return this.conn.createChannel().then(channel => {
+                        this.channel = channel;
+                        return this.rpcCallInBack(rpcMessage, options, this.channel, true).then(status => {
+                            if(status){
+                                this.logger.pushDebug("Successfully preparing message for rpc request", this.logTag);
+                            }
+                            callback();
+                        }).catch(e => {
+                            this.logger.pushError(e, this.logTag);
+                            callback(); 
+                        });
+                    });
+                }
+                else {
+                    this.logger.pushError(err, this.logTag);
+                    return callback();   
+                }
             });
         }
         else {
-            this.conn.createChannel().then(channel => {
+            return this.conn.createChannel().then(channel => {
                 this.channel = channel;
                 this.q.concurrency = this.concurrency;
-                this.rpcCallInBack(rpcMessage, options, this.channel).then(status => {
+                return this.rpcCallInBack(rpcMessage, options, this.channel).then(status => {
                     if (status) {
                         this.logger.pushDebug("Successfully preparing message for rpc request", this.logTag);
                     }
                     callback();
                 }).catch(err => {
-                    this.logger.pushError(err, this.logTag);
-                    callback();
+                    if(err.name === "WRONG_QUEUE_OPTIONS"){
+                        return this.conn.createChannel().then(channel => {
+                            this.channel = channel;
+                            return this.rpcCallInBack(rpcMessage, options, this.channel, true).then(status => {
+                                if(status){
+                                    this.logger.pushDebug("Successfully preparing message for rpc request", this.logTag);
+                                }
+                                callback();
+                            }).catch(e => {
+                                this.logger.pushError(e, this.logTag);
+                                callback(); 
+                            });
+                        });
+                    }
+                    else {
+                        this.logger.pushError(err, this.logTag);
+                        return callback();   
+                    }
                 });
             });
         }
@@ -99,7 +129,9 @@ export class Client implements IClient {
             this.q.push({ message: rpcMessage, options }, (err) => { });
         });
     }
-    private rpcCallInBack(rpcMessage: IRpcTemplate, options: IRPCOption, channel: Channel) {
+
+
+    private rpcCallInBack(rpcMessage: IRpcTemplate, options: IRPCOption, channel: Channel, usedToFail?: boolean) {
         let correlationId = rpcMessage.correlationId;
         let queueNameResult = rpcMessage.queueName + "->" + correlationId;
         let self = this;
@@ -111,55 +143,58 @@ export class Client implements IClient {
             let resultQueue = context.get<string>("queueNameResult");
             let outerId = context.getCurrentId();
             context.holdById(outerId);
-            return await Communication.checkAndAssertQueue(channel, resultQueue, { exclusive: true, autoDelete: true }).then((q) => {
-                this.logger.pushDebug("Ready to receive result", this.logTag);
-                channel.prefetch(1);
-                context.cloneById(outerId);
-                context.flush(outerId, true);
-                return channel.consume(q.queue, async function (msg) {
-                    let currentCorrelationId = context.get<string>("correlationId");
-                    if (correlationId === currentCorrelationId) {
-                        let watcher = context.get<NodeJS.Timeout>("watcher");
-                        clearTimeout(watcher);
-                        self.logger.pushDebug("Receive a result from " + q.queue, self.logTag);
-                        msg.content = await Communication.decompress(msg.content);
-                        let data = Communication.reverseBody(msg.content.toString());
-                        self.event.emit(msg.properties.correlationId, { err: null, data: data.content });
-                        let consumerTag = context.get<string>("consumerTag");
-                        if (consumerTag) {
-                            channel.cancel(consumerTag).then(() => { });
+            try {
+                return await Communication.checkAndAssertQueue(channel, resultQueue, { exclusive: true, autoDelete: true }, usedToFail).then((q) => {
+                    this.logger.pushDebug("Ready to receive result", this.logTag);
+                    channel.prefetch(1);
+                    context.cloneById(outerId);
+                    context.flush(outerId, true);
+                    return channel.consume(q.queue, async function (msg) {
+                        let currentCorrelationId = context.get<string>("correlationId");
+                        if (correlationId === currentCorrelationId) {
+                            let watcher = context.get<NodeJS.Timeout>("watcher");
+                            clearTimeout(watcher);
+                            self.logger.pushDebug("Receive a result from " + q.queue, self.logTag);
+                            msg.content = await Communication.decompress(msg.content);
+                            let data = Communication.reverseBody(msg.content.toString());
+                            self.event.emit(msg.properties.correlationId, { err: null, data: data.content });
+                            let consumerTag = context.get<string>("consumerTag");
+                            if (consumerTag) {
+                                channel.cancel(consumerTag).then(() => { });
+                            }
+                            context.flush(context.getCurrentId(), true);
+                            Namespace.destroy(correlationId);
                         }
-                        context.flush(context.getCurrentId(), true);
-                        Namespace.destroy(correlationId);
-                    }
-                }, { noAck: true });
-            }).then((ok) => {
-                context.set("consumerTag", ok.consumerTag);
-                this.logger.pushDebug("Send request to " + rpcMessage.queueName, this.logTag);
-                let consumerTag = ok.consumerTag;
-                let flag = 0;
-                let watcher = setTimeout((consumerTag: string, correlationId: string, options: IRPCOption) => {
-                    if (flag++ < options.retry) {
-                        watcher.refresh();
-                        this.logger.pushDebug("Request " + correlationId + " retries " + flag + " time(s)", this.logTag);
-                    }
-                    else {
-                        if (consumerTag) {
-                            channel.cancel(consumerTag).then(() => {
-                                this.logger.pushError("Request " + correlationId + " reached the timeout", this.logTag);
-                            });
+                    }, { noAck: true });
+                }).then((ok) => {
+                    context.set("consumerTag", ok.consumerTag);
+                    this.logger.pushDebug("Send request to " + rpcMessage.queueName, this.logTag);
+                    let consumerTag = ok.consumerTag;
+                    let flag = 0;
+                    let watcher = setTimeout((consumerTag: string, correlationId: string, options: IRPCOption) => {
+                        if (flag++ < options.retry) {
+                            watcher.refresh();
+                            this.logger.pushDebug("Request " + correlationId + " retries " + flag + " time(s)", this.logTag);
                         }
-                    }
-                }, options.timeout, consumerTag, correlationId, options);
-                context.set("watcher", watcher);
-                return ok;
-            });
+                        else {
+                            if (consumerTag) {
+                                channel.cancel(consumerTag).then(() => {
+                                    this.logger.pushError("Request " + correlationId + " reached the timeout", this.logTag);
+                                });
+                            }
+                        }
+                    }, options.timeout, consumerTag, correlationId, options);
+                    context.set("watcher", watcher);
+                    return ok;
+                });
+            }
+            catch (e) {
+                throw e;
+            }
         }).then(async () => {
             let timeout = (options.timeout * options.retry);
             let sendingBuffer = await Communication.compress(rpcMessage.body);
             return channel.sendToQueue(rpcMessage.queueName, sendingBuffer, { correlationId: rpcMessage.correlationId, replyTo: queueNameResult, expiration: timeout });
-        }).catch(err => {
-            this.logger.pushError(err, this.logTag);
         });
     }
 

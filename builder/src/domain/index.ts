@@ -1,10 +1,6 @@
 import * as objectPath from "object-path";
 import fs from "fs";
-import { mapData, Injectable, getDependency, use } from "@base/class";
 import { IApp, IConfig as IBaseConfig, IAppProperty } from "@app/interface";
-import { LOGGER_SERVICE, ILogger } from "@base/logger";
-import { INamespaceStatic } from "@base/class/interface";
-import { Namespace } from "@base/class/utilities/namespace";
 import { EventEmitter } from "events";
 import { join } from "path";
 
@@ -41,31 +37,8 @@ export class App implements IApp {
     getType(): IClassType {
         throw new Error("Method not implemented.");
     }
-    private logTag = "main-app";
-    log(message: string);
-    log(obj: object);
-    log(arg0: any) {
-        if (typeof arg0 === "string") {
-            this.logger.pushLog(arg0, "silly", this.logTag);
-        }
-        else {
-            this.logger.pushLog(JSON.stringify(arg0), "silly", this.logTag);
-        }
-    }
-    error(error: string);
-    error(error: Error);
-    error(error: any) {
-        this.logger.pushError(error, this.logTag);
-    }
-    debug(message: string);
-    debug(obj: object);
-    debug(arg0: any) {
-        this.logger.pushDebug(arg0, this.logTag);
-    }
-    info(message: string) {
-        this.logger.pushInfo(message, this.logTag);
-    }
 
+    private logger: ILogger;
     private event: EventEmitter;
     private preStartAppTasks: Array<Promise<any>>;
     context: INamespaceStatic;
@@ -73,7 +46,6 @@ export class App implements IApp {
     config: IBaseConfig;
     initValue(input: Partial<IAppProperty>) {
         this.logger.trace(true);
-        this.logTag = input.logTag;
         this.logger.initValue({ appName: input.appName });
         if (input.aliases) {
             let aliases = Object.keys(input.aliases);
@@ -82,12 +54,13 @@ export class App implements IApp {
             });
         }
     }
-    constructor(@use(LOGGER_SERVICE) private logger: ILogger) {
+    constructor() {
+        this.logger = getDependency(LOGGER_SERVICE);
         this.event = new EventEmitter();
         this.preStartAppTasks = new Array();
         this.context = Namespace;
         this.once("preStartApp", () => {
-            this.info("Preparing for starting app");
+            console.info("Preparing for starting app");
             let promiseList = [];
             this.preStartAppTasks.map(preTask => {
                 promiseList.push(preTask);
@@ -99,12 +72,12 @@ export class App implements IApp {
             });
         });
         this.once("startAppDone", () => {
-            this.info("Application is started");
+            console.info("Application is started");
         });
     }
     loadConfig(path: string) {
         if (fs.existsSync(path)) {
-            this.info("Reading config from " + path);
+            console.info("Reading config from " + path);
             let env = fs.readFileSync(path, { encoding: "utf8" }).toString();
             let envSegment = env.split("\n");
             envSegment = envSegment.map(envItem => {

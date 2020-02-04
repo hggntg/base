@@ -199,7 +199,12 @@ export function mapData<T>(ClassImp: { new(): T }, source: any, parentField: str
                     let type = property.type as PropertyType;
                     let valueType = type.value as PropertyTypeValue;
                     Object.keys(source).map(key => {
-                        result[key] = mapData(valueType, source[key], key);
+                        if(typeof source[key] === "object"){
+                            result[key] = mapData(valueType, source[key], key);
+                        }
+                        else {
+                            result[key] = mapBasicType(source[key], valueType);
+                        }
                     });
                 }
             }
