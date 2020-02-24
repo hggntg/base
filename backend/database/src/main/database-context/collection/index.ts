@@ -373,18 +373,20 @@ function removeId(doc) {
 }
 
 function replaceSearchKeys(input: object, key: string, replaceKey) {
-	let keys = Object.keys(input);
-	let keyLength = keys.length;
-	for (let i = 0; i < keyLength; i++) {
-		if (keys[i] === key) {
-			input[replaceKey] = input[key];
-			keys[i] = replaceKey;
-			i--;
-			delete input[key];
-		}
-		else {
-			if (typeof input[keys[i]] === "object") {
-				input[keys[i]] = replaceSearchKeys(input[keys[i]], key, replaceKey);
+	if(input && typeof input === "object"){
+		let keys = Object.keys(input);
+		let keyLength = keys.length;
+		for (let i = 0; i < keyLength; i++) {
+			if (keys[i] === key) {
+				input[replaceKey] = input[key];
+				keys[i] = replaceKey;
+				i--;
+				delete input[key];
+			}
+			else {
+				if (typeof input[keys[i]] === "object") {
+					input[keys[i]] = replaceSearchKeys(input[keys[i]], key, replaceKey);
+				}
 			}
 		}
 	}
@@ -558,11 +560,24 @@ export class CollectionRestCommand<T> implements ICollectionRestCommand<T> {
 		let model = this.model;
 		let entity = this.entity;
 		let entitySchema = getEntitySchema(entity);
+
+		let changeData = removeId(data);
+		let foreignFields = getForeignField(this.entity);
+		foreignFields.map((foreignField) => {
+			changeData = replaceSearchKeys(changeData as any, foreignField.name, foreignField.localField) as any;
+			if(changeData[foreignField.localField] && typeof changeData[foreignField.localField] === "object" && !Array.isArray(changeData[foreignField.localField])){
+                if(changeData[foreignField.localField]._id){
+                    changeData[foreignField.localField] = changeData[foreignField.localField]._id;
+                }
+			}
+		});
+
 		return query.exec().then(docs => {
 			if (Array.isArray(docs)) {
 				let documents: Partial<T>[] = [];
 				docs.map(doc => {
 					data = generateSet(data, {}, {});
+					changeData = generateSet(changeData, {}, {});
 					let tempDocument = new model(removeId(doc.toObject())) as mongoose.Document;
 					tempDocument.isNew = false;
 					tempDocument.id = doc._id;
@@ -615,7 +630,7 @@ export class CollectionRestCommand<T> implements ICollectionRestCommand<T> {
 						}
 					});
 					
-					this.setChanges("UPDATE", doc, data);
+					this.setChanges("UPDATE", doc, changeData);
 					// delete returnDocument._id;
 					documents.push(returnDocument as Partial<T>);
 				});
@@ -625,6 +640,7 @@ export class CollectionRestCommand<T> implements ICollectionRestCommand<T> {
 				if (docs) {
 					let doc = docs;
 					data = generateSet(data, {}, {});
+					changeData = generateSet(changeData, {}, {});
 					let tempDocument = new model(removeId(doc.toObject())) as mongoose.Document;
 					tempDocument.isNew = false;
 					tempDocument.id = doc._id;
@@ -677,7 +693,7 @@ export class CollectionRestCommand<T> implements ICollectionRestCommand<T> {
 						}
 					});
 					
-					this.setChanges("UPDATE", doc, data);
+					this.setChanges("UPDATE", doc, changeData);
 					// delete returnDocument._id;
 					return returnDocument as Partial<T>;
 				}

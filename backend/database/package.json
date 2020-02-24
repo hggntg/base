@@ -1,6 +1,6 @@
 {
 	"name": "@base/database",
-	"version": "1.0.441",
+	"version": "1.0.443",
 	"description": "Database use mongoose",
 	"scripts": {
 		"dev": "ts-node src/main/adapter",

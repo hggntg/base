@@ -3,9 +3,7 @@ import fs from "fs";
 import shell from "shelljs";
 import path from "path";
 
-import { tsconfig, tsconfigRoot, typing, indexts } from "./assets";
 import { log } from "../../infrastructure/logger";
-import { defaultEnv, env } from "./assets/normal.env";
 
 export function newProject(appName: string) {
     let cwd = process.cwd();
@@ -19,11 +17,12 @@ export function newProject(appName: string) {
         shell.cd(appPath);
         childProcess.execSync("npm init", { stdio: "inherit" });
         let sourcePath = path.join(appPath, "src");
+        let samplePath = path.join(__dirname, "../../sample");
         log("Generating some core files......");
         fs.mkdirSync(sourcePath);
-        fs.writeFileSync(path.join(sourcePath, "index.ts"), indexts);
-        fs.writeFileSync(path.join(appPath, ".env"), env);
-        fs.writeFileSync(path.join(appPath, "default.env"), defaultEnv);
+        fs.copyFileSync(path.join(samplePath, "index.ts"), path.join(sourcePath, "index.ts"));
+        fs.copyFileSync(path.join(appPath, ".env"), path.join(appPath, ".env"));
+        fs.copyFileSync(path.join(appPath, "default.env"), path.join(appPath, "default.env"));
         let infrastructurePath = path.join(sourcePath, "infrastructure");
         fs.mkdirSync(infrastructurePath);
         let configPath = path.join(infrastructurePath, "config");
@@ -41,15 +40,15 @@ export function newProject(appName: string) {
         installBuilderProcess.stderr.on("data", (chunk: Buffer) => {
             log(chunk.toString(), "error");
         });
-        let installNodeProcess = shell.exec("npm install @types/node inversify reflect-metadata -D", { async: true, env: { NPM_CONFIG_COLOR: "always", FORCE_COLOR: "1" } }) as ChildProcess;
+        let installNodeProcess = shell.exec("npm install @types/node @types/webpack ts-loader typescript inversify reflect-metadata -D", { async: true, env: { NPM_CONFIG_COLOR: "always", FORCE_COLOR: "1" } }) as ChildProcess;
         installNodeProcess.stdout.on("data", (chunk: Buffer) => {
             log(chunk.toString());
         });
         installNodeProcess.stderr.on("data", (chunk: Buffer) => {
             log(chunk.toString(), "error");
         });
-        fs.writeFileSync(path.join(appPath, "tsconfig.json"), tsconfig);
-        fs.writeFileSync(path.join(appPath, "tsconfig.root.json"), tsconfigRoot);
-        fs.writeFileSync(path.join(appPath, "typings.d.ts"), typing);
+        fs.copyFileSync(path.join(samplePath, "tsconfig.json"), path.join(appPath, "tsconfig.json"));
+        fs.copyFileSync(path.join(samplePath, "tsconfig.root.json"), path.join(appPath, "tsconfig.root.json"));
+        fs.copyFileSync(path.join(samplePath, "typings.d.ts"), path.join(appPath, "typings.d.ts"));
     }
 }
