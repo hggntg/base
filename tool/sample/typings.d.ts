@@ -1,59 +1,95 @@
 /// <reference types="node" />
-interface JSON {
-    circularToken: Symbol;
-    circularStringify(value: any): string;
-    circularParse<T>(value: string): T;
+interface IBaseJSON {
+    __base__circularToken: Symbol;
+    __base__circularStringify(value: any): string;
+    __base__circularParse<T>(value: string): T;
 }
 
-interface ObjectConstructor {
-    clone<T>(source: any): T;
-    replace<T>(input: any, condition: any, replacer: any): T;
-    valueAt(source: any, key: string);
-    noMap<V>(input: any): V; 
+interface JSON extends IBaseJSON { }
+
+interface IBaseObjectConstructor{
+    __base__clone<T>(source: T): T;
+    __base__toJSON(source: any): string;
+    __base__fromJSON<T>(input: string): T;
+    __base__replace<T>(input: any, condition: any, replacer: any): T;
+    __base__valueAt<T>(input: any, key: string, delimiter?: string): T;
+    __base__setAt(souce: any, key: string | number, value: any, delimiter?: string): void;
+    __base__flattenMap<T>(input: any): T
+    __base__getDelimiter(key: string): string;
 }
 
-interface Map<K, V> {
-    convertToObject<V>(): V;
-    clone(): Map<K, V>;
-}
+interface ObjectConstructor extends IBaseObjectConstructor { }
 
-interface MapConstructor {
-    fromObject<V>(obj: any): Map<keyof V, V[keyof V]>;
+interface IBaseArrayConstructor {
+    __base__clone<T>(source: Array<T>): Array<T>;
+    __base__toJSON(source: any): string;
+    __base__fromJSON<T>(input: string): Array<T>;
 }
+interface ArrayConstructor extends IBaseArrayConstructor { }
+
+interface IBaseMap<K, V> extends IExtendBaseClass<Map<K, V>> {
+    __base__convertToObject<V>(nested?: boolean): V;
+}
+interface Map<K, V> extends IBaseMap<K, V> { }
+
+interface IBaseDateConstructor {
+    __base__fromJSON(input: string): Date;
+}
+interface DateConstructor extends IBaseDateConstructor { }
+interface IBaseDate extends IExtendBaseClass<Date> {}
+interface Date extends IBaseDate { }
+
+interface IBaseMapConstructor {
+    __base__fromObject<V>(obj: any): Map<keyof V, V[keyof V]>;
+    __base__fromJSON<V>(input: string): Map<keyof V, V[keyof V]>;
+}
+interface MapConstructor extends IBaseMapConstructor { }
+
+interface IBaseRegExp extends IExtendBaseClass<RegExp>{}
+interface RegExp extends IBaseRegExp{}
 
 declare function isPathMatchesAlias(path: string, alias: string): boolean;
 declare function addAlias(alias: string, target: string): void;
 declare function wrapInTryCatch<T>(fn: Function): T;
-declare function defaultValue(input: any, type: "boolean" | "string" | "number" | "object" | "array", truthy?: boolean): any;
-declare function mapData<T>(ClassImp: { new(): T }, source: any, parentField?: string): T;
-declare function mapBasicType(source: any, type: PropertyTypeValue): any;
-declare class BaseClass<T> implements IBaseClass<T>{
-    getType(): IClassType;
-    init(input: Partial<T>): void;
+
+interface IBaseConstructor<T> {
+    isInstance(input: any): boolean;
+    asInstance(input: any): T;
+    has(key: string | number): boolean;
 }
+
+interface ISystem {
+    log: Console["log"];
+    debug: Console["debug"];
+    warn: Console["warn"];
+    error: Console["error"];
+    info: Console["info"];
+}
+
+declare const system: ISystem;
 declare let Type: IGlobalType;
-interface IIntrinsicType{
+interface IIntrinsicType {
     kind: "intrinsic";
     name: "string" | "number" | "any" | "void" | "number" | "object" | "array" | "boolean";
 }
 
-interface IInterfaceType{
+interface IInterfaceType {
     kind: "interface";
     name: string;
     properties: IPropertyType[];
     methods: IMethodType[];
-    extends:  IInterfaceType[];
+    extends: IInterfaceType[];
 }
 
 
-interface IPropertyType{
+interface IPropertyType {
     kind: "property";
     name: string;
     type: IInterfaceType | IIntrinsicType;
     optional: boolean;
 }
 
-interface IMethodType{
+interface IMethodType {
     kind: "method";
     name: string;
     params: (IInterfaceType | IIntrinsicType)[];
@@ -61,13 +97,13 @@ interface IMethodType{
     optional: boolean;
 }
 
-interface IConstructorType{
+interface IConstructorType {
     kind: "construct";
     name: string;
     params: (IInterfaceType | IIntrinsicType)[];
 }
 
-interface IClassType{
+interface IClassType {
     kind: "class";
     name: string;
     properties: IPropertyType[];
@@ -77,50 +113,88 @@ interface IClassType{
     constructors: IConstructorType[];
 }
 
-interface IGlobalType{
+interface IGlobalType {
     declare(type: IClassType | IInterfaceType | IConstructorType | IIntrinsicType | IMethodType | IPropertyType): void;
     get(name: string, kind?: string): IClassType | IInterfaceType | IConstructorType | IIntrinsicType | IMethodType | IPropertyType;
     compare(input: any, name: string, kind?: string): boolean;
     has(name: string, kind: string): boolean;
 }
 
-interface IBaseClass<T>{
-    getType(): IClassType;
-    init(input: Partial<T>): void;
+interface IBaseClass<T> {
+    getType?(): IClassType;
+    init?(input: Partial<T>): void;
+    clone?(): T;
+    toJSON?(): string;
+}
+
+interface IExtendBaseClass<T>{
+    __base__getType(): IClassType;
+    __base__init(input: Partial<T>): void;
+    __base__clone(): T;
+    __base__toJSON(): string;
 }
 
 declare function extendClass(derivedCtor: { new(...args): any }, baseCtors: { new(...args): any }, ...moreBaseCtors: { new(...args): any }[]);
 declare function getClass(target: any): { new(...args: any[]): any };
-interface IBaseError extends Error {
+
+// interface IBaseClassConstructor<S, T, R> {
+//     clone<S>(source: T): R;
+//     toJSON<S>(source: T): string;
+//     fromJSON(input: string): R;
+//     replace<S>(input: T, condition: any, replacer: any): R;
+//     valueAt<S>(source: any, key: string): R;
+//     setAt(source: any, key: string | number, value: any);
+//     flattenMap<S>(input: any): R;
+// }
+type TErrorLevel = "red" | "green";
+
+interface IErrorLevel {
+    level: TErrorLevel;
+}
+
+interface ErrorLevelConstructor extends IBaseConstructor<IErrorLevel>{
+    RED: IErrorLevel;
+    GREEN: IErrorLevel;
+}
+
+declare var ErrorLevel: ErrorLevelConstructor;
+
+interface IBaseError extends Error, IErrorLevel {
     code: number;
     specificCode: number;
+    logged: boolean;
 }
-
-interface IErrorResultData {
-    hasError: boolean;
+interface IResultTypeWrapper<T>{
+    value: T;
     error: IBaseError;
 }
-declare type ResultTypeWrapper<T> = IErrorResult | T;
-interface IErrorResult extends IBaseClass<IErrorResultData>, IErrorResultData {}
-
-declare class BaseError extends Error implements IBaseError {
-    code: number;    
-    specificCode: number;
-    name: string;
-    message: string;
-    stack?: string;
-
-    constructor(message: string);
-    constructor(code: number, message: string);
-    constructor(code: number, specificCode: number, message: string);
-    constructor(arg0: number | string, arg1?: number | string, arg2?: string);
-}
-
-declare function handleError(e: Error | IBaseError | IErrorResult, extendedMessage?: string): ResultTypeWrapper<any>;
-declare class ErrorResult extends BaseClass<IErrorResultData> implements IErrorResult{
-    hasError: boolean;
+declare class ResultTypeWrapper<T>  implements IResultTypeWrapper<T> {
+    value: T;    
     error: IBaseError;
+    static wrap<T>(_error: Error | IBaseError): IResultTypeWrapper<T>;
+    static wrap<T>(_value: T): IResultTypeWrapper<T>;
+    static wrap<T>(input: (Error | IBaseError) | T): IResultTypeWrapper<T>;
+
 }
+
+interface BaseErrorConstructor extends IBaseConstructor<IBaseError> {
+    new(message: string): IBaseError;
+        
+    new(message: string, level: TErrorLevel): IBaseError;
+    new(code: number, message: string): IBaseError;
+
+    new(code: number, specificCode: number, message: string): IBaseError;
+    new(code: number, message: string, level: TErrorLevel): IBaseError;
+    
+    new(code: number, specificCode: number, message: string, level: IErrorLevel): IBaseError;
+    new(arg0: number | string, arg1?: number | string | IErrorLevel, arg2?: string | IErrorLevel, arg3?: IErrorLevel): IBaseError;
+}
+    
+declare var BaseError: BaseErrorConstructor;
+
+declare function handleError(e: Error | IBaseError, extendedMessage?: string): IBaseError;
+declare function handleError(e: Error | IBaseError, errorLevel?: IErrorLevel): IBaseError;
+declare function handleError(e: Error | IBaseError, extendedMessage?: string | IErrorLevel): IBaseError;
 type TColor = "black" | "red" | "green" | "yellow" | "blue" | "magenta" | "cyan" | "white";
 
 interface IMessageStyle {
@@ -149,18 +223,21 @@ interface ILog {
 
 interface ILoggerProperty{
     appName: string;
+    logColor: boolean;
 }
 
 interface ILogger extends IBaseClass<ILoggerProperty> {
     pushLog(log: ILog);
-    pushLog(message: string, level: "silly" | "debug" | "error" | "info", tag: string, style?: IMessageStyle);
+    pushLog(message: string, level: "silly" | "debug" | "error" | "info" | "warn", tag: string, style?: IMessageStyle);
     pushWarn(message: string, tag: string);
-    pushError(message: Error, tag: string);
     pushError(message: string, tag: string);
     pushSilly(message: string, tag: string);
     pushDebug(message: string, tag: string);
     pushInfo(message: string, tag: string);
     trace(isTrace: boolean);
+    setColor(logColor: boolean);
+    setDisplayAppName(showAppName: boolean);
+    setLevel(level: "silly" | "debug" | "error" | "info" | "warn");
     expand(): ILogger;
 }
 
@@ -217,7 +294,7 @@ declare function checkDependency(identifier: symbol | string, newable: boolean, 
 declare function Injectable<T>(serviceName: string, newable?: boolean, isDefault?: boolean);
 declare function getMetadata<T>(key: string | Symbol, target: any);
 declare function defineMetadata (key: string | Symbol, value: any, target: any);
-interface INamespace extends IBaseClass<any>{
+interface INamespace extends IBaseClass<INamespace>{
     run(func: Function) : Promise<void>;
     set(key, value): void;
     getById(id: number): IContext;
@@ -283,10 +360,13 @@ interface IContext extends IBaseClass<IContextProperty>, IContextProperty{
 
 declare function createHooks(namespace: INamespace): void;
 declare class Context implements IContext {
+    getType(): IClassType;
+    init(input: Partial<IContextProperty>): void;
+    clone(): IContextProperty; toJSON(): string;
+    fromJSON(input: string): IContextProperty;
     init(input: Partial<IContextProperty>): void;
     rawValue(): IContextValue;
     originValue(): IContextOriginValue;
-    getType(): IClassType;
     initValue(input: Partial<IContextProperty>): void;
     value?: any;
     type?: any;
@@ -301,37 +381,49 @@ declare class Context implements IContext {
     constructor(input?: IContextValue);
 }
 declare const Namespace: INamespaceStatic;
-interface IPropertyDecorator{
+interface IPropertyDecorator {
     (target: object, propertyKey: string): any;
 }
-interface IParameterDecorator{
+interface IParameterDecorator {
     (target: Object, propertyKey: string, parameterIndex?: number): any;
 }
 
-type PropertyTypeValue = {new(...args: any[]): any};
-type PropertyType = {type: "single" | "list" | "literal" | "map", value: PropertyTypeValue | PropertyTypeValue[]};
+declare enum PropertyTypes {
+    Any = "$_any"
+}
+
+type PropertyTypeValueObject = { new(...args: any[]): any };
+type PropertyTypeSpecificValue = string | number | boolean;
+type PropertyTypeValue = PropertyTypeValueObject | PropertyTypeSpecificValue;
+
+type PropertyTypeSingle = { type: "single", value: PropertyTypeValueObject | PropertyTypes.Any};
+type PropertyTypeList = { type: "list", value: PropertyTypeValueObject | PropertyTypeMap | PropertyTypeLiteral | PropertyTypeList | PropertyTypes.Any};
+type PropertyTypeLiteral = { type: "literal", value: (PropertyTypeValue | PropertyTypeMap | PropertyTypeLiteral | PropertyTypeList | PropertyTypes.Any)[] };
+type PropertyTypeMap = { type: "map", value: PropertyTypeValueObject | PropertyTypeMap | PropertyTypeLiteral | PropertyTypeList | PropertyTypes.Any};
+type PropertyType = PropertyTypeSingle | PropertyTypeList | PropertyTypeLiteral | PropertyTypeMap;
+
+declare function IsPropertyType(propertyType: any): boolean;
 declare const typeKey = "Type";
 declare const PROPERTIES_KEY: Symbol;
 declare const REAL_DATA_TYPE_KEY: Symbol;
 
-
-interface IProperty{
-    type: PropertyType | string[],
+interface IProperty {
+    type: PropertyType,
     name: string;
     required: boolean;
 }
-declare function defineRealDataType(target, type: "object" | "string" | "boolean" | "number");
-declare function getRealDataType(target): string[];
 declare function getProperties(target: any): IProperty[];
-declare function DynamicProperty(type: { new(...args: any[]): any } | PropertyType, options?: {
+declare function DynamicProperty(type: { new(...args: any[]): any } | PropertyType | PropertyTypes.Any, options?: {
     required?: boolean
 });
-declare function PropertyMap(type: { new(...args: any[]): any }): PropertyType;
-declare function PropertyArray(type: { new(...args: any[]): any }): PropertyType;
-declare function PropertyLiteral(type: { new(...args: any[]): any }, ...moreType: ({ new(...args: any[]): any })[]);
-declare function Property(type: { new(...args: any[]): any } | PropertyType, options?: {
+declare function PropertyMap(type: { new(...args: any[]): any } | PropertyTypeMap | PropertyTypeList | PropertyTypeLiteral | PropertyTypes.Any): PropertyTypeMap;
+declare function PropertyArray(type: { new(...args: any[]): any } | PropertyTypeMap | PropertyTypeList | PropertyTypeLiteral | PropertyTypes.Any): PropertyTypeList;
+declare function PropertyLiteral(type: { new(...args: any[]): any } | string | number | boolean | PropertyTypeMap | PropertyTypeLiteral | PropertyTypeList | PropertyTypes.Any, ...moreType: ({ new(...args: any[]): any } | string | number | boolean | PropertyTypeLiteral | PropertyTypeList | PropertyTypes.Any)[]): PropertyTypeLiteral;
+declare function Property(type: { new(...args: any[]): any } | PropertyType | PropertyTypes.Any, options?: {
     required?: boolean
 });
+declare function defaultValue(input: any, type: "boolean" | "string" | "number" | "object" | "array", truthy?: boolean): any;
+declare function mapData<T>(ClassImp: { new(): T }, source: any, parentField?: string): ResultTypeWrapper<T>;
 type TWatcherEvent = "STOP"; 
 
 declare interface IWatcher {
@@ -344,4 +436,13 @@ declare module NodeJS {
     interface Process {
         watcher: IWatcher;
     }
+}
+
+
+declare namespace NodeJS {
+    interface Process {
+        emit(event: "app-error", error: IBaseError): boolean;
+        on(event: "app-error", listener: NodeJS.AppErrorListener): Process;
+    }
+    type AppErrorListener = (error: IBaseError) => void;
 }

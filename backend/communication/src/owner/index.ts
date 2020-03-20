@@ -13,7 +13,7 @@ export class Owner implements IOwner {
         if (this.channel) {
             return this.sendJobInBack(task, callback).catch(e => {
                 if(e.name === "WRONG_QUEUE_OPTIONS"){
-                    this.logger.pushSilly(e.message, "communication");
+                    console.log(e.message);
                     return this.conn.createChannel().then(channel => {
                         this.channel = channel;
                         return this.sendJobInBack(task, callback, true);
@@ -30,7 +30,7 @@ export class Owner implements IOwner {
                 this.q.concurrency = this.concurrency;
                 return this.sendJobInBack(task, callback).catch(e => {
                     if(e.name === "WRONG_QUEUE_OPTIONS"){
-                        this.logger.pushSilly(e.message, "communication");
+                        console.log(e.message);
                         return this.conn.createChannel().then(channel => {
                             this.channel = channel;
                             return this.sendJobInBack(task, callback, true);

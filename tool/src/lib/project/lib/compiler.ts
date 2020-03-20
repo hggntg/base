@@ -4,7 +4,6 @@ import queue from "queue";
 
 import chokidar from "chokidar";
 import { ChildProcess, spawn } from "child_process";
-import { corets } from "../assets/normal.corets";
 import { log } from "../../../infrastructure/logger";
 
 import fsNode from "fs";
@@ -50,7 +49,7 @@ let isLive: boolean = false;
 let target: string = "";
 let tsconfig: string = "";
 let excludes: string[] = [];
-
+let samplePath = sysPath.join(__dirname, "../../../sample");
 const fileList: IFileList = {};
 
 function divideTask(tasks: string[], divideTime: number = 2) {
@@ -167,7 +166,7 @@ async function main(sourceFiles: string[], generatedPath, isFirstTime: boolean) 
             })
         });
         await promise;
-        project.createSourceFile(`${generatedPath}/src/core.ts`, corets, { overwrite: true });
+        project.createSourceFile(`${generatedPath}/src/core.ts`, fs.readFileSync(sysPath.join(samplePath, "core.ts")).toString(), { overwrite: true });
     }
     let typeDeclareText = "";
     // typeDeclares.map((typeDeclare) => {

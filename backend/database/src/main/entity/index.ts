@@ -6,6 +6,14 @@ export const BASE_ENTITY_SERVICE = "IBaseEntity";
 
 @Injectable(BASE_ENTITY_SERVICE, true, true)
 export class BaseEntity<T> implements IBaseEntity<T>{
+	init(input: Partial<T>): void {
+		if(input){
+			let result = mapData<T>(getClass(this), input);
+			Object.keys(result).map(key => {
+				this[key] = result[key];
+			});
+		}
+	}
 	getType(): IClassType {
 		throw new Error("Method not implemented.");
 	}
@@ -15,15 +23,7 @@ export class BaseEntity<T> implements IBaseEntity<T>{
 		return entitySchema.model as mongoose.Model<mongoose.Document & T>;
 	}
 	constructor(){
-		
-	}
-	initValue(input: Partial<T>){
-		if(input){
-			let result = mapData<T>(getClass(this), input);
-			Object.keys(result).map(key => {
-				this[key] = result[key];
-			});
-		}
+
 	}
 }
 

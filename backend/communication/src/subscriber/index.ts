@@ -17,12 +17,12 @@ export class Subscriber implements ISubscriber{
             this.conn.createChannel().then(channel => {
                 channel.assertExchange(this.exchangeName, "fanout", { durable: false });
                 channel.assertQueue("", { exclusive: true }).then(q => {
-                    this.logger.pushSilly("[*] Waiting for messages in " + q.queue, "communication");
+                    console.log("[*] Waiting for messages in " + q.queue);
                     channel.bindQueue(q.queue, this.exchangeName, "");
                     channel.consume(q.queue, (msg) => {
                         this.event.emit("data", { err: null, data: Communication.reverseBody(msg.content.toString()) });
                     }, { noAck: true }).then(ok => {
-                        this.logger.pushDebug(JSON.stringify(ok), "communication");
+                        console.debug(JSON.stringify(ok));
                     }).catch(err => {
                         this.event.emit("data", {err : err, data: null});
                         throw new Error(err);
@@ -31,7 +31,7 @@ export class Subscriber implements ISubscriber{
                     throw new Error(err);
                 })
             }).catch(err => {
-                this.logger.pushError(err, "communication");
+                console.error(err);
             });
         });
     }

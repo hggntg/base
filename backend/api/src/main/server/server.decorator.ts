@@ -174,14 +174,19 @@ export namespace Server {
         private serverRoot: Express;
         private processListener: NodeJS.MessageListener;
         private processId = "api-server";
+        private tracing: boolean;
         protected logger: ILogger;
         get httpServer(): http.Server {
             return this.httpServerInstance;
         }
+        trace(tracing: boolean){
+            this.tracing = tracing;
+        }
         start(): Promise<boolean> {
             let apiMetadata = getAPIMetadata(this);
             let logMiddleware = new LogMiddleware();
-            this.registerMiddleware({ apiLog: logMiddleware.toMiddleware() });
+            this.registerMiddleware({ apiLog: logMiddleware.trace(this.tracing).toMiddleware() });
+
             let zoneKeys = Object.keys(apiMetadata.classes);
             zoneKeys = zoneKeys.map(zoneKey => {
                 let zoneKeyUpperCases = zoneKey.match(/([A-Z])/g) || [];
@@ -222,7 +227,7 @@ export namespace Server {
                             if (message && message.event === "STOP") {
                                 this.httpServerInstance.close((err) => {
                                     if (err) {
-                                        this.logger.pushError(err, "api");
+                                        this.logger.pushError(err.message, "api");
                                     }
                                     else {
                                         this.logger.pushInfo("Disconnect to server", "api");
@@ -291,6 +296,7 @@ export namespace Server {
             this.serverRoot = express();
             this.httpServerInstance = http.createServer(this.serverRoot);
             this.logger = getDependency<ILogger>(LOGGER_SERVICE);
+            this.tracing = true;
             process.watcher.joinFrom(this.processId);
         }
     }

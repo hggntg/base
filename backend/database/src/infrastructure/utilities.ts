@@ -3,7 +3,8 @@ import mongoose from "mongoose";
 export function ensureNew<T>(classImp: { new(): T }, input: T): T {
 	if (typeof input === "object") {
 		let output = mapData<T>(classImp, input);
-		return output;
+		if(output.error) handleError(output.error);
+		return output.value || null;
 	}
 	return input as T;
 }

@@ -21,8 +21,8 @@ export function newProject(appName: string) {
         log("Generating some core files......");
         fs.mkdirSync(sourcePath);
         fs.copyFileSync(path.join(samplePath, "index.ts"), path.join(sourcePath, "index.ts"));
-        fs.copyFileSync(path.join(appPath, ".env"), path.join(appPath, ".env"));
-        fs.copyFileSync(path.join(appPath, "default.env"), path.join(appPath, "default.env"));
+        fs.copyFileSync(path.join(samplePath, ".env"), path.join(appPath, ".env"));
+        fs.copyFileSync(path.join(samplePath, "default.env"), path.join(appPath, "default.env"));
         let infrastructurePath = path.join(sourcePath, "infrastructure");
         fs.mkdirSync(infrastructurePath);
         let configPath = path.join(infrastructurePath, "config");

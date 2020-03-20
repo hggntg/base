@@ -1,8 +1,9 @@
 {
     "compilerOptions": {
-        "target": "es5",
+        "target": "es2020",
         "module": "commonjs",
-        "lib": ["es6"],
+        "strict": false,
+        "lib": ["es2020"],
         "declaration": true,
         "removeComments": true,
         "noImplicitReturns": true,

@@ -6,7 +6,7 @@ import { Stream, Readable } from "stream";
 import { ResponseBody } from "@app/main/response";
 import { ResponseTemplate as Resp } from "@app/main/response";
 import { OpenAPIV3 } from "openapi-types";
-import { setAPIDocumentMetadata } from "../server/document";
+import { setAPIDocumentMetadata } from "@app/main/server/document";
 
 export const CONTROLLER_SERVICE = "IController";
 
@@ -32,10 +32,9 @@ function generateRouteExecution(this: IController, property) {
                 if (typeof (<any>responseResult).pipe === "function") {
                     let result = responseResult as Readable;
                     result.once("response-error", (err: IBaseError) => {
-                        let code = err.code || 500;
-                        let error = Resp.error(code, err.message);
+                        let error = Resp.error(err);
                         if(!res.headersSent){
-                            res.status(code).json({
+                            res.status(error.code).json({
                                 status: error.status,
                                 message: error.message,
                                 error: error.error || undefined
@@ -56,10 +55,9 @@ function generateRouteExecution(this: IController, property) {
                     res.once("drain", () => {
                         console.log("It's was drain");
                     }).on("error", (err: IBaseError) => {
-                        let code = err.code || 500;
-                        let error = Resp.error(code, err.message);
+                        let error = Resp.error(err);
                         if(!res.headersSent){
-                            res.status(code).json({
+                            res.status(error.code).json({
                                 status: error.status,
                                 message: error.message,
                                 error: error.error || undefined
@@ -75,10 +73,9 @@ function generateRouteExecution(this: IController, property) {
                                 if (typeof (<any>responseValue).pipe === "function") {
                                     let value = responseValue as Readable;
                                     value.once("response-error", (err: IBaseError) => {
-                                        let code = err.code || 500;
-                                        let error = Resp.error(code, err.message);
+                                        let error = Resp.error(err);
                                         if(!res.headersSent){
-                                            res.status(code).json({
+                                            res.status(error.code).json({
                                                 status: error.status,
                                                 message: error.message,
                                                 error: error.error || undefined
@@ -99,10 +96,9 @@ function generateRouteExecution(this: IController, property) {
                                     res.once("drain", () => {
                                         console.log("It's was drain");
                                     }).on("error", (err: IBaseError) => {
-                                        let code = err.code || 500;
-                                        let error = Resp.error(code, err.message);
+                                        let error = Resp.error(err);
                                         if(!res.headersSent){
-                                            res.status(code).json({
+                                            res.status(error.code).json({
                                                 status: error.status,
                                                 message: error.message,
                                                 error: error.error || undefined
@@ -112,7 +108,7 @@ function generateRouteExecution(this: IController, property) {
                                 }
                                 else {
                                     let value = responseValue as ResponseBody;
-                                    let body = assignData(value);
+                                    let body = Object.__base__clone<any>(value);
                                     delete body.code;
                                     res.status(value.code).json(body);
                                 }
@@ -125,11 +121,9 @@ function generateRouteExecution(this: IController, property) {
                         });
                     }
                     catch (e) {
-                        let err: IBaseError = e;
-                        let code = err.code || 500;
-                        let error = Resp.error(code, err.message);
+                        let error = Resp.error(e);
                         if(!res.headersSent){
-                            res.status(code).json({
+                            res.status(error.code).json({
                                 status: error.status,
                                 message: error.message,
                                 error: error.error || undefined
@@ -150,12 +144,9 @@ function generateRouteExecution(this: IController, property) {
             }
         }
         catch (e) {
-            let err: IBaseError = e;
-            let code = typeof err.code === "number"? err.code : 500;
-            let message = err.message || (<any>err).code as string;
-            let error = Resp.error(code, message);
+            let error = Resp.error(e);
             if(!res.headersSent){
-                res.status(code).json({
+                res.status(error.code).json({
                     status: error.status,
                     message: error.message,
                     error: error.error || undefined
@@ -170,10 +161,7 @@ function generateRouteExecution(this: IController, property) {
 
 @Injectable(CONTROLLER_SERVICE, true, true)
 export class ControllerImp implements IController {
-    getType(): IClassType {
-        throw new Error("Method not implemented.");
-    }
-    initValue(input: Partial<IControllerProperty>): void {
+    init(input: Partial<IControllerProperty>): void {
         if (input) {
             let uowConfig = input.uowConfig;
             if (uowConfig) {
@@ -312,20 +300,31 @@ function checkInput<T, K, L>(bodyClass: { new(): T }, queryClass: { new(): K }, 
         }
         if (bodyClass) {
             let body = mapData(bodyClass, context.req.body || {});
-            input.body = body;
+            if(body.error) throw body.error;
+            input.body = body.value || {} as T;
         }
         if (queryClass) {
-            let query = mapData(queryClass, context.req.query || {});
-            input.query = query;
+            let tempQuery = context.req.query || {};
+            let tempQueryKeys = Object.keys(tempQuery);
+            Object.values(tempQuery).map((v, index) => {
+                if(!v){
+                    let key = tempQueryKeys[index];
+                    tempQuery[key] = true;
+                }
+            });
+            let query = mapData(queryClass, tempQuery);
+            if(query.error) throw query.error;
+            input.query = query.value || {} as K;
         }
         if (paramClass) {
             let params = mapData(paramClass, context.req.params || {});
-            input.params = params;
+            if(params.error) throw params.error;
+            input.params = params.value || {};
         }
         return input;
     }
     catch (e) {
-        throw new BaseError(400, 400, e.name, e.message);
+        throw new BaseError(400, 400, e.message);
     }
 }
 

@@ -124,6 +124,9 @@ export abstract class AUnitOfWork implements IUnitOfWork {
 		defineMetadata(UI_KEY, entityUIList, getClass(this.dbContext));
 		defineMetadata(UI_KEY, unitOfWorkUI, getClass(this));
 	}
+	trace(tracing: boolean){
+		this.dbContext.trace(tracing);
+	}
 	getContext(): IDatabaseContext {
 		return this.dbContext;
 	}

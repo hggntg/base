@@ -11,7 +11,7 @@ export class RepositoryRestCommandForOne<K, T extends IBaseEntity<K>> implements
 	private returnQuery(): IRepositoryQuery {
 		let namespace = this.dbContext.context;
 		if (namespace) {
-			let repositoryQuery: IRepositoryQuery = assignData(namespace.get<IRepositoryQuery>("repository-query") || {});
+			let repositoryQuery: IRepositoryQuery = Object.__base__clone<T>((namespace.get<IRepositoryQuery>("repository-query") || {}) as T);
 			namespace.remove("repository-query");
 			return repositoryQuery;
 		}
@@ -115,7 +115,7 @@ export class RepositoryRestCommand<K, T extends IBaseEntity<K>> implements IRepo
 	private returnQuery(): IRepositoryQuery {
 		let namespace = this.dbContext.context;
 		if (namespace) {
-			let repositoryQuery: IRepositoryQuery = assignData(namespace.get<IRepositoryQuery>("repository-query") || {});
+			let repositoryQuery: IRepositoryQuery = Object.__base__clone<IRepositoryQuery>(namespace.get<IRepositoryQuery>("repository-query") || {});
 			namespace.remove("repository-query");
 			return repositoryQuery;
 		}

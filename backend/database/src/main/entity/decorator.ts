@@ -67,7 +67,8 @@ export function Field(arg0?: string | mongoose.SchemaTypeOpts<any>, arg1?: mongo
 			name = propertyKey;
 			entitySchemaField = arg0;
 		}
-		Property(entitySchemaField.type)(target, propertyKey);
+		Property(PropertyTypes.Any)(target, propertyKey);
+		// Property(entitySchemaField.type)(target, propertyKey);
 		schema.definition[propertyKey + "::-::" + name] = entitySchemaField;
 		
 		defineMetadata(SCHEMA_KEY, schema, classImp);
@@ -89,7 +90,7 @@ export function ForeignField<T>(
 	arg1?: (ForeignFieldOptions<T> & { hide?: "all" | string[] }) | (ForeignFieldOptionsWithBrigde<T>  & { hide?: "all" | string[] }) | IFieldUI,
 	arg2?: IFieldUI) {
 	return function (target: object, propertyKey: string) {
-		Property(Object)(target, propertyKey);
+		Property(PropertyTypes.Any)(target, propertyKey);
 		let classImp = getClass(target);
 		let schema: IEntitySchema<typeof classImp> = getEntitySchema(classImp);
 		let entityUI: IEntityUI = getEntityUI(classImp);
@@ -372,6 +373,12 @@ export function Entity<T>(arg0: string | mongoose.SchemaOptions, arg1?: mongoose
 		});
 		schema.schemaOptions.toObject = { virtuals: true };
 		schema.schemaOptions.toJSON = { virtuals: true };
+		schema.schemaOptions.id = false;
+		schema.virutals.push(function(schema: mongoose.Schema){
+			schema.virtual("id").get(function(){
+				return this._id;
+			});
+		});
 		defineMetadata(SCHEMA_KEY, schema, getClass(target));
 		defineMetadata(FOREIGN_KEY, foreignFields, getClass(target));
 		defineMetadata(UI_KEY, entityUI, getClass(target));

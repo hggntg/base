@@ -1,0 +1,30 @@
+{
+    "compilerOptions": {
+        "target": "es5",
+        "module": "commonjs",
+        "strict": false,
+        "lib": ["es6"],
+        "declaration": true,
+        "removeComments": true,
+        "noImplicitReturns": true,
+        "noFallthroughCasesInSwitch": true,
+        "moduleResolution": "node",
+        "baseUrl": ".",
+        "types": ["./typings"],
+        "esModuleInterop": true,
+        "experimentalDecorators": true,
+        "emitDecoratorMetadata": true,
+        "resolveJsonModule": true,
+        "rootDir": "src"
+    },
+    "typedocOptions": {
+        "mode": "file",
+        "out": "docs",
+        "hideGenerator": true,
+        "exclude": "**/*+(.spec|.e2e).ts",
+        "theme": "./doc-theme"
+    },
+    "exclude": [
+        "test"
+    ]
+}

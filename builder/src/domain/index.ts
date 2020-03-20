@@ -26,7 +26,9 @@ class DoubleConfig extends AConfig {
     }
     getSection<T>(ClassImp: { new(): T }, sectionName: string): T {
         let dynamicResult = objectPath.get<T>(this.configRoot, sectionName, null);
-        return mapData<T>(ClassImp, dynamicResult);
+        let data = mapData<T>(ClassImp, dynamicResult);
+        if(data.error) handleError(data.error)
+        return data.value ? data.value : null;
     }
 }
 
@@ -44,9 +46,9 @@ export class App implements IApp {
     context: INamespaceStatic;
     type: "Worker" | "API";
     config: IBaseConfig;
-    initValue(input: Partial<IAppProperty>) {
+    init(input: Partial<IAppProperty>) {
         this.logger.trace(true);
-        this.logger.initValue({ appName: input.appName });
+        this.logger.init({ appName: input.appName });
         if (input.aliases) {
             let aliases = Object.keys(input.aliases);
             Object.values(input.aliases).map((target, index) => {
@@ -127,6 +129,16 @@ export class App implements IApp {
         }
         else {
             throw new Error("Missing config dir at path " + process.env.NODE_CONFIG_DIR);
+        }
+        if(process.env["NODE_ENV"] !== "development"){
+            this.logger.setColor(false);
+            this.logger.setLevel("warn");
+            this.logger.setDisplayAppName(false);
+        }
+        else {
+            this.logger.setColor(true);
+            this.logger.setLevel("silly");
+            this.logger.setDisplayAppName(true);
         }
     }
     serveAs(_type: "Worker" | "API") {

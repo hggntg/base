@@ -99,7 +99,7 @@ export class WorkerJobRequest implements IWorkerJobRequest{
         })]).then((value) => {
             if(value === TIMEOUT){
                 if(flag++ < this.retry){
-                    this.logger.pushDebug("There are something wrong. Retry " + flag + " time(s)", this.logTag);
+                    console.debug("There are something wrong. Retry " + flag + " time(s)");
                     return this.run(func, root, flag);
                 }
                 else{
@@ -126,7 +126,7 @@ export class Worker implements IWorker {
 
     private assertQueue(jobQueue: string, options: IWorkerOptions,  onReceive: (receivedJob: IWorkerJobRequest) => void, usedToFail?: boolean): Promise<boolean>{
         return this.conn.createChannel().then((channel) => {
-            this.logger.pushDebug("Ready to receive job from " + jobQueue, this.logTag);
+            console.debug("Ready to receive job from " + jobQueue);
             return Communication.checkAndAssertQueue(channel, jobQueue, {durable: true, maxPriority: options.maxPriority}, usedToFail).then(() => {
                 channel.prefetch(options.prefetch);
                 let consumerTag = null;
@@ -135,13 +135,13 @@ export class Worker implements IWorker {
                     let data = Communication.reverseBody(msg.content.toString());
                     let content = data.content;
                     let jobRequest = new WorkerJobRequest({...content, retry: options.retry, timeout: options.timeout}, this.logger);
-                    this.logger.pushDebug("Received a job", this.logTag);
+                    console.debug("Received a job");
                     jobRequest.once("finish", (thing) => {
                         if(thing instanceof Error){
-                            this.logger.pushError(thing, this.logTag);
+                            console.error(thing.message);
                         }
                         else{
-                            this.logger.pushDebug(JSON.stringify(thing), this.logTag);
+                            console.debug(JSON.stringify(thing));
                         }
                         channel.ack(msg);
                     });
@@ -165,7 +165,7 @@ export class Worker implements IWorker {
         }).catch(e => {
             if(e.name === "WRONG_QUEUE_OPTIONS"){
                 return this.assertQueue(jobQueue, options, onReceive, true).then(() => {
-                    this.logger.pushSilly(e.message, "communication");
+                    console.log(e.message);
                     return true;
                 });
             }

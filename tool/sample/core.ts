@@ -4,6 +4,17 @@ import BuiltInModule from "module";
 import { injectable, Container } from "inversify";
 import * as asyncHooks from "async_hooks";
 import { EventEmitter } from "events";
+if("undefined" === typeof global["system"]){
+    const system: ISystem = {
+        log: console.log,
+        warn: console.warn,
+        debug: console.debug,
+        error: console.error,
+        info: console.info
+    }
+    global["system"] = system;
+}
+
 
 
 
@@ -23,11 +34,11 @@ if ("undefined" === typeof global["generateNewableIdentifier"]) {
     global["generateNewableIdentifier"] = function generateNewableIdentifier(identifier: symbol | string) {
         let newableIdentifier: symbol | string = null;
         if (typeof identifier === "string") {
-            newableIdentifier = `Newable<\${identifier}>`;
+            newableIdentifier = `Newable<${identifier}>`;
         }
         else {
             let symbolString = identifier.toString().replace("Symbol(", "").replace(")", "");
-            newableIdentifier = Symbol.for(`Newable<\${symbolString}>`);
+            newableIdentifier = Symbol.for(`Newable<${symbolString}>`);
         }
         return newableIdentifier;
     }
@@ -321,19 +332,26 @@ if ("undefined" === typeof global["Injectable"]) {
         }
     }
 };
-if ("undefined" === typeof global["typeKey"]){
+if ("undefined" === typeof global["typeKey"]) {
     global["typeKey"] = "Type";
 }
 
-if ("undefined" === typeof global["PROPERTIES_KEY"]){
+if ("undefined" === typeof global["PropertyTypes"]) {
+    enum PropertyTypes {
+        Any = "$_any"
+    }
+    global["PropertyTypes"] = PropertyTypes;
+}
+
+if ("undefined" === typeof global["PROPERTIES_KEY"]) {
     global["PROPERTIES_KEY"] = Symbol.for("property");
 }
 
-if("undefined" === typeof global["CLASS_KEY"]){
+if ("undefined" === typeof global["CLASS_KEY"]) {
     global["CLASS_KEY"] = Symbol.for("class");
 }
 
-if("undefined" === typeof global["REAL_DATA_TYPE_KEY"]){
+if ("undefined" === typeof global["REAL_DATA_TYPE_KEY"]) {
     global["REAL_DATA_TYPE_KEY"] = Symbol.for("real-data-type");
 }
 
@@ -343,31 +361,25 @@ if ("undefined" === typeof global["DynamicProperty"]) {
     }) {
         return (target: any) => {
             let columns: IProperty[] = getMetadata(PROPERTIES_KEY, target) || [];
-            let realDataType = getRealDataType(type);
-            if (realDataType) {
-                columns.push({ type: realDataType, name: "$all", required: (options && options.required) ? true : false });
+            let isPropertyType = type && (<any>type).type && (<any>type).value;
+            let realType: PropertyType
+            if (isPropertyType) {
+                realType = type as PropertyType;
             }
             else {
-                let isPropertyType = type && (<any>type).type && (<any>type).value;
-                let realType: PropertyType
-                if (isPropertyType) {
-                    realType = type as PropertyType;
+                realType = {
+                    type: "single",
+                    value: type as { new(...args: any[]): any }
                 }
-                else {
-                    realType = {
-                        type: "single",
-                        value: type as { new(...args: any[]): any }
-                    }
-                }
-                columns.push({ type: realType, name: "$_all", required: (options && options.required) ? true : false });
             }
+            columns.push({ type: realType, name: "$_all", required: (options && options.required) ? true : false });
             defineMetadata(PROPERTIES_KEY, columns, target);
         }
     }
 }
 
 if ("undefined" === typeof global["PropertyArray"]) {
-    global["PropertyArray"] = function PropertyArray(type: { new(...args: any[]): any }): PropertyType {
+    global["PropertyArray"] = function PropertyArray(type: { new(...args: any[]): any } | PropertyTypeLiteral | PropertyTypeList): PropertyType {
         return {
             type: "list",
             value: type
@@ -385,14 +397,14 @@ if ("undefined" === typeof global["PropertyMap"]) {
 }
 
 if ("undefined" === typeof global["PropertyLiteral"]) {
-    global["PropertyLiteral"] = function PropertyLiteral(type: { new(...args: any[]): any }, ...moreType: ({ new(...args: any[]): any })[]) {
-        moreType.push(type);
-        let literalProperty: PropertyType = {
+    global["PropertyLiteral"] = function PropertyLiteral(type: PropertyTypeValue, ...moreType: PropertyTypeValue[]) {
+        moreType.unshift(type);
+        let literalProperty: PropertyTypeLiteral = {
             type: "literal",
-            value: []
+            value: [] as PropertyTypeValue[]
         }
         moreType.map(type => {
-            (<PropertyTypeValue[]>literalProperty.value).push(type);
+            literalProperty.value.push(type);
         });
         return literalProperty;
     }
@@ -404,48 +416,20 @@ if ("undefined" === typeof global["Property"]) {
     }) {
         return (target: object, propertyKey: string) => {
             let columns: IProperty[] = getMetadata(PROPERTIES_KEY, target) || [];
-            let realDataType = getRealDataType(type);
-            if (realDataType) {
-                columns.push({ type: realDataType, name: propertyKey, required: (options && options.required) ? true : false });
+            let isPropertyType = type && (<any>type).type && (<any>type).value;
+            let realType: PropertyType
+            if (isPropertyType) {
+                realType = type as PropertyType;
             }
             else {
-                let isPropertyType = type && (<any>type).type && (<any>type).value;
-                let realType: PropertyType
-                if (isPropertyType) {
-                    realType = type as PropertyType;
+                realType = {
+                    type: "single",
+                    value: type as { new(...args: any[]): any }
                 }
-                else {
-                    realType = {
-                        type: "single",
-                        value: type as { new(...args: any[]): any }
-                    }
-                }
-                columns.push({ type: realType, name: propertyKey, required: (options && options.required) ? true : false });
             }
+            columns.push({ type: realType, name: propertyKey, required: (options && options.required) ? true : false });
             defineMetadata(PROPERTIES_KEY, columns, target);
         }
-    }
-}
-
-if ("undefined" === typeof global["defineRealDataType"]) {
-    global["defineRealDataType"] = function defineRealDataType(target, type: "object" | "string" | "boolean" | "number") {
-        let types: string[] = getRealDataType(target) || [];
-        if (!types.includes(type)) types.push(type);
-        console.log(REAL_DATA_TYPE_KEY);
-        defineMetadata(REAL_DATA_TYPE_KEY, types, getClass(target));
-    }
-}
-
-if ("undefined" === typeof global["getRealDataType"]) {
-    global["getRealDataType"] = function getRealDataType(target): string[] {
-        let realDataType = undefined;
-        try {
-            realDataType = getMetadata(REAL_DATA_TYPE_KEY, target) as string[];
-        }
-        catch (e) {
-            realDataType = undefined;
-        }
-        return realDataType;
     }
 }
 
@@ -453,6 +437,505 @@ if ("undefined" === typeof global["getProperties"]) {
     global["getProperties"] = function getProperties(target: any): IProperty[] {
         let properties = getMetadata<IProperty[]>(PROPERTIES_KEY, target);
         return properties || [];
+    }
+}
+
+if ("undefined" === typeof global["defaultValue"]) {
+    global["defaultValue"] = function defaultValue(input: any, type: "boolean" | "string" | "number" | "object" | "array", truthy: boolean = true) {
+        if (input === null) {
+            if (type === "boolean") {
+                return truthy;
+            }
+            else if (type === "string") {
+                return "";
+            }
+            else if (type === "number") {
+                return truthy ? 1 : 0;
+            }
+            else if (type === "object") {
+                return truthy ? {} : null;
+            }
+        }
+        else {
+            if (type === "array" && Array.isArray(input)) {
+                return input;
+            }
+            else if (typeof input === type && !Array.isArray(input)) {
+                return input;
+            }
+            else {
+                return null;
+            }
+        }
+    }
+}
+
+if ("undefined" === typeof global["IsPropertyType"]) {
+    global["IsPropertyType"] = function IsPropertyType(propertyType: any): boolean {
+        if (propertyType.type && propertyType.value) return true;
+        else return false;
+    }
+}
+
+if ("undefined" === typeof global["mapData"]) {
+    type TValid = 1 | 0;
+    interface IMapDataResult {
+        isValid: TValid;
+        result: any;
+    }
+    class MapDataResult implements IMapDataResult {
+        isValid: 0 | 1;
+        result: any;
+        static toResult(result, isValid: TValid = 1): IMapDataResult {
+            let data = new MapDataResult();
+            data.isValid = isValid;
+            data.result = result;
+            return data;
+        }
+    }
+    function NullOrUndefined(value) {
+        return typeof value === "undefined" || value === null;
+    }
+    function mapToNumber(input): boolean{
+        try {
+            let result = Number(input);
+            return !isNaN(result);
+        }
+        catch(e){
+            return false;
+        }
+    }
+    function mapToString(input): boolean {
+        try {
+            if(input && typeof input !== "object"){
+                String(input);
+                return true;
+            }
+            else {
+                return false;
+            }
+        }
+        catch(e){
+            return false;
+        }
+    }
+    function mapToBoolean(input): boolean {
+        if(input === "true" || input === "false" || input === true || input === false) return true;
+        return false;
+    }
+    function mapToObject(input: string): boolean {
+        if(typeof input !== "string" && typeof input === "object") return true;
+        else {
+            try {
+                let result = JSON.__base__circularParse(input);
+                return true;
+            }
+            catch(e){
+                return false;
+            }
+        }
+    }
+    function checkSourceValue(source, expectType: "string" | "boolean" | "number" | "function"): boolean {
+        if (typeof source === expectType) return true;
+        else {
+            if(expectType !== "function"){
+                switch(expectType){
+                    case "number": return mapToNumber(source);
+                    case "string": return mapToString(source);
+                    case "boolean": return mapToBoolean(source);
+                }
+            }
+            return false
+        }
+    }
+    function mapDataFromPropertyValueObject(dest, propertyTypeValue: PropertyTypeValueObject, name: string | number, value: any, required: boolean = false): IMapDataResult {
+        let isValid = 1;
+        let delimiter = typeof name === "string" ? Object.__base__getDelimiter(name) : ".";
+        switch (propertyTypeValue.name) {
+            case "String":
+                if (checkSourceValue(value, "string")) Object.__base__setAt(dest, name, String(value), delimiter);
+                else if (required || !NullOrUndefined(value)) isValid *= 0;
+                break;
+            case "Number":
+                if (checkSourceValue(value, "number")) Object.__base__setAt(dest, name, Number(value), delimiter);
+                else if (required || !NullOrUndefined(value)) isValid *= 0;
+                break;
+            case "Boolean":
+                if (checkSourceValue(value, "boolean")) Object.__base__setAt(dest, name, Boolean(value), delimiter);
+                else if (required || !NullOrUndefined(value)) isValid *= 0;
+                break;
+            case "Function":
+                if (checkSourceValue(value, "function")) Object.__base__setAt(dest, name, value, delimiter);
+                else if (required || !NullOrUndefined(value)) isValid *= 0;
+                break;
+            case "Date":
+                if (checkSourceValue(value, "string") || checkSourceValue(value, "number") || value instanceof Date) {
+                    try {
+                        let dataValue = new Date(value as (string | number | Date));
+                        if (dataValue.toString() === "Invalid Date") throw new Error("Invalid Date");
+                        else Object.__base__setAt(dest, name, dataValue, delimiter);
+                    }
+                    catch (e) {
+                        if (required || !NullOrUndefined(value)) isValid *= 0;
+                    }
+                }
+                else if (required) isValid *= 0;
+                break;
+            default:
+                if(typeof value === "string") {
+                    if(mapToObject(value)) value = JSON.__base__circularParse(value);
+                    else {
+                        let fakeType: any = propertyTypeValue as any;
+                        if(typeof fakeType.__base__fromString === "function") value = fakeType.__base__fromString(value); 
+                    }
+                    let dataResult = mapData(propertyTypeValue, value, name.toString());
+                    if (dataResult.error) isValid *= 0;
+                    else Object.__base__setAt(dest, name, dataResult.value, delimiter);
+                }
+                else if (typeof value !== "object") {
+                    if (required || !NullOrUndefined(value)) isValid *= 0;
+                }
+                else {
+                    let dataResult = mapData(propertyTypeValue, value, name.toString());
+                    if (dataResult.error) isValid *= 0;
+                    else Object.__base__setAt(dest, name, dataResult.value, delimiter);
+                }
+        }
+        return MapDataResult.toResult(dest, isValid as TValid);
+    }
+    function mapDataFromPropertyValueMap(dest, propertyTypeValue: (PropertyTypeValueObject | PropertyTypeMap | PropertyTypeLiteral | PropertyTypeList), name: string | number, value: any, required: boolean = false): IMapDataResult {
+        let isValid: TValid = 1;
+        if(value instanceof Map){
+            let mapDest = new Map();
+            value.forEach((v, k) => {
+                let innerDest = {};
+                if(IsPropertyType(propertyTypeValue)){
+                    if((<PropertyType>propertyTypeValue).value === PropertyTypes.Any){
+                        isValid = 1;
+                        mapDest.set(k, v);
+                    }
+                    if((<PropertyType>propertyTypeValue).type === "list"){
+                        let mapDataResult = mapDataFromPropertyValueList(innerDest, (<PropertyType>propertyTypeValue).value as (PropertyTypeValueObject | PropertyTypeList | PropertyTypeLiteral | PropertyTypeMap), k, v, required);
+                        isValid *= mapDataResult.isValid;
+                        if(isValid && innerDest){
+                            mapDest.set(k, innerDest[k]);
+                        }
+                    }
+                    else if((<PropertyType>propertyTypeValue).type === "literal"){
+                        let mapDataResult = prepareMapDataForLiteral(innerDest, (<PropertyType>propertyTypeValue).value as PropertyTypeValue[], k, v, required);
+                        isValid *= mapDataResult.isValid;
+                        if(isValid && innerDest){
+                            mapDest.set(k, innerDest[k]);
+                        }
+                    }
+                    else {
+                        let mapDataResult = mapDataFromPropertyValueMap(innerDest, (<PropertyType>propertyTypeValue).value  as (PropertyTypeValueObject | PropertyTypeMap | PropertyTypeLiteral | PropertyTypeList), k, v, required);
+                        isValid *= mapDataResult.isValid;
+                        if(isValid && innerDest) mapDest.set(k, innerDest[k]);
+                    }
+                }
+                else {
+                    let mapDataResult = mapDataFromPropertyValueObject(innerDest, propertyTypeValue as PropertyTypeValueObject, k, v, required);
+                    isValid *= mapDataResult.isValid;
+                    if(isValid && innerDest) mapDest.set(k, innerDest[k]);
+                }
+            });
+            if(isValid){
+                dest[name] = mapDest;
+            }
+        }
+        else if(!(NullOrUndefined(value)) || (NullOrUndefined(value) && required)) isValid *= 0;
+        return MapDataResult.toResult(dest, isValid as TValid);
+    }
+    function mapDataFromPropertyValueList(dest, propertyTypeValue: (PropertyTypeValueObject | PropertyTypeLiteral | PropertyTypeList | PropertyTypeMap), name: string | number, value: any, required: boolean = false): IMapDataResult {
+        let isValid: TValid = 1;
+        if (Array.isArray(value)) {
+            let innerDest = [];
+            value.map((v, i) => {
+                if (IsPropertyType(propertyTypeValue)) {
+                    if((<PropertyType>propertyTypeValue).value === PropertyTypes.Any){
+                        innerDest.push(v);
+                        isValid *= 1;
+                    }
+                    else if ((<PropertyTypeList>propertyTypeValue).type === "list") {
+                        let mapDataResult = mapDataFromPropertyValueList(innerDest, (<PropertyTypeList>propertyTypeValue).value as (PropertyTypeValueObject | PropertyTypeMap | PropertyTypeLiteral | PropertyTypeList), i, v, required);
+                        isValid *= mapDataResult.isValid;
+                    }
+                    else if((<PropertyTypeLiteral>propertyTypeValue).type === "literal"){
+                        let mapDataResult = prepareMapDataForLiteral(innerDest, (<PropertyTypeLiteral>propertyTypeValue).value as PropertyTypeValue[], i, v, required);
+                        isValid *= mapDataResult.isValid;
+                    }
+                    else {
+                        let mapDataResult = mapDataFromPropertyValueMap(innerDest, (<PropertyTypeMap>propertyTypeValue).value as (PropertyTypeValueObject | PropertyTypeMap | PropertyTypeLiteral | PropertyTypeList), i, v, required);
+                        isValid *= mapDataResult.isValid;
+                    }
+                }
+                else {
+                    let mapDataResult = mapDataFromPropertyValueObject(innerDest, propertyTypeValue as PropertyTypeValueObject, i, v, required);
+                    isValid *= mapDataResult.isValid;
+                }
+            });
+            if (isValid && innerDest) {
+                dest[name] = innerDest;
+            }
+        }
+        else if (!(NullOrUndefined(value)) || (NullOrUndefined(value) && required)) isValid *= 0;
+        return MapDataResult.toResult(dest, isValid as TValid);
+    }
+    function mapDataFromPropertyValueLiteral(dest, propertyTypeValues: (PropertyTypeSpecificValue | PropertyTypeValueObject | PropertyType)[], name: string | number, value: any, required: boolean = false): IMapDataResult {
+        let isValid: TValid = 1,
+            check = { isSpecific: false, isObject: false, isPropertyType: false };
+        if (propertyTypeValues && propertyTypeValues.length > 0) {
+            if (typeof propertyTypeValues[0] === "string" || typeof propertyTypeValues[0] === "number" || typeof propertyTypeValues[0] === "boolean") check.isSpecific = true;
+            else if (typeof propertyTypeValues[0] === "function") check.isObject = true;
+            else check.isPropertyType = true;
+        }
+        if (check.isSpecific) {
+            if (!propertyTypeValues.includes(value)) isValid *= 0;
+            else dest[name] = value;
+        }
+        else if (check.isObject) {
+            let length = propertyTypeValues.length,
+                mapDataResult: IMapDataResult;
+            for (let i = 0; i < length; i++) {
+                mapDataResult = mapDataFromPropertyValueObject(dest, propertyTypeValues[i] as PropertyTypeValueObject, name, value, required);
+                if (mapDataResult.isValid) break;
+            }
+            isValid *= mapDataResult.isValid;
+        }
+        else if (check.isPropertyType) {
+            let length = propertyTypeValues.length,
+                mapDataResult: IMapDataResult = MapDataResult.toResult(null, 1);
+            for (let i = 0; i < length; i++) {
+                let propertyType: PropertyType = propertyTypeValues[i] as PropertyType;
+                if(propertyType.value === PropertyTypes.Any){
+                    dest[name] = value;
+                    mapDataResult.isValid = 1;
+                    break;
+                }
+                else if (propertyType.type === "list") {
+                    mapDataResult = mapDataFromPropertyValueList(dest, propertyType.value as any, name, value, required);
+                    if (mapDataResult.isValid) break;
+                }
+                else if (propertyType.type === "literal") {
+                    mapDataResult = mapDataFromPropertyValueLiteral(dest, propertyType.value, name, value, required);
+                    if (mapDataResult.isValid) break;
+                }
+                else {
+                    mapDataResult = mapDataFromPropertyValueMap(dest, propertyType.value as PropertyTypeMap, name, value, required);
+                    if (mapDataResult.isValid) break;
+                }
+            }
+            isValid *= mapDataResult.isValid;
+        }
+        else if(!(NullOrUndefined(value)) || (NullOrUndefined(value) && required)) isValid *= 0;
+        return MapDataResult.toResult(dest, isValid as TValid);
+    }
+    function prepareMapDataForLiteral(dest, propertyTypeValues: PropertyTypeValue[], name: string | number, value: any, required: boolean = false): IMapDataResult {
+        let isValid: TValid = 1,
+            propertyTypeSpecificValues: PropertyTypeSpecificValue[] = [],
+            propertyTypeObjectValues: PropertyTypeValueObject[] = [],
+            propertyTypes: PropertyType[] = [];
+        propertyTypeValues.map(propertyTypeValue => {
+            if (typeof propertyTypeValue === "string" || typeof propertyTypeValue === "number" || typeof propertyTypeValue === "boolean") propertyTypeSpecificValues.push(propertyTypeValue);
+            else if (typeof propertyTypeValue === "function") propertyTypeObjectValues.push(propertyTypeValue as PropertyTypeValueObject);
+            else propertyTypes.push(propertyTypeValue);
+        });
+        let mapDataResult = mapDataFromPropertyValueLiteral(dest, propertyTypeSpecificValues as PropertyTypeSpecificValue[], name, value, required);
+        if (!mapDataResult.isValid) mapDataResult = mapDataFromPropertyValueLiteral(dest, propertyTypeObjectValues as PropertyTypeValueObject[], name, value, required);
+        if (!mapDataResult.isValid) mapDataResult = mapDataFromPropertyValueLiteral(dest, propertyTypes as PropertyType[], name, value, required);
+        isValid *= mapDataResult.isValid;
+        return MapDataResult.toResult(dest, isValid as TValid);
+    }
+    function mapDataForSingle(source, dest, property: IProperty): IMapDataResult {
+        let isValid: TValid = 1;
+        let delimiter = Object.__base__getDelimiter(property.name);
+        if (source) {
+            let value = Object.__base__valueAt(source, property.name, delimiter);
+            if(property.type.value === PropertyTypes.Any){
+                dest[property.name] = value;
+            }
+            else {
+                let propertyTypeValue = property.type.value as PropertyTypeValueObject,
+                    mapDataResult = mapDataFromPropertyValueObject(dest, propertyTypeValue, property.name, value, property.required);
+                isValid = mapDataResult.isValid;   
+            }
+        }
+        else if(!(NullOrUndefined(source)) || (NullOrUndefined(source) && property.required)) isValid *= 0;
+        return MapDataResult.toResult(dest, isValid as TValid);
+    }
+    function mapDataForList(source, dest, property: IProperty): IMapDataResult {
+        let isValid: TValid = 1;
+        let delimiter = Object.__base__getDelimiter(property.name);
+        if (source) {
+            let value = Object.__base__valueAt(source, property.name, delimiter);
+            if(property.type.value === PropertyTypes.Any){
+                dest[property.name] = value;
+            }
+            else {
+                let propertyTypeValue = property.type.value as (PropertyTypeValueObject | PropertyTypeLiteral | PropertyTypeList),
+                    mapDataResult = mapDataFromPropertyValueList(dest, propertyTypeValue, property.name, value, property.required);
+                isValid *= mapDataResult.isValid;
+            }
+        }
+        else if(!(NullOrUndefined(source)) || (NullOrUndefined(source) && property.required)) isValid *= 0;
+        return MapDataResult.toResult(dest, isValid as TValid);
+    }
+    function mapDataForLiteral(source, dest, property: IProperty): IMapDataResult {
+        let isValid: TValid = 1;
+        let delimiter = Object.__base__getDelimiter(property.name);
+        if (source) {
+            let value = Object.__base__valueAt(source, property.name, delimiter);
+            if(property.type.value === PropertyTypes.Any){
+                dest[property.name] = value;
+            }
+            else {
+                let propertyTypeValues = property.type.value as PropertyTypeValue[],
+                    mapDataResult = prepareMapDataForLiteral(dest, propertyTypeValues, property.name, value, property.required);
+                isValid *= mapDataResult.isValid;
+            }
+        }
+        else if(!(NullOrUndefined(source)) || (NullOrUndefined(source) && property.required)) isValid *= 0;
+        return MapDataResult.toResult(dest, isValid as TValid);
+    }
+    function mapDataForMap(source, dest, property: IProperty): IMapDataResult {
+        let isValid: TValid = 1;
+        let delimiter = Object.__base__getDelimiter(property.name);
+        if (source) {
+            let value = Object.__base__valueAt(source, property.name, delimiter);
+            if(property.type.value === PropertyTypes.Any){
+                dest[property.name] = value;
+            }
+            else {
+                let propertyTypeValue = property.type.value as (PropertyTypeValueObject | PropertyTypeMap | PropertyTypeLiteral | PropertyTypeList),
+                    mapDataResult = mapDataFromPropertyValueMap(dest, propertyTypeValue, property.name, value, property.required);
+                isValid *= mapDataResult.isValid;
+            }
+        }
+        else if(!(NullOrUndefined(source)) || (NullOrUndefined(source) && property.required)) isValid *= 0;
+        return MapDataResult.toResult(dest, isValid as TValid);
+    }
+    global["mapData"] = function mapData<T>(ConcreteClass: { new(...args: any[]): T }, inputSource: any, parentField: string = null): ResultTypeWrapper<T> {
+        let properties = getProperties(ConcreteClass),
+            isValid = 1,
+            result = {},
+            missingFields = [],
+            wrongFields = [],
+            source = Object.__base__clone(inputSource);
+        properties.map(property => {
+            let checkValidCondition = property.required === false || (property.required && property.name === "$_all" && source && Object.keys(source).length > 0) || (property.required && source && source[property.name]);
+            if (checkValidCondition) isValid *= 1;
+            else {
+                if (property.name === "$_all" && parentField) missingFields.push(`${parentField}`);
+                else {
+                    if (parentField) missingFields.push(`${parentField}.${property.name}`);
+                    else missingFields.push(property.name === "$_all" ? "" : property.name);
+                }
+                isValid *= 0;
+            }
+        });
+        if (isValid) {
+            result = new ConcreteClass();
+            if(properties.length === 0) result = source;
+            else {
+                properties.map(property => {
+                    if(property.name !== "$_all"){
+                        if (property.type.type === "single") {
+                            let mapDataResult = mapDataForSingle(source, result, property);
+                            if (!mapDataResult.isValid) {
+                                if (parentField) wrongFields.push(`${parentField}.${property.name}`);
+                                else wrongFields.push(property.name);
+                            }
+                            isValid *= mapDataResult.isValid;
+                        }
+                        else if (property.type.type === "list") {
+                            let mapDataResult = mapDataForList(source, result, property);
+                            if (!mapDataResult.isValid) {
+                                if (parentField) wrongFields.push(`${parentField}.${property.name}`);
+                                else wrongFields.push(property.name);
+                            }
+                            isValid *= mapDataResult.isValid;
+                        }
+                        else if (property.type.type === "literal") {
+                            let mapDataResult = mapDataForLiteral(source, result, property);
+                            if (!mapDataResult.isValid) {
+                                if (parentField) wrongFields.push(`${parentField}.${property.name}`);
+                                else wrongFields.push(property.name);
+                            }
+                            isValid *= mapDataResult.isValid;
+                        }
+                        else {
+                            let mapDataResult = mapDataForMap(source, result, property);
+                            if (!mapDataResult.isValid) {
+                                if (parentField) wrongFields.push(`${parentField}.${property.name}`);
+                                else wrongFields.push(property.name);
+                            }
+                            isValid *= mapDataResult.isValid;
+                        }
+                    }
+                    else {
+                        let keys = Object.keys(source);
+                        if (property.type.type === "single") {
+                            keys.map((key) => {
+                                let tempProperty: IProperty = Object.__base__clone<IProperty>(property);
+                                tempProperty.name = key;
+                                let mapDataResult = mapDataForSingle(source, result, tempProperty);
+                                if (!mapDataResult.isValid) {
+                                    if (parentField) wrongFields.push(`${parentField}.${key}`);
+                                    else wrongFields.push(key);
+                                }
+                                isValid *= mapDataResult.isValid;
+                            });
+                        }
+                        else if(property.type.type === "list"){
+                            keys.map((key) => {
+                                let tempProperty: IProperty = Object.__base__clone<IProperty>(property);
+                                tempProperty.name = key;
+                                let mapDataResult = mapDataForList(source, result, tempProperty);
+                                if (!mapDataResult.isValid) {
+                                    if (parentField) wrongFields.push(`${parentField}.${key}`);
+                                    else wrongFields.push(key);
+                                }
+                                isValid *= mapDataResult.isValid;
+                            }); 
+                        }
+                        else if(property.type.type === "literal"){
+                            keys.map((key) => {
+                                let tempProperty: IProperty = Object.__base__clone<IProperty>(property);
+                                tempProperty.name = key;
+                                let mapDataResult = mapDataForLiteral(source, result, tempProperty);
+                                if (!mapDataResult.isValid) {
+                                    if (parentField) wrongFields.push(`${parentField}.${key}`);
+                                    else wrongFields.push(key);
+                                }
+                                isValid *= mapDataResult.isValid;
+                            }); 
+                        }
+                        else {
+                            keys.map((key) => {
+                                let tempProperty: IProperty = Object.__base__clone<IProperty>(property);
+                                tempProperty.name = key;
+                                let mapDataResult = mapDataForMap(source, result, tempProperty);
+                                if (!mapDataResult.isValid) {
+                                    if (parentField) wrongFields.push(`${parentField}.${key}`);
+                                    else wrongFields.push(key);
+                                }
+                                isValid *= mapDataResult.isValid;
+                            }); 
+                        }
+                    }
+                });
+            }
+        }
+        if (isValid) {
+            return ResultTypeWrapper.wrap<T>(result as T);
+        }
+        else {
+            let errorString = "";
+            if (missingFields.length > 0) errorString += `Missing field${missingFields.length > 1 ? "s" : ""} ${missingFields.join(", ")}`;
+            if (wrongFields.length > 0) errorString += errorString ? `. Invalid field${wrongFields.length > 1 ? "s" : ""} ${wrongFields.join(", ")}` : `Invalid field${wrongFields.length > 1 ? "s" : ""} ${wrongFields.join(", ")}`;
+            return ResultTypeWrapper.wrap(new Error(errorString));
+        }
     }
 };
 if ("undefined" === typeof global["getClass"]) {
@@ -562,31 +1045,21 @@ if ("undefined" === typeof global["Type"]) {
         };
         defineMetadata(typeKey, types, Type);
     }
-}
-
-if ("undefined" === typeof global["BaseClass"]){
-    class BaseClass<T> implements IBaseClass<T>{
-        getType(): IClassType {
-            throw new Error("Method not implemented.");
-        }
-        init(input: Partial<T>): void{
-            if(input){
-                let keys = Object.keys(input);
-                Object.values(input).map((v, i) => {
-                    this[keys[i]] = v;
-                });
-                return;
-            }
-            throw new Error("Input cannot be undefined or null");
-        }
-    }
-    global["BaseClass"] = BaseClass;
 };
 
 const AsyncFunction = Object.getPrototypeOf(async function(){}).constructor;
 
 if ("undefined" === typeof global["Context"]){
     class Context implements IContext{
+        clone(): IContextProperty {
+            throw new Error("Method not implemented.");
+        }
+        toJSON(): string {
+            throw new Error("Method not implemented.");
+        }
+        fromJSON(input: string): IContextProperty {
+            throw new Error("Method not implemented.");
+        }
         init(input: Partial<IContextProperty>): void {
             throw new Error("Method not implemented.");
         }
@@ -686,13 +1159,7 @@ if ("undefined" === typeof global["createHooks"]){
 }
 
 if("undefined" === typeof global["Namespace"]){
-    class Namespace extends BaseClass<INamespace> implements INamespace{
-        getType(): IClassType {
-            throw new Error("Method not implemented.");
-        }
-        initValue(input: Partial<any>): void {
-            throw new Error("Method not implemented.");
-        }
+    class Namespace implements INamespace{
         private static namespaces: {} = {};
         static create(name: string): INamespace {
             if (Namespace.namespaces[name]) {
@@ -717,13 +1184,12 @@ if("undefined" === typeof global["Namespace"]){
         };
     
         constructor() {
-            super();
             this.context = {};
         }
     
         cloneById(sourceId: number){
             let source = this.getById(sourceId);
-            let destValue = Object.clone(source.value);
+            let destValue = Object.__base__clone(source.value);
             let dest = new Context({
                 children: [],
                 flushed: false,
@@ -732,7 +1198,7 @@ if("undefined" === typeof global["Namespace"]){
                 prev: null,
                 value: destValue,
                 type: source.type,
-                resource: source.resource ? Object.clone(source.resource) : undefined
+                resource: source.resource ? Object.__base__clone(source.resource) : undefined
             });
             this.setById(asyncHooks.triggerAsyncId(), dest);
         }
@@ -994,144 +1460,148 @@ if("undefined" === typeof global["FONT_COLOR_DEFAULT_LENGTH"]){
 
 
 if("undefined" === typeof global["logger"]){
-    class Logger extends BaseClass<ILoggerProperty> implements ILogger, IBaseClass<ILoggerProperty> {
-        getType(): IClassType {
-            throw new Error("Method not implemented.");
-        }
+    class Logger implements ILogger, IBaseClass<ILoggerProperty> {
         static maxLength: number = 0;
+        private logColor: boolean;
         private tracing: boolean;
         private eventInstance: EventEmitter;
         private appName: string;
         private displayAppName: string;
+        private showAppName: boolean;
+        private currentLogLevel: "silly" | "info" | "debug" | "warn" | "error";
+        private logLevels = {
+            silly: ["silly", "info", "debug", "warn", "error"],
+            info: ["info", "debug", "warn", "error"],
+            debug: ["info", "debug", "warn", "error"],
+            warn: ["info", "warn", "error"],
+            error: ["info", "error"]
+        }
         private on(event: "data", listener: (data: string) => void): ILogger {
             this.eventInstance.on(event, listener);
             return this;
         }
+        private loggable(level: "silly" | "debug" | "error" | "info" | "warn"){
+            return this.tracing && this.logLevels[this.currentLogLevel].includes(level);
+        }
+        private styleMessage(style: Partial<IMessageStyle>){
+            let outputString: string = "";
+            if(this.logColor){
+                if (style.bold) {
+                    outputString += `${LOGGER_UTILS.bold}`;
+                }
+                if (style.underline) {
+                    outputString += `${LOGGER_UTILS.underline}`;
+                }
+                if (style.fontColor) {
+                    outputString += `${LOGGER_UTILS["fg" + style.fontColor]}`;
+                }
+                if (style.backgroundColor) {
+                    outputString += `${LOGGER_UTILS["bg" + style.backgroundColor]}`;
+                }
+            }
+            return outputString;
+        }
         expand(): ILogger {
-            return getDependency<ILogger>(LOGGER_SERVICE, true);
+            let newLogInstance = getDependency<ILogger>(LOGGER_SERVICE, true);
+            newLogInstance.init({appName: this.appName, logColor: this.logColor});
+            newLogInstance.trace(this.tracing);
+            newLogInstance.setLevel(this.currentLogLevel);
+            newLogInstance.setColor(this.logColor);
+            newLogInstance.setDisplayAppName(this.showAppName);
+            return newLogInstance;
+        }
+        setColor(logColor: boolean) {
+            this.logColor = logColor;
+        }
+        setDisplayAppName(showAppName: boolean){
+            this.showAppName = showAppName;
+        }
+        setLevel(level: "silly" | "debug" | "error" | "info" | "warn") {
+            this.currentLogLevel = level;
         }
         pushLog(log: ILog);
         pushLog(message: string, level: "silly" | "debug" | "error" | "info" | "warn", tag: string, style?: IMessageStyle);
         pushLog(arg0: (string | ILog), arg1?: "silly" | "debug" | "error" | "info" | "warn", arg2?: string, arg3?: IMessageStyle) {
-            if(this.tracing){
-                if (typeof arg0 === "string") {
+            if (typeof arg0 === "string" && this.loggable(arg1)) {
+                let outputString = "";
+                let message = arg0 as string;
+                let level = arg1 as "silly" | "debug" | "error" | "info" | "warn";
+                let tag = arg2 as string;
+                let style = arg3 as IMessageStyle;
+                if (style) {
+                    outputString += this.styleMessage(style);
+                }
+                let date = new Date();
+                let dateString = `${this.styleMessage({fontColor: "cyan"}) + date.toISOString()}(${date.toLocaleString()})${this.logColor ? LOGGER_UTILS.reset : ""}`;
+                let prefix = `${this.styleMessage({fontColor: "white"})}SILLY`;
+                if (level === "debug") {
+                    prefix = `${this.styleMessage({fontColor: "blue"})}DEBUG`;
+                }
+                else if (level === "info") {
+                    prefix = `${this.styleMessage({fontColor: "green"})} INFO`;
+                }
+                else if (level === "error") {
+                    prefix = `${this.styleMessage({fontColor: "red"})}ERROR`;
+                }
+                else if (level === "warn"){
+                    prefix = `${this.styleMessage({fontColor: "yellow"})} WARN`;
+                }
+                prefix += `${this.logColor ? LOGGER_UTILS.reset : ""}`;
+                message = `${outputString}${message}${this.logColor ? LOGGER_UTILS.reset : ""}`;
+                let resultString = (this.showAppName ? `${this.displayAppName} - ` : "" ) + `${dateString} - ${prefix}${tag ? " - [" + tag + "]" : ""} - ${message}`;
+                this.eventInstance.emit("data", resultString);
+            }
+            else if(arg0 && this.loggable((<ILog>arg0).level)){
+                let log = arg0 as ILog;
+                let messageText = [];
+                let tag = log.message.tag;
+                log.message.messages.map(message => {
                     let outputString = "";
-                    let message = arg0 as string;
-                    let level = arg1 as "silly" | "debug" | "error" | "info" | "warn";
-                    let tag = arg2 as string;
-                    let style = arg3 as IMessageStyle;
-                    if (style) {
-                        if (style.bold) {
-                            outputString += `${LOGGER_UTILS.bold}`;
-                        }
-                        if (style.underline) {
-                            outputString += `${LOGGER_UTILS.underline}`;
-                        }
-                        if (style.fontColor) {
-                            outputString += `${LOGGER_UTILS["fg" + style.fontColor]}`;
-                        }
-                        if (style.backgroundColor) {
-                            outputString += `${LOGGER_UTILS["bg" + style.backgroundColor]}`;
-                        }
+                    if (message.style) {
+                        outputString += this.styleMessage(message.style);
                     }
-                    let date = new Date();
-                    let dateString = `${LOGGER_UTILS.fgcyan}${date.toISOString()}(${date.toLocaleString()})${LOGGER_UTILS.reset}`;
-                    let prefix = `${LOGGER_UTILS.fgwhite}SILLY`;
-                    if (level === "debug") {
-                        prefix = `${LOGGER_UTILS.fgblue}DEBUG`;
-                    }
-                    else if (level === "info") {
-                        prefix = `${LOGGER_UTILS.fggreen} INFO`;
-                    }
-                    else if (level === "error") {
-                        prefix = `${LOGGER_UTILS.fgred}ERROR`;
-                    }
-                    else if (level === "warn"){
-                        prefix = `${LOGGER_UTILS.fgyellow} WARN`;
-                    }
-                    prefix += `${LOGGER_UTILS.reset}`;
-                    message = `${outputString}${message}${LOGGER_UTILS.reset}`;
-                    let resultString = `${this.displayAppName} - ${dateString} - ${prefix}${tag ? " - [" + tag + "]" : ""} - ${message}`;
-                    this.eventInstance.emit("data", resultString);
+                    outputString += message.text + `${this.logColor ? LOGGER_UTILS.reset : ""}`;
+                    messageText.push(outputString);
+                });
+                let date = new Date();
+                let dateString = `${this.styleMessage({fontColor: "cyan"})}${date.toISOString()}(${date.toLocaleString()})${this.logColor ? LOGGER_UTILS.reset : ""}`;
+                let prefix = `${this.styleMessage({fontColor: "white"})}SILLY`;
+                if (log.level === "debug") {
+                    prefix = `${this.styleMessage({fontColor: "blue"})}DEBUG`;
                 }
-                else {
-                    let log = arg0 as ILog;
-                    let messageText = [];
-                    let tag = log.message.tag;
-                    log.message.messages.map(message => {
-                        let outputString = "";
-                        if (message.style) {
-                            if (message.style.fontColor) {
-                                outputString += `${LOGGER_UTILS["fg" + message.style.fontColor]}`;
-                            }
-                            if (message.style.backgroundColor) {
-                                outputString += `${LOGGER_UTILS["bg" + message.style.backgroundColor]}`;
-                            }
-                            if (message.style.bold) {
-                                outputString += `${LOGGER_UTILS.bold}`;
-                            }
-                            if (message.style.underline) {
-                                outputString += `${LOGGER_UTILS.underline}`;
-                            }
-                        }
-                        outputString += message.text + `${LOGGER_UTILS.reset}`;
-                        messageText.push(outputString);
-                    });
-                    let date = new Date();
-                    let dateString = `${LOGGER_UTILS.fgcyan}${date.toISOString()}(${date.toLocaleString()})${LOGGER_UTILS.reset}`;
-                    let prefix = `${LOGGER_UTILS.fgwhite}SILLY`;
-                    if (log.level === "debug") {
-                        prefix = `${LOGGER_UTILS.fgblue}DEBUG`;
-                    }
-                    else if (log.level === "info") {
-                        prefix = `${LOGGER_UTILS.fggreen} INFO`;
-                    }
-                    else if (log.level === "error") {
-                        prefix = `${LOGGER_UTILS.fgred}ERROR`;
-                    }
-                    else if (log.level === "warn"){
-                        prefix = `${LOGGER_UTILS.fgyellow} WARN`;
-                    }
-                    prefix += `${LOGGER_UTILS.reset}`;
-                    let resultString = `${this.displayAppName} - ${dateString} - ${prefix}${tag ? " - [" + tag +"]" : ""} - ${messageText.join(log.message.delimiter)}`;
-                    this.eventInstance.emit("data", resultString);
+                else if (log.level === "info") {
+                    prefix = `${this.styleMessage({fontColor: "green"})} INFO`;
                 }
+                else if (log.level === "error") {
+                    prefix = `${this.styleMessage({fontColor: "red"})}ERROR`;
+                }
+                else if (log.level === "warn"){
+                    prefix = `${this.styleMessage({fontColor: "yellow"})} WARN`;
+                }
+                prefix += `${this.logColor ? LOGGER_UTILS.reset : ""}`;
+                let resultString = (this.showAppName ? `${this.displayAppName} - ` : "" ) + `${dateString} - ${prefix}${tag ? " - [" + tag +"]" : ""} - ${messageText.join(log.message.delimiter)}`;
+                this.eventInstance.emit("data", resultString);
             }
         }
         pushWarn(message: string, tag: string) {
-            if(this.tracing) this.pushLog(message, "warn", tag, { fontColor: "yellow" });
+            this.pushLog(message, "warn", tag, { fontColor: "yellow" });
         }
-        pushError(message: Error, tag: string);
-        pushError(message: string, tag: string);
-        pushError(message: Error | string, tag: string){
-            if(this.tracing){
-                if(typeof message === "string"){
-                    this.pushLog(message, "error", tag, { fontColor: "red" });
-                }
-                else if(message instanceof Error){
-                    let errorMessage = `${message.message}`;
-                    this.pushLog(errorMessage.trim(), "error", tag, { fontColor: "red" });
-                    let stacks = message.stack.split("\n");
-                    stacks.map(stack => {
-                        this.pushLog(stack.trim(), "error", tag, { fontColor: "red" });
-                    });
-                }
-            }
+        pushError(message: string, tag: string){
+            this.pushLog(message, "error", tag, { fontColor: "red" });
         }
         pushSilly(message: string, tag: string) {
-            if(this.tracing) this.pushLog(message, "silly", tag, { fontColor: "white" });
+            this.pushLog(message, "silly", tag, { fontColor: "white" });
         }
         pushDebug(message: string, tag: string) {
-            if(this.tracing) this.pushLog(message, "debug", tag, { fontColor: "blue" });
+            this.pushLog(message, "debug", tag, { fontColor: "blue" });
         }
         pushInfo(message: string, tag: string){
-            if(this.tracing) this.pushLog(message, "info", tag, { fontColor: "green" });
+            this.pushLog(message, "info", tag, { fontColor: "green" });
         }
-        trace(isTrace: boolean) {
-            this.tracing = isTrace;
+        trace(tracing: boolean) {
+            this.tracing = tracing;
         }
         constructor() {
-            super();
             this.eventInstance = new EventEmitter();
             this.on("data", (data) => {
                 let message: string = "";
@@ -1149,9 +1619,11 @@ if("undefined" === typeof global["logger"]){
                 }
                 process.stdout.write(message);
             });
+            this.showAppName = true;
+            this.logColor = true;
+            this.currentLogLevel = "silly";
         }
         init(input: Partial<ILoggerProperty>){
-            super.init(input);
             let fontColorIndex = Math.floor(Math.random() * FONT_COLOR_DEFAULT_LENGTH);
             let fontColor = FONT_COLOR_DEFAULT[fontColorIndex];
             if(input.appName){
@@ -1165,63 +1637,62 @@ if("undefined" === typeof global["logger"]){
                     }
                 }
                 this.appName = input.appName;
-                this.displayAppName = `${LOGGER_UTILS["fg" + fontColor]}${input.appName}${LOGGER_UTILS.reset}`;
+                this.displayAppName = `${this.styleMessage({fontColor: fontColor})}${input.appName}${this.logColor ? LOGGER_UTILS.reset : ""}`;
             }
         }
         
     }
     Injectable(LOGGER_SERVICE, true, true)(Logger);
     global["logger"] = getDependency<ILogger>(LOGGER_SERVICE);
-    logger.trace(true);
     
-    const logFunc = console.log;
-    const warnFunc = console.warn;
-    const errorFunc = console.error;
-    const debugFunc = console.debug;
-    const infoFunc = console.info;
+    logger.trace(true);
+    logger.setColor(true);
+    logger.setDisplayAppName(true);
+    
     console.log = function(){
         try{
             let outputString = generateLog.apply(null, arguments);
-            logger.pushSilly(outputString, "system");
+            if(outputString) logger.pushSilly(outputString, "system");
         }
         catch(e){
-            logFunc.apply(console, arguments);
+            system.error(e);
+            system.log.apply(console, arguments);
         }
     }
     console.warn = function(){
         try{
             let outputString = generateLog.apply(null, arguments);
-            logger.pushWarn(outputString, "system");
+            if(outputString) logger.pushWarn(outputString, "system");
         }
         catch(e){
-            warnFunc.apply(console, arguments);
+            system.warn.apply(console, arguments);
         }
     }
     console.error = function(){
         try{
             let outputString = generateLog.apply(null, arguments);
-            logger.pushError(outputString, "system");
+            if(outputString) logger.pushError(outputString, "system");
         }
         catch(e){
-            errorFunc.apply(console, arguments);
+            system.error.apply(console, arguments);
         }
     }
     console.debug = function(){
         try{
             let outputString = generateLog.apply(null, arguments);
-            logger.pushDebug(outputString, "system");
+            if(outputString) logger.pushDebug(outputString, "system");
         }
         catch(e){
-            debugFunc.apply(console, arguments);
+            system.debug.apply(console, arguments);
         }
     }
     console.info = function(){
         try{
             let outputString = generateLog.apply(null, arguments);
-            logger.pushInfo(outputString, "system");
+            if(outputString) logger.pushInfo(outputString, "system");
         }
         catch(e){
-            infoFunc.apply(console, arguments);
+            system.info.apply(console, arguments);
         }
     }
 }
@@ -1241,8 +1712,19 @@ if("undefined" === typeof global["generateLog"]) {
             else if(typeof arguments[key] === "number" || typeof arguments[key] === "boolean"){
                 outputMessage.push(arguments[key].toString());
             }
+            else if(BaseError.isInstance(arguments[key])){
+                let error: IBaseError = arguments[key];
+                if(!error.logged){
+                    outputMessage.push(error.stack);
+                    error.logged = true;
+                }
+            }
+            else if(arguments[key] instanceof Error){
+                outputMessage.push(arguments[key].stack);
+            }
             else if(typeof arguments[key] === "object"){
-                outputMessage.push(JSON.circularStringify(arguments[key]));
+                if(typeof arguments[key].toString === "function" && !Array.isArray(arguments[key]) && arguments[key].toString() !== "[object Object]") outputMessage.push(arguments[key].toString());
+                else outputMessage.push(JSON.__base__circularStringify(arguments[key]));    
             }
             else {
                 outputMessage.push(arguments[key]);
@@ -1252,76 +1734,181 @@ if("undefined" === typeof global["generateLog"]) {
         return outputString;
     }
 };
-if("undefined" !== typeof global["BaseError"]){
+if("undefined" === typeof global["ErrorLevel"]){
+    class ErrorLevel implements IErrorLevel {
+        level: TErrorLevel;
+        static isInstance(input: any): boolean {
+            if(input && input.level === "red" || input.level === "green"){
+                return true;
+            }
+            return false;
+        }
+        static asInstance(input: any){
+            return input;
+        }
+        static has(input, key: string): boolean {
+            if(input && input[key]){
+                return true;
+            }
+            return false;
+        }
+    }
+    const redLevel = new ErrorLevel();
+    redLevel.level = "red";
+    const greenLevel = new ErrorLevel();
+    greenLevel.level = "green";
+    global["ErrorLevel"] = ErrorLevel;
+    global["ErrorLevel"].RED = redLevel;
+    global["ErrorLevel"].GREEN = greenLevel;
+}
+if ("undefined" === typeof global["BaseError"]) {
     class BaseError extends Error implements IBaseError {
-        code: number;    
+        code: number;
         specificCode: number;
         name: string;
         message: string;
         stack?: string;
-    
+        level: TErrorLevel;
+        logged: boolean;
+
+        static isInstance(input: any): boolean{
+            let isValid = 1;
+            if(input && input instanceof Error){
+                let keys = ["code", "specificCode", "name", "message", "level", "stack", "logged"];
+                keys.map(key => {
+                    isValid *= this.has(input, key) ? 1 : 0;
+                });
+                if(isValid) return true;
+            }
+            return false;
+        }
+
+        static has(input: any, key: string): boolean {
+            if(input && typeof input[key] !== "undefined" && input[key] !== null){
+                return true;
+            }
+            return false;
+        }
+
+        static asInstance(input: any){
+            return input;
+        }
+
         constructor(message: string);
+
+        constructor(message: string, level: "red" | "green");
         constructor(code: number, message: string);
+
         constructor(code: number, specificCode: number, message: string);
-        constructor(arg0: number | string, arg1?: number | string, arg2?: string){
-            if(arguments.length === 3){
-                super(arg2);
+        constructor(code: number, message: string, level: IErrorLevel);
+
+        constructor(code: number, specificCode: number, message: string, level: "red" | "green");
+        constructor(arg0: number | string, arg1?: number | string | IErrorLevel, arg2?: string | IErrorLevel, arg3?: string | IErrorLevel) {
+            if (arguments.length === 4) {
+                super(arg2 as string);
                 this.code = arg0 as number;
                 this.specificCode = arg1 as number;
+                this.level = ErrorLevel.asInstance(arg3).level;
             }
-            else if(arguments.length === 2){
-                super(arg1 as string);
-                this.code = arg0 as number;
-                this.specificCode = arg0 as number;
+            else if (arguments.length === 3) {
+                if (ErrorLevel.isInstance(arg2)) {
+                    super(arg1 as string);
+                    this.code = arg0 as number;
+                    this.specificCode = arg1 as number;
+                    this.level = ErrorLevel.asInstance(arg2).level;
+                }
+                else {
+                    super(arg2 as string);
+                    this.code = arg0 as number;
+                    this.specificCode = arg1 as number;
+                    this.level = "green";
+                }
+            }
+            else if (arguments.length === 2) {
+                if (ErrorLevel.isInstance(arg1)) {
+                    super(arg1 as string);
+                    this.code = 0;
+                    this.specificCode = 0;
+                    this.level = ErrorLevel.asInstance(arg1).level;
+                }
+                else {
+                    super(arg1 as string);
+                    this.code = arg0 as number;
+                    this.specificCode = arg0 as number;
+                    this.level = "green";
+                }
             }
             else {
                 super(arg0 as string);
-                this.code = 0;
-                this.specificCode = 0;
+                this.code = 500;
+                this.specificCode = 500;
+                this.level = "green";
             }
+            this.logged = false;
         }
     }
+    global["BaseError"] = BaseError;
 }
 
-if("undefined" !== typeof global["handleError"]){
-    global["handleError"] = function handleError(e: Error | IBaseError | IErrorResult, extendedMessage?: string): ResultTypeWrapper<any>{
-        let errorResult: IErrorResult = new ErrorResult();
-        if(e instanceof ErrorResult){
-            errorResult = e;
-            if(extendedMessage) {
-                let message = errorResult.error.message + " --> " + extendedMessage;
-                errorResult.error.stack = errorResult.error.stack.replace(errorResult.error.message, message);
-                errorResult.error.message = message;
+if ("undefined" === typeof global["handleError"]) {
+    global["handleError"] = function handleError(e: Error | IBaseError, messageOrErrorLevel: (string | IErrorLevel)): IBaseError {
+        let baseError: IBaseError;
+
+        if (e instanceof Error && !BaseError.isInstance(e)) {
+            if (messageOrErrorLevel){
+                if(ErrorLevel.isInstance(messageOrErrorLevel)) {
+                    baseError = new BaseError(e.message, ErrorLevel.asInstance(messageOrErrorLevel));
+                    baseError.stack = e.stack;
+                }
+                else {
+                    baseError = new BaseError(e.message);
+                    baseError.stack = e.stack;
+                    let message = baseError.message + " --> " + messageOrErrorLevel as string;
+                    baseError.stack = baseError.stack.replace(baseError.message, message);
+                    baseError.message = message;
+                }
             }
-        }
-        else if(e instanceof Error && !(e instanceof BaseError)){
-            let baseError = new BaseError(e.message);
-            baseError.stack = e.stack;
-            if(extendedMessage) {
-                let message = baseError.message + " --> " + extendedMessage
-                baseError.stack = baseError.stack.replace(baseError.message, message);
-                baseError.message = message;
+            else {
+                baseError = new BaseError(e.message);
+                baseError.stack = e.stack;
             }
-            errorResult.init({hasError: true, error: baseError});
         }
         else {
-            let baseError = e as IBaseError;
-            if(extendedMessage){
-                let message = baseError.message + " --> " + extendedMessage
-                baseError.stack = baseError.stack.replace(baseError.message, message);
-                baseError.message = message;
-            }
-            errorResult.init({hasError: true, error: baseError});
+            baseError = e as IBaseError;
+            if (messageOrErrorLevel) {
+                if(ErrorLevel.isInstance(messageOrErrorLevel)) {
+                    if (baseError.level === "green") baseError.level = ErrorLevel.asInstance(messageOrErrorLevel).level;
+                }
+                else {
+                    let message = baseError.message + " --> " + messageOrErrorLevel as string;
+                    baseError.stack = baseError.stack.replace(baseError.message, message);
+                    baseError.message = message;
+                }
+            }            
         }
-        return errorResult;
+        process.emit("app-error", baseError);
+        return baseError;
     }
 }
 
-if("undefined" === typeof global["ErrorResult"]){
-    class ErrorResult extends BaseClass<IErrorResultData> implements IErrorResult{
-        hasError: boolean;
+if("undefined" === typeof global["ResultTypeWrapper"]){
+    class ResultTypeWrapper<T> implements IResultTypeWrapper<T> {
+        value: T;        
         error: IBaseError;
+        static wrap<T>(_error: (Error | IBaseError)): IResultTypeWrapper<T>;
+        static wrap<T>(_value: T): IResultTypeWrapper<T>;
+        static wrap<T>(input: (Error | IBaseError) | T): IResultTypeWrapper<T>{
+            let result = new ResultTypeWrapper<T>();
+            if(input instanceof Error || BaseError.isInstance(input)){
+                result.error = handleError(input as (Error | IBaseError));
+            }
+            else {
+                result.value = input as T;
+            }
+            return result;
+        }
     }
+    global["ResultTypeWrapper"] = ResultTypeWrapper;
 };
 
 if (!process.watcher) {
@@ -1371,88 +1958,119 @@ if (!process.watcher) {
     });
     process.watcher.init();
 };
-if("undefined" === typeof JSON.circularToken){
-    JSON.circularToken = Symbol.for("Circular");
-}
-
-if("undefined" === typeof JSON.circularStringify){
-    Object.defineProperty(JSON, "_circularStringify", {
+if("undefined" === typeof JSON.__base__circularToken) JSON.__base__circularToken = Symbol.for("Circular");
+if("undefined" === typeof JSON.__base__circularStringify){
+    Object.defineProperty(JSON, "__base___circularStringify", {
         writable: false,
         configurable: false,
         value: function(value: any, cache?: any, parentKey?: string | number){
-            if(!cache){
-                cache = {};
-                cache["root"] = value;
-            }
-            if(parentKey){
-                cache[parentKey] = value;
-            }
-            let jsonString;
-            if(value){
-                let keys = Object.keys(value);
-                let cacheKeys = Object.keys(cache);
-                let cacheKeyLength = cacheKeys.length;
-                jsonString = "{";
-                Object.values(value).map((v, i) => {
-                    if(typeof v === "object"){
-                        let isCircular = false;
-                        let root = cache["root"];
-                        let circularKey: string = "root";
-                        for(let i = 0; i < cacheKeyLength - 1; i++){
-                            if(cacheKeys[i] === "root"){
-                                if(v === root){
-                                    isCircular = true;
-                                    break;
-                                }
-                            }
-                            else {
-                                if(parentKey && parentKey.toString().indexOf(cacheKeys[i]) === 0 && v === Object.valueAt(root, cacheKeys[i])){
-                                    isCircular = true;
-                                    circularKey += "." + cacheKeys[i];
-                                    break;
-                                }
-                            }
-                        }
-                        if(!isCircular){
-                            let key = parentKey ? `${parentKey}.${keys[i]}` : `${keys[i]}`;
-                            let jsonValue = JSON["_circularStringify"](v, cache, key);
-                            jsonString += `\"${keys[i]}\":${jsonValue},`;   
-                        }
-                        else {
-                            jsonString += `\"${keys[i]}\":\"${JSON.circularToken.toString()}[${circularKey}]\",`; 
-                        } 
+            let jsonString = "";
+            if(value !== undefined && value !== null){
+                if(typeof value === "object"){
+                    if(!cache){
+                        cache = {};
+                        cache["root"] = value;
+                    }
+                    if(parentKey) cache[parentKey] = value;
+                    let jsons = [];
+                    if(typeof value.__base__toJSON === "function"){
+                        let jsonValue = value.__base__toJSON();
+                        if(jsonValue) jsons.push(`${jsonValue}`);
+                    }
+                    else if(Array.isArray(value)){
+                        let jsonValue = Array.__base__toJSON(value);
+                        jsons.push(`${jsonValue}`);
+                    }
+                    else if(typeof value.toJSON === "function"){
+                        let jsonValue = value.toJSON();
+                        if(jsonValue) jsons.push(`${jsonValue}`);
+                    }
+                    else if(typeof value.toString === "function" && value.toString().indexOf("[object") !== 0){
+                        let jsonValue = value.toString();
+                        if(jsonValue) jsons.push(`${jsonValue}`);
                     }
                     else {
-                        let jsonValue = v;
-                        if(typeof v !== "number" && typeof v !== "boolean"){
-                            jsonValue = `\"${jsonValue}\"`;
-                        }
-                        jsonString += `\"${keys[i]}\":${jsonValue},`;
+                        let keys = Object.keys(value), cacheKeys = Object.keys(cache), cacheKeyLength = cacheKeys.length;
+                        let innerJSONs = [];
+                        Object.values(value).map((v, i) => {
+                            if(typeof v === "object"){
+                                let isCircular = false, root = cache["root"], circularKey: string = "root";
+                                let delimiter = Object.__base__getDelimiter(cacheKeys[i]);
+                                for(let i = 0; i < cacheKeyLength - 1; i++){
+                                    if(cacheKeys[i] === "root" && v === root){
+                                        isCircular = true;
+                                        break;
+                                    }
+                                    else if(parentKey && parentKey.toString().indexOf(cacheKeys[i]) === 0 && v === Object.__base__valueAt(root, cacheKeys[i], delimiter)){
+                                        isCircular = true;
+                                        circularKey += "." + cacheKeys[i];
+                                        break;
+                                    }
+                                }
+                                if(!isCircular){
+                                    let key = parentKey ? `${parentKey}.${keys[i]}` : `${keys[i]}`, jsonValue = JSON["__base___circularStringify"](v, cache, key);
+                                    if(Array.isArray(value)) innerJSONs.push(`\"${jsonValue}"`);   
+                                    else innerJSONs.push(`\"${keys[i]}\":${jsonValue}`);   
+                                }
+                                else innerJSONs.push(`\"${keys[i]}\":\"${JSON.__base__circularToken.toString()}[${circularKey}]\"`); 
+                            }
+                            else {
+                                let jsonValue = v;
+                                if(typeof v === "string") jsonValue = `\"${jsonValue}\"`;
+                                innerJSONs.push(`\"${keys[i]}\":${jsonValue}`);
+                            }
+                        });
+                        jsons.push(`{${innerJSONs.join(",")}}`);
                     }
-                });
-                if(jsonString.lastIndexOf(",") === jsonString.length - 1){
-                    jsonString = jsonString.substring(0, jsonString.length - 1);
+                    jsonString = `${jsons.join(",")}`;
                 }
-                jsonString += "}";
+                else if(typeof value !== "function"){
+                    jsonString = value.toString();
+                }
             }
             else {
-                jsonString = "null";
+                if(typeof value === "undefined") jsonString = "undefined";
+                else jsonString = "null";
             }
             return jsonString;
         }
     });
-    JSON.circularStringify = function(value: any): string{
-        return JSON["_circularStringify"](value);
+    JSON.__base__circularStringify = function(value: any): string{
+        return JSON["__base___circularStringify"](value);
     }
 }
-
-if("undefined" === typeof JSON.circularParse){
-    Object.defineProperty(JSON, "_circularParse", {
+if("undefined" === typeof JSON.__base__circularParse){
+    Object.defineProperty(JSON, "__base___circularParse", {
         writable: false,
         configurable: false,
         value: function(value: any, cache?: any, parentKey?: string | number){
-            let circularToken = JSON.circularToken.toString();
-            let temp = typeof value === "string" ? JSON.parse(value) : value;
+            let circularToken = JSON.__base__circularToken.toString();
+            let temp;
+            let specials = [];
+            if(typeof value === "string"){
+                let specialJSONs = value.match(/[A-Za-z0-9]+\(.[^\)]*\)/g) || [];
+                if(specialJSONs.length > 0){
+                    specialJSONs.map((specialJSON, i) => {
+                        let className = specialJSON.substring(0, specialJSON.indexOf("("));
+                        if(global[className]){
+                            if(global[className] && typeof global[className].__base__fromJSON === "function"){
+                                specials.push(global[className].__base__fromJSON(specialJSON));
+                            }
+                            else {
+                                specials.push(`"${specialJSON}`);
+                            }
+                        }
+                        else {
+                            specials.push(`"${specialJSON}`);
+                        }
+                        value = value.replace(specialJSON,`"` + Symbol.for(`${parentKey ? parentKey : ""}${i}`).toString() + `"`);
+                    });
+                }
+                system.log(value);
+                temp = JSON.parse(value);
+            }
+            else temp = value;
+
             if(!cache) {
                 cache = {};
                 cache["root"] = temp;
@@ -1463,126 +2081,126 @@ if("undefined" === typeof JSON.circularParse){
                 if(v){
                     if(typeof v === "object"){
                         let key = parentKey ? `${parentKey}.${keys[i]}` : `root.${keys[i]}`;
-                        temp[keys[i]] = JSON["_circularParse"](v, cache, key);
+                        temp[keys[i]] = JSON["__base___circularParse"](v, cache, key);
                     }
                     else if(typeof v === "string" && v.indexOf(circularToken) === 0) {
                         let key = v.replace(circularToken, "").replace(/[\[\]]/g, "");
-                        temp[keys[i]] = Object.valueAt(cache, key);
+                        let delimiter = Object.__base__getDelimiter(key);
+                        temp[keys[i]] = Object.__base__valueAt(cache, key, delimiter);
                     }
                 }
             });
+            specials.map((special, i) => {
+                Object.__base__replace(temp, Symbol.for((parentKey ? parentKey : "") + i.toString()).toString(), special);
+            })
             return temp;
         }
     });
-    JSON.circularParse = function<T>(value: string): T {
-        let result = JSON["_circularParse"](value);
+    JSON.__base__circularParse = function<T>(value: string): T {
+        let result = JSON["__base___circularParse"](value);
         return result;
     }
 };
-if ("undefined" === typeof Object.replace) {
-    Object.replace = function <T>(input: any, condition: any, replacer: any): T {
+// =================================================== Object =============================================
+if ("undefined" === typeof Object.__base__replace) {
+    Object.__base__replace = function <T>(input: any, condition: any, replacer: any): T {
         let keys = Object.keys(input);
         Object.values(input).map((value, index) => {
             if (condition && typeof condition === "object") {
                 if (value && typeof value === "object") {
-                    if (JSON.circularStringify(value) === JSON.circularStringify(condition)) {
-                        input[keys[index]] = replacer;
-                    }
-                    else {
-                        input[keys[index]] = Object.replace(value, condition, replacer);
-                    }
+                    if (JSON.__base__circularStringify(value) === JSON.__base__circularStringify(condition)) input[keys[index]] = replacer;
+                    else input[keys[index]] = Object.__base__replace(value, condition, replacer);
                 }
             }
             else {
-                if (value && typeof value === "object") {
-                    input[keys[index]] = Object.replace(value, condition, replacer);
-                }
-                else if (value === condition) {
-                    input[keys[index]] = replacer;
-                }
+                if (value && typeof value === "object") input[keys[index]] = Object.__base__replace(value, condition, replacer);
+                else if (value === condition) input[keys[index]] = replacer;
             }
         });
         return input;
     }
 }
-
-if ("undefined" === typeof Object.clone) {
-    Object.clone = function <T>(source: any): T {
+if ("undefined" === typeof Object.__base__clone) {
+    Object.__base__clone = function <T>(source: any): T {
         let dest;
         if (source) {
-            if(typeof source === "object" && typeof source.clone === "function"){
-                dest = source.clone();
-            }
+            if (typeof source === "object" && typeof source.__base__clone === "function") dest = source.__base__clone();
+            else if(Array.isArray(source)) dest = Array.__base__clone(source);
             else {
                 dest = {};
                 let keys = Object.keys(source);
                 Object.values(source).map((value, index) => {
                     if (value && typeof value === "object") {
-                        if (typeof value.toString === "function") {
-                            if (value.toString() === "[object Object]") {
-                                dest[keys[index]] = Object.clone(value);
-                            }
-                            else if (typeof (<any>value).clone === "function") {
-                                dest[keys[index]] = (<any>value).clone();
-                            }
-                            else {
-                                dest[keys[index]] = value;
-                            }
-                        }
-                        else {
-                            dest[keys[index]] = Object.clone(value);
-                        }
+                        if(Array.isArray(value)) dest[keys[index]] = Array.__base__clone(value);
+                        else dest[keys[index]] = Object.__base__clone(value);
                     }
-                    else {
-                        dest[keys[index]] = value;
-                    }
+                    else dest[keys[index]] = value;
                 });
             }
         }
-        else {
-            dest = null;
-        }
+        else dest = null;
         return dest as T;
     }
-} 
-
-if ("undefined" === typeof Object.valueAt){
-    Object.valueAt = function(source: any, key: string){
-        let keys = key.split(".");
-        let value;
-        keys.map((k, i) => {
-            if(i === 0) value = source[k];
-            else value = value[k];
-        });
-        return value;
+}
+if ("undefined" === typeof Object.__base__getDelimiter){
+    Object.__base__getDelimiter = function(key: string){
+        if(key && key.includes(".")) return "|";
+        return ".";
     }
 }
-
-if("undefined" === typeof Object.noMap){
-    Object.noMap = function<V>(input: any): V{
-        if(input){
-            if(typeof input === "object" && !Array.isArray(input)){
-                if(input instanceof Map){
+if ("undefined" === typeof Object.__base__valueAt) {
+    Object.__base__valueAt = function <T>(source: any, key: string, delimiter: string = "."): T {
+        if(!delimiter) delimiter = ".";
+        let keys = key.split(delimiter), value;
+        keys.map((k, i) => {
+            if (i === 0) value = source[k];
+            else value = value[k];
+        });
+        return value as T;
+    }
+}
+if ("undefined" === typeof Object.__base__setAt) {
+    Object.__base__setAt = function (source: any, key: string | number, value: any, delimiter: string = ".") {
+        if(!delimiter) delimiter = ".";
+        let keys = typeof key === "string" ? key.split(delimiter) : [key as number];
+        if (keys.length === 1) {
+            let innerKey: string | number = keys[0];
+            innerKey = Number(innerKey);
+            if(isNaN(innerKey)) innerKey = keys[0];
+            source[innerKey] = value;
+        }
+        else {
+            let innerKey = keys[0];
+            keys.splice(0, 1);
+            source[innerKey] = Object.__base__setAt(source[innerKey], keys.join(delimiter), value);
+        }
+    }
+}
+if ("undefined" === typeof Object.__base__flattenMap) {
+    Object.__base__flattenMap = function <V>(input: any): V {
+        if (input) {
+            if (typeof input === "object" && !Array.isArray(input)) {
+                if (input instanceof Map) {
                     let output = {};
                     input.forEach((value, key) => {
                         let keyString = "";
-                        if(typeof key === "string"){
+                        if (typeof key === "string") {
                             keyString = key;
                         }
                         else {
                             keyString = key.toString();
                         }
-                        if(typeof value === "object" && !Array.isArray(value)){
-                            output[keyString] = Object.noMap(value);
+                        if (typeof value === "object" && !Array.isArray(value)) {
+                            output[keyString] = Object.__base__flattenMap(value);
                         }
-                        else{
-                            if(Array.isArray(value)){
+                        else {
+                            if (Array.isArray(value)) {
                                 output[keyString] = value.slice(0);
                             }
-                            else{
+                            else {
                                 output[keyString] = value;
                             }
-                        }                    
+                        }
                     });
                     return output as any;
                 }
@@ -1590,11 +2208,11 @@ if("undefined" === typeof Object.noMap){
                     let output = {};
                     let keys = Object.keys(input);
                     Object.values(input).map((value, index) => {
-                        if(typeof value === "object" && !Array.isArray(value)) {
-                            output[keys[index]] = Object.noMap(value);
+                        if (typeof value === "object" && !Array.isArray(value)) {
+                            output[keys[index]] = Object.__base__flattenMap(value);
                         }
                         else {
-                            if(Array.isArray(value)){
+                            if (Array.isArray(value)) {
                                 output[keys[index]] = value.slice(0);
                             }
                             else {
@@ -1615,8 +2233,44 @@ if("undefined" === typeof Object.noMap){
     }
 }
 
-if("undefined" === typeof Map.prototype.clone){
-    Map.prototype.clone = function(this: Map<any, any>): Map<any, any>{
+// =================================================== Array =============================================
+if ("undefined" === typeof Array.__base__clone) {
+    Array.__base__clone = function<T>(this: ArrayConstructor, source: Array<T>): Array<T> {
+        let temp = source.slice(0);
+        return temp.map(t => {
+            if (typeof t === "object") {
+                if(Array.isArray(t)) return Array.__base__clone(t) as any;
+                else return Object.__base__clone(t);
+            }
+            else return t;
+        });
+    }
+}
+if ("undefined" === typeof Array.__base__toJSON) {
+    Array.__base__toJSON = function<T>(this:  ArrayConstructor, source: Array<T>): string {
+        let jsons = [];
+        source.map(v => {
+            if (typeof v === "object") jsons.push(JSON.__base__circularStringify(v));
+            else if (typeof v !== "function") jsons.push((typeof v === "string" ? `"${v}"` : v.toString()));
+        });
+        let jsonString = `[${jsons.join(",")}]`;
+        return jsonString;
+    }
+}
+// =================================================== RegExp =============================================
+if ("undefined" === typeof RegExp.prototype.__base__clone){
+    RegExp.prototype.__base__clone = function(this: RegExp): RegExp {
+        return new RegExp(this);
+    }
+}
+// if ("undefined" === typeof RegExp.prototype.__base__toJSON){
+//     RegExp.prototype.__base__toJSON = function(this: RegExp): string {
+//         this.
+//     }
+// };
+// ===================================================== Map ==============================================
+if ("undefined" === typeof Map.prototype.__base__clone) {
+    Map.prototype.__base__clone = function <K, V>(this: Map<K, V>): Map<K, V> {
         let newMap = new Map();
         this.forEach((value, key) => {
             newMap.set(key, value);
@@ -1624,11 +2278,39 @@ if("undefined" === typeof Map.prototype.clone){
         return newMap;
     }
 }
-
-if("undefined" === typeof Map.fromObject){
-    Map.fromObject = function<V>(obj: any): Map<keyof V, V[keyof V]> {
+if ("undefined" === typeof Map.prototype.__base__toJSON) {
+    Map.prototype.__base__toJSON = function (this: Map<any, any>): string {
+        let temp = this.__base__convertToObject(true);
+        let jsonString = `Map(${JSON.__base__circularStringify(temp)})`;
+        return jsonString;
+    }
+}
+if ("undefined" === typeof Map.prototype.__base__convertToObject) {
+    Map.prototype.__base__convertToObject = function <K, V>(this: Map<K, V>, nested: boolean = false): V {
+        let obj = {};
+        this.forEach((value, key) => {
+            let keyString = "";
+            if (typeof key === "string") {
+                keyString = key;
+            }
+            else {
+                keyString = key.toString();
+            }
+            if (value instanceof Map) {
+                if (nested) obj[keyString] = value.__base__convertToObject();
+                else obj[keyString] = value;
+            }
+            else {
+                obj[keyString] = value;
+            }
+        });
+        return obj as V;
+    }
+}
+if ("undefined" === typeof Map.__base__fromObject) {
+    Map.__base__fromObject = function <V>(obj: any): Map<keyof V, V[keyof V]> {
         const newMap = new Map();
-        if(obj){
+        if (obj) {
             let keys = Object.keys(obj);
             Object.values(obj).map((value, index) => {
                 newMap.set(keys[index], value);
@@ -1640,25 +2322,33 @@ if("undefined" === typeof Map.fromObject){
         }
     }
 }
-
-if("undefined" === typeof Map.prototype.convertToObject){
-    Map.prototype.convertToObject = function<V>(this: Map<keyof V, V[keyof V]>): V{
-        let obj = {};
-        this.forEach((value, key) => {
-            let keyString = "";
-            if(typeof key === "string"){
-                keyString = key;
-            }
-            else {
-                keyString = key.toString();
-            }
-            obj[keyString] = value;
-        })
-        return obj as V;
-    };
+if ("undefined" === typeof Map.__base__fromJSON) {
+    Map.__base__fromJSON = function (input: string): Map<any, any> {
+        input = input.replace("Map(", "");
+        input = input.substring(0, input.length - 1);
+        let obj = JSON.__base__circularParse(input);
+        let temp = Map.__base__fromObject<any>(obj);
+        return temp;
+    }
 };
+// =================================================== Date ==============================================
+if ("undefined" === typeof Date.__base__fromJSON) {
+    Date.__base__fromJSON = function (input: string): Date {
+        input = input.replace(/[(Date)\(\)]/g, "");
+        return new Date(input);
+    }
+}
+if ("undefined" === typeof Date.prototype.__base__toJSON) {
+    Date.prototype.__base__toJSON = function(): string {
+        return `Date(${this.toISOString()})`;
+    }
+}
 
-
+if ("undefined" === typeof Date.prototype.__base__clone) {
+    Date.prototype.__base__clone = function(): Date{
+        return new Date(this);
+    }
+};;
 
 if ("undefined" === typeof global["addAlias"]) {
     const Module = module.constructor || BuiltInModule;
@@ -1700,289 +2390,129 @@ if ("undefined" === typeof global["addAlias"]) {
         }
         return oldResolveFilename.call(this, request, parentModule, isMain, options)
     }
-}
-
-if("undefined" === typeof global["mapBasicType"]){
-    global["mapBasicType"] = function mapBasicType(source: any, type: PropertyTypeValue){
-        if(type){
-            if(!(source instanceof type)){
-                type = type as PropertyTypeValue;
-                if(type.name === "Boolean"){
-                    if(typeof source !== "undefined"){
-                        if(source === "true" || source === true) source = true;
-                        else if(source === "false" || source === false) source = false;
-                        else source = undefined;
-                    }
-                }
-                else if(type.name === "String"){
-                    if(typeof source !== "undefined"){
-                        source = source.toString();
-                    }
-                }
-                else if(type.name === "Number"){
-                    if(typeof source !== "undefined"){
-                        try{
-                            source = Number(source);
-                        }
-                        catch(e){
-                            source = undefined;
-                        }
-                    }
-                }
-                else if(type.name === "Date"){
-                    if(typeof source !== "undefined"){
-                        try{
-                            source = new Date(source);
-                        }
-                        catch(e){
-                            source = undefined;
-                        }
-                    }
-                }
-                return source;
-            }
-            else {
-                return source;
-            }
-        }
-        else {
-            console.warn("Param type not found or not an object, type is " + typeof type);
-            return source;
-        }
-    }
-}
-
-if("undefined" === typeof global["defaultValue"]){
-    global["defaultValue"] = function defaultValue(input: any, type: "boolean" | "string" | "number" | "object" | "array", truthy: boolean = true) {
-        if (input === null) {
-            if (type === "boolean") {
-                return truthy;
-            }
-            else if (type === "string") {
-                return "";
-            }
-            else if (type === "number") {
-                return truthy ? 1 : 0;
-            }
-            else if (type === "object") {
-                return truthy ? {} : null;
-            }
-        }
-        else {
-            if(type === "array" && Array.isArray(input)){
-                return input;
-            }
-            else if (typeof input === type && !Array.isArray(input)) {
-                return input;
-            }
-            else {
-                return null;
-            }
-        }
-    }
-}
-
-if("undefined" === typeof global["mapData"]){
-    global["mapData"] = function mapData<T>(ClassImp: { new(): T }, inputSource: any, parentField: string = null): T {
-        let properties = getProperties(ClassImp);
-        let isValid = 1;
-        let result = null;
-        let missingFields = [];
-        let mappingSource = {};
-        let source = Object.clone(inputSource);
-        properties.map(property => {
-            if (property.required === false || (property.required && property.name === "$_all" && source && Object.keys(source).length > 0) || (property.required && source && source[property.name])) {
-                isValid *= 1;
-            }
-            else {
-                if(property.name === "$_all"){
-                    if(parentField) missingFields.push(`${parentField}`);
-                }
-                else {
-                    if(parentField) missingFields.push(`${parentField}.${property.name}`);
-                    else missingFields.push(property.name);   
-                }
-                isValid *= 0;
-            }
-            if (isValid) {
-                if (!result) {
-                    result = new ClassImp();
-                }
-                if(source){
-                    if(property.name !== "$_all"){
-                        let isPropertyType = property.type && (<any>property.type).type && (<any>property.type).value;
-                        if (Array.isArray(source[property.name])) {
-                            if(isPropertyType){
-                                let type = property.type as PropertyType;
-                                if(type.type === "single") {
-                                    result[property.name] = source[property.name].slice(0);
-                                }
-                                else if(type.type === "list"){
-                                    result[property.name] = [];
-                                    source[property.name].map((sourceValue, index) => {
-                                        if(typeof sourceValue === "object") {
-                                            if((<any>type.value).name === "Object"){
-                                                result[property.name][index] = sourceValue;
-                                            }
-                                            else {
-                                                result[property.name][index] = mapData(type.value as PropertyTypeValue, sourceValue, `${property.name}.${index}`); 
-                                            }
-                                        }
-                                        else {
-                                            result[property.name][index] = mapBasicType(sourceValue, type.value as PropertyTypeValue);
-                                        }
-                                    });
-                                }
-                                // else {
-                                //     result[property.name] = [];
-                                //     let propertyTypeValues = type.value as PropertyTypeValue[];
-                                //     let propertyTypeValueLength = propertyTypeValues.length;
-                                //     let tempResult = undefined;
-                                //     for(let i = 0; i < propertyTypeValueLength; i++){
-                                //         let propertyTypeValue = propertyTypeValues[i];
-                                //         tempResult = mapData(propertyTypeValue, source[property.name], \`\${property.name}\`);
-                                //         if(tempResult){
-                                //             break;
-                                //         }
-                                //     }
-                                //     result[property.name] = tempResult;
-                                // }
-                            }
-                            else{
-                                result[property.name] = source[property.name].slice(0);
-                            }
-                        }
-                        else if (typeof source[property.name] === "object") {
-                            let mappedValue = undefined;
-                            if(source[property.name] instanceof Map){
-                                source[property.name] = (<Map<any, any>>source[property.name]).convertToObject();
-                            }
-                            if(isPropertyType){
-                                let type = property.type as PropertyType;
-                                if(type.type === "single"){
-                                    mappedValue = mapData(type.value as PropertyTypeValue, source[property.name], property.name);
-                                }
-                                else if(type.type === "map"){
-                                    mappedValue = Map.fromObject(source[property.name]);
-                                }
-                                else if(type.type === "literal"){
-                                    let propertyTypeValues = type.value as PropertyTypeValue[];
-                                    let propertyTypeValueLength = propertyTypeValues.length; 
-                                    for(let i = 0; i < propertyTypeValueLength; i++){
-                                        let propertyTypeValue = propertyTypeValues[i];
-                                        if(propertyTypeValue.name === "Boolean" || propertyTypeValue.name === "String" || propertyTypeValue.name === "Number" || propertyTypeValue.name === "Date"){
-                                            mappedValue = mapBasicType(source[property.name], propertyTypeValue);
-                                        }
-                                        else{
-                                            mappedValue = mapData(propertyTypeValue, source[property.name], property.name);
-                                            Object.keys(mappedValue).map(key => {
-                                                if(typeof mappedValue[key] === "undefined"){
-                                                    delete mappedValue[key];
-                                                }
-                                            });
-                                            if(Object.keys(mappedValue).length === 0){
-                                                mappedValue = undefined;
-                                            }
-                                        }
-                                        if(mappedValue){
-                                            break;
-                                        }
-                                    }
-                                }
-                                else{
-                                    mappedValue = undefined;
-                                }
-                            }
-                            if(!mappedValue){
-                                mappedValue = source[property.name];
-                            }
-                            result[property.name] = mappedValue;
-                        }
-                        else {
-                            let sourceValue = source[property.name];
-                            if(Array.isArray(property.type)){
-                                let sourceValueType = typeof sourceValue;
-                                if(!property.type.includes(sourceValueType)){
-                                    sourceValue = undefined;
-                                }
-                            }
-                            else{
-                                let type = property.type as PropertyType;
-                                if(type.type === "single"){
-                                    let singleType = type.value as PropertyTypeValue;
-                                    sourceValue = mapBasicType(sourceValue, singleType);
-                                }
-                                else if(type.type === "literal"){
-                                    let propertyTypeValues = type.value as PropertyTypeValue[];
-                                    let propertyTypeValueLength = propertyTypeValues.length;
-                                    let tempValue = undefined;
-                                    for(let i = 0; i < propertyTypeValueLength; i++){
-                                        let propertyTypeValue = propertyTypeValues[i];
-                                        if(propertyTypeValue.name === "Boolean" || propertyTypeValue.name === "String" || propertyTypeValue.name === "Number" || propertyTypeValue.name === "Date"){
-                                            tempValue = mapBasicType(sourceValue, propertyTypeValue);
-                                            if(tempValue){
-                                                break;
-                                            }
-                                        }
-                                    }
-                                    sourceValue = tempValue;
-                                }
-                                else{
-                                    sourceValue = undefined;
-                                }
-                            }
-                            result[property.name] = sourceValue;
-                        }
-                    }
-                    else {
-                        let type = property.type as PropertyType;
-                        let valueType = type.value as PropertyTypeValue;
-                        if(type.type === "literal"){
-                            let propertyTypeValues = type.value as PropertyTypeValue[];
-                            let propertyTypeValueLength = propertyTypeValues.length;
-                            Object.keys(source).map(key => {
-                                let tempValue = undefined;
-                                for(let i = 0; i < propertyTypeValueLength; i++){
-                                    let propertyTypeValue = propertyTypeValues[i];
-                                    if(propertyTypeValue.name === "Boolean" || propertyTypeValue.name === "String" || propertyTypeValue.name === "Number" || propertyTypeValue.name === "Object" || propertyTypeValue.name === "Date"){
-                                        tempValue = mapBasicType(source[key], propertyTypeValue);
-                                        if(tempValue){
-                                            break;
-                                        }
-                                    }
-                                }
-                                result[key] = tempValue;
-                            });
-                        }
-                        else {
-                            Object.keys(source).map(key => {
-                                if(typeof source[key] === "object"){
-                                    result[key] = mapData(valueType, source[key], key);
-                                }
-                                else {
-                                    result[key] = mapBasicType(source[key], valueType);
-                                }
-                            });
-                        }
-                    }
-                }
-                else{
-                    if(property.name !== "$_all"){
-                        result[property.name] = undefined;
-                    }
-                }
-            }
-        });
-        if (isValid) {
-            return result as T;
-        }
-        else {
-            throw new Error("Missing fields " + missingFields.join(", "));
-        }
-    }
 };
-logger.init({
-    appName: "playground for new base core"
-});
-console.log(logger);
-console.log("aaaaabbbbbcccccddddd");
+
+if(typeof global["process-watch-log"] === "undefined") {
+    global["process-watch-log"] = true;
+    process.once("exit", (code: number) => {
+        if(code === 1111){
+            process.stdout.write("╔══════════════════════════════════════════════════════════════╗\n");
+            process.stdout.write("║                                                              ║\n");
+            process.stdout.write("║                                                              ║\n");
+            process.stdout.write("║           App shutdown with error has level 'RED'            ║\n");
+            process.stdout.write("║                                                              ║\n");
+            process.stdout.write("║                                                              ║\n");
+            process.stdout.write("╚══════════════════════════════════════════════════════════════╝\n");
+        }
+        else {
+            let errorString = `App shutdown with error has code  ${code}`;
+            let space = "              ";
+            let codeString = code.toString();
+            let spaceLength = space.length;
+            let odd = (codeString.length % 2 !== 0);
+            let leftSpaceLength = odd ? spaceLength - Math.floor(codeString.length / 2) - 1 : spaceLength - Math.floor(codeString.length / 2);
+            let rightSpaceLength = spaceLength - Math.floor(codeString.length / 2);
+            errorString = space.substring(0, leftSpaceLength) + errorString + space.substring(0,  rightSpaceLength);
+            process.stdout.write("╔══════════════════════════════════════════════════════════════╗\n");
+            process.stdout.write("║                                                              ║\n");
+            process.stdout.write("║                                                              ║\n");
+            process.stdout.write(`║${errorString}║\n`);
+            process.stdout.write("║                                                              ║\n");
+            process.stdout.write("║                                                              ║\n");
+            process.stdout.write("╚══════════════════════════════════════════════════════════════╝\n");
+        }
+    }).on("uncaughtException", (err) => {
+        console.error(err);
+        handleError(err as Error, ErrorLevel.RED);
+    }).on("unhandledRejection", (err) => {
+        console.error(err);
+        handleError(err as Error, ErrorLevel.RED);
+    }).on("app-error", (err) => {
+        console.error(err);
+        let error = err as IBaseError;
+        if(error.level === "red"){
+            process.exit(1111);
+        }
+    });
+}
+
+// class Test {
+//     @Property(String, {required: false})
+//     a: string;
+//     @Property(Number, {required: false})
+//     b: number;
+//     @Property(Date, {required: true})
+//     c: Date;
+//     @Property(PropertyArray(String), {required: true})
+//     d: Array<String>;
+// }
+
+// class Test1 {
+//     @Property(Test, {required: true})
+//     a: Test;
+//     @Property(PropertyMap(PropertyMap(Number)))
+//     b: Map<string, Map<string, number>>;
+//     // @Property(PropertyMap(Number))
+//     // b: Map<string, number>;
+// }
+
+// let t = new Test();
+// let value = {a: "a", b: 15, c: new Date(), d: ["a", "b", "c", "d", "e"]};
+// let data = mapData<Test>(Test, value);
+// if(data.error){
+//     handleError(data.error, ErrorLevel.RED);
+// }
+// else {
+//     t = data.value;
+// }
+
+// console.debug(t);
+
+// let t1 = new Test1();
+// let s = {a: t, b: new Map()};
+// let temp = new Map();
+// temp.set("a", 0).set("b", 1).set("c", 2).set("d", 3);
+// s.b.set("a", temp).set("b", temp).set("c", temp);
+// // s.b.set("a", 0).set("b", 1).set("c", 2).set("d", 3);
+// let data1 = mapData<Test1>(Test1, s);
+// if(data1.error){
+//     handleError(data1.error, ErrorLevel.RED);
+// }
+// else {
+//     t1 = data1.value;
+// }
+// console.debug(t1);
+// let JSONT1 = JSON.__base__circularStringify(t1);
+// console.debug(JSONT1);
+// let ObjT1 = JSON.__base__circularParse(JSONT1);
+// console.debug(ObjT1);
+
+// =======================================================
+// =======================================================
+// =======================================================
+// =======================================================
+
+// class Test {
+//     @Property(String)
+//     a: string;
+//     @Property(Number)
+//     b: number;
+// }
+
+
+// @DynamicProperty(PropertyTypes.Any, {required: true})
+// class Test1 {
+//     [key: string]: any;
+// }
+
+
+// let t = new Test();
+// t.a = "a";
+// t.b = 0;
+
+// let t1 = new Test1();
+// let value = {a: "a", b: 0, c: false};
+// let data = mapData<Test1>(Test1, value);
+// if(data.error) handleError(data.error, ErrorLevel.RED);
+// else t1 = data.value;
+// console.log(t1);

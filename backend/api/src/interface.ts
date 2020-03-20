@@ -38,6 +38,7 @@ export interface IAPI {
     start(): Promise<boolean>;
     registerMiddleware(handler: IMiddlewareInput): Express;
     attach(path: string, expressInstance: Express): void;
+    trace(tracing: boolean): void;
     readonly httpServer: http.Server;
 }
 

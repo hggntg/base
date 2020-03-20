@@ -18,7 +18,7 @@ export class Publisher implements IPublisher{
                 this.publishInBack(task, callback);
                 this.q.concurrency = this.concurrency;
             }).catch(err => {
-                this.logger.pushError(err, "communication");
+                console.error(err);
                 callback();
             })
         }

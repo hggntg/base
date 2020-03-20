@@ -1,6 +1,6 @@
 {
 	"name": "@base-plugins/api",
-	"version": "1.0.240",
+	"version": "1.0.257",
 	"description": "Plugin for base project to add @base/api to @base/builder",
 	"main": "index.js",
 	"types": "index.d.ts",
@@ -17,11 +17,11 @@
 		"@base/builder"
 	],
 	"dependencies": {
-		"@base/api": "^1.0.315"
+		"@base/api": "^1.0.333"
 	},
 	"devDependencies": {
-		"@base/builder": "^1.0.121",
-		"@types/node": "^12.12.24",
+		"@base/builder": "^1.0.141",
+		"@types/node": "^12.12.29",
 		"inversify": "^5.0.1",
 		"reflect-metadata": "^0.1.13"
 	}

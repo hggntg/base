@@ -16,7 +16,9 @@ export interface IService {
     hostname: string;
     ip: string;
     scheme: string;
-    actions: Map<string, IServiceAction>;
+    actions:{
+        [key in string]: IServiceAction;
+    };
 }
 
 export interface IServiceAPIBody {
@@ -56,6 +58,8 @@ export class Service implements IService {
     ip: string;
     @Property(String)
     scheme: string;
-    @Property(PropertyMap(ServiceAction))
-    actions: Map<string, IServiceAction>;
+    @Property(PropertyTypes.Any)
+    actions: {
+        [key in string]: IServiceAction;
+    }
 }

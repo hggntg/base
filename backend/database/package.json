@@ -1,6 +1,6 @@
 {
 	"name": "@base/database",
-	"version": "1.0.443",
+	"version": "1.0.465",
 	"description": "Database use mongoose",
 	"scripts": {
 		"dev": "ts-node src/main/adapter",
@@ -12,14 +12,14 @@
 	],
 	"license": "ISC",
 	"dependencies": {
+		"@types/mongoose": "^5.7.3",
 		"express": "^4.17.1",
-		"mongoose": "^5.7.12",
-		"@types/mongoose": "^5.5.32",
+		"mongoose": "^5.9.3",
 		"object-path": "^0.11.4"
 	},
 	"devDependencies": {
 		"@types/express": "^4.17.2",
-		"@types/node": "^12.12.24",
+		"@types/node": "^12.12.29",
 		"@types/object-path": "^0.11.0",
 		"inversify": "^5.0.1",
 		"reflect-metadata": "^0.1.13"

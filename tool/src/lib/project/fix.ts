@@ -2,7 +2,6 @@ import { folders, folderLength } from "./internal";
 import shell from "shelljs";
 import sysPath from "path";
 import fs from "fs";
-import { tsconfig, typing } from "./assets";
 import { log } from "../../infrastructure/logger";
 
 export function fix(){
@@ -14,13 +13,14 @@ export function fix(){
             missingFiles.push(path);
         }
     }
+    let samplePath = sysPath.join(__dirname, "../../sample");
     shell.exec("npm install @types/node inversify reflect-metadata -D", {silent: false});
     missingFiles.map(missingFile => {
         if(missingFile.indexOf("tsconfig.json") > 0){
-            fs.writeFileSync(sysPath.join(cwd, "tsconfig.json"), tsconfig);
+            fs.copyFileSync(sysPath.join(samplePath, "tsconfig.json"), sysPath.join(cwd, "tsconfig.json"));
         }
         else if(missingFile.indexOf("typings.d.ts") >= 0){
-            fs.writeFileSync(sysPath.join(cwd, "typings.d.ts"), typing);
+            fs.copyFileSync(sysPath.join(samplePath, "typings.d.ts"), sysPath.join(cwd, "typings.d.ts"));
         }
     });
     log("Your base project is fixed");

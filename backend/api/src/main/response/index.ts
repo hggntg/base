@@ -69,7 +69,7 @@ const HttpResponseCode: { [key: string]: ResponseBody } = {
 
 function generateResponse(code: number, message: string, type: "error" | "success" = "success", body?: ResponseResult | ErrorBodyInput): ResponseBody {
     let httpCode = HttpCode[code.toString()];
-    let httpResponseCode = assignData(HttpResponseCode[httpCode]);
+    let httpResponseCode = Object.__base__clone<any>(HttpResponseCode[httpCode]);
     httpResponseCode.message = message;
     if (body) {
         if(type === "success"){
@@ -99,21 +99,22 @@ export class ResponseTemplate {
             return generateResponse(500, "Internal server error", "error");
         }
     }
-    static error(code: number, message: string, body?: ErrorBodyInput): ResponseBody {
-        if (code >= 400) {
+    static error(errorInput: IBaseError | Error): ResponseBody {
+        let error = handleError(errorInput);
+        if (error.code >= 400) {
             if(process.env["NODE_ENV"] !== "production"){
-                return generateResponse(code, message, "error", body);
+                return generateResponse(error.code, error.message, "error", {stack: error.stack});
             }
             else{
-                return generateResponse(code, message, "error");
+                return generateResponse(error.code, error.message, "error");
             }
         }
         else {
             if(process.env["NODE_ENV"] !== "production"){
-                return generateResponse(code, message, "error", body);
+                return generateResponse(error.code, error.message, "error", {stack: error.stack});
             }
             else{
-                return generateResponse(code, message, "error");
+                return generateResponse(error.code, error.message, "error");
             }
         }
     }

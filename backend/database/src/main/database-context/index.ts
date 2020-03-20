@@ -96,6 +96,10 @@ class DatabaseTracker {
 export class DatabaseContext implements IDatabaseContext {
 	private processId: string = "database";
 	private processListener: NodeJS.MessageListener;
+	private tracing: boolean;
+	trace(tracing: boolean){
+		this.logger.trace(tracing);
+	}
 	list<K, T extends IBaseEntity<K>>(name: string): ICollection<K, T> {
 		return this[name];
 	}
@@ -139,10 +143,10 @@ export class DatabaseContext implements IDatabaseContext {
 				return Promise.all(promiseList).catch(err => {
 					if(err.name === 'MongoError'){
 						if(err.code === 11000){
-							throw new BaseError(409, 11000, "Conflict", "Duplicate document");
+							throw new BaseError(409, 11000, "Duplicate document");
 						}
 						else {
-							throw new BaseError(500, err.code, err.name, err.message);
+							throw new BaseError(500, err.code, err.message);
 						}
 					}
 					else{
@@ -192,23 +196,24 @@ export class DatabaseContext implements IDatabaseContext {
 		});
 	}
 	createConnection(): Promise<boolean> {
+		let logger = getDependency<ILogger>(LOGGER_SERVICE);
 		let dbContext: IDbContextMetadata = getDbContextMetadata(this);
 		let connectionInfo = dbContext.connectionInfo;
 		//To do so how to log it
 		mongoose.set("debug", (collection, method, query, docs) => {
 			this.logger.pushInfo(`${collection}.${method}(${JSON.stringify(query)}) => ${JSON.stringify(docs)}`, "mongoose");
 		});
-		this.logger.pushInfo("Ready to connect to database", "database-context");
+		logger.pushInfo("Ready to connect to database", "database-context");
 		return new Promise<boolean>((resolve, reject) => {
 			mongoose.createConnection(connectionInfo.uri, connectionInfo.connectionOptions).then(connection => {
 				if(!this.processListener){
 					this.processListener = (message) => {
 						if(message && message.event === "STOP"){
 							connection.close().then(() => {
-								this.logger.pushInfo("Disconnect to database", "database");
+								logger.pushInfo("Disconnect to database", "database");
 								process.watcher.emit("STOP", this.processId);
 							}).catch(e => {
-								this.logger.pushError(e, "database");
+								logger.pushError(e, "database");
 								process.watcher.emit("STOP", this.processId);
 							})
 						}
@@ -282,7 +287,8 @@ export class DatabaseContext implements IDatabaseContext {
 	}
 	protected logger: ILogger
 	constructor() {
-		this.logger = getDependency<ILogger>(LOGGER_SERVICE);
+		let logger = getDependency<ILogger>(LOGGER_SERVICE);
+		this.logger = logger.expand();
 		process.watcher.joinFrom(this.processId);
 	}
 }

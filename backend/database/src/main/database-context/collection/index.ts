@@ -80,9 +80,6 @@ function toSinglePromise<K, T>(classImp: { new(): T }, type: "query" | "document
 			query.then(res => {
 				if (res) {
 					let document = res.toObject();
-					if (document._id) {
-						document.id = document._id;
-					}
 					removedFields.map((removedField) => {
 						if(removedField.bridgeEntity){
 							let bridgeInstance  = getDependency(BASE_ENTITY_SERVICE, removedField.bridgeEntity.name);
@@ -168,9 +165,6 @@ function toSinglePromise<K, T>(classImp: { new(): T }, type: "query" | "document
 				let doc = fn as mongoose.Document;
 				let removedFields: TRemovedFieldType[] = generateRemovedFields<K, T>(selected, classImp, doc);
 				let document = doc.toObject();
-				if (document._id) {
-					document.id = document._id;
-				}
 				removedFields.map((removedField) => {
 					if (removedField.load === "lazy") {
 						if (removedField.type === "one-to-one") {
@@ -238,9 +232,6 @@ function toListPromise<K, T>(classImp: { new(): T }, type: "query" | "aggregate"
 				let documents = [];
 				res.map(r => {
 					let document = r.toObject();
-					if (document._id) {
-						document.id = document._id;
-					}
 					removedFields.map((removedField) => {
 						if(removedField.bridgeEntity){
 							let bridgeInstance  = getDependency(BASE_ENTITY_SERVICE, removedField.bridgeEntity.name);
@@ -337,7 +328,7 @@ function toListPromise<K, T>(classImp: { new(): T }, type: "query" | "aggregate"
 }
 
 function removeMongooseField(doc) {
-	let cloneDoc = assignData(doc, ["id", "_id"]);
+	let cloneDoc = Object.__base__clone<mongoose.Document>(doc);
 	if (cloneDoc) {
 		// delete cloneDoc._id;
 		delete cloneDoc.__v;
@@ -354,7 +345,7 @@ function removeMongooseField(doc) {
 }
 
 function removeId(doc) {
-	let cloneDoc = assignData(doc, ["id", "_id"]);
+	let cloneDoc = Object.__base__clone<mongoose.Document & any>(doc);
 	if (cloneDoc) {
 		if (cloneDoc.id) {
 			cloneDoc._id = cloneDoc.id;
@@ -580,7 +571,7 @@ export class CollectionRestCommand<T> implements ICollectionRestCommand<T> {
 					changeData = generateSet(changeData, {}, {});
 					let tempDocument = new model(removeId(doc.toObject())) as mongoose.Document;
 					tempDocument.isNew = false;
-					tempDocument.id = doc._id;
+					tempDocument._id = doc._id;
 					let returnDocument = tempDocument.toObject();
 					if (data) {
 						if (data["$set"]) {
@@ -643,7 +634,7 @@ export class CollectionRestCommand<T> implements ICollectionRestCommand<T> {
 					changeData = generateSet(changeData, {}, {});
 					let tempDocument = new model(removeId(doc.toObject())) as mongoose.Document;
 					tempDocument.isNew = false;
-					tempDocument.id = doc._id;
+					tempDocument._id = doc._id;
 					let returnDocument = tempDocument.toObject();
 					if (data) {
 						if (data["$set"]) {
@@ -735,7 +726,7 @@ export class CollectionRestCommand<T> implements ICollectionRestCommand<T> {
 	}
 	select?(what?: string): Promise<IQueryResult<T>> {
 		let query = this.returnQuery();
-		let queryInput = assignData(this.dbContext.context.get<IDocumentQuery>("query"));
+		let queryInput = Object.__base__clone<IDocumentQuery>(this.dbContext.context.get<IDocumentQuery>("query"));
 		this.dbContext.context.remove("query");
 		return this.returnCount().then(total => {
 			let selected = parseSelect(this.classImp, what);
@@ -842,6 +833,15 @@ function stepPromise(document, hooks) {
 
 @Injectable(COLLECTION_SERVICE, true, true)
 export class Collection<K, T extends IBaseEntity<K>> implements ICollection<K, T>{
+	clone(): { classImp: new () => T; } {
+		throw new Error("Method not implemented.");
+	}
+	toJSON(): string {
+		throw new Error("Method not implemented.");
+	}
+	init(input: Partial<{ classImp: new () => T; }>): void {
+		throw new Error("Method not implemented.");
+	}
 	getType(): IClassType {
 		throw new Error("Method not implemented.");
 	}
@@ -1012,7 +1012,6 @@ export class Collection<K, T extends IBaseEntity<K>> implements ICollection<K, T
 				});
 				if (hooks.length > 0) {
 					return stepPromise(newDoc, hooks).then((newDocument) => {
-						newDocument.id = newDocument._id;
 						newDocument = removeMongooseField(newDocument.toObject());
 						let documentKeys = Object.keys(newDocument);
 						Object.values(newDocument).map((value, index) => {
@@ -1087,7 +1086,6 @@ export class Collection<K, T extends IBaseEntity<K>> implements ICollection<K, T
 					});
 					if (hooks.length > 0) {
 						return stepPromise(newDoc, hooks).then((newDocument) => {
-							newDocument.id = newDocument._id;
 							newDocument = removeMongooseField(newDocument.toObject());
 							let documentKeys = Object.keys(newDocument);
 							Object.values(newDocument).map((value, index) => {

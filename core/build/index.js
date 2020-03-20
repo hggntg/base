@@ -1,7 +1,7 @@
 const fs = require("fs");
 const path = require("path");
 const excludePattern = new RegExp(".spec.ts", "g");
-const sourceDir = path.join(__dirname, "..", "source", "src");
+const sourceDir = path.join(__dirname, "..", "src");
 const indexFile = path.join(sourceDir, "index.ts");
 const distDir = path.join(__dirname, "../../tool/sample");
 
@@ -120,7 +120,7 @@ rewriteFile(indexFile, ".ts", {
     console.error(e);
 });
 
-const typingFile = path.join(__dirname, "..", "source", "typings.d.ts");
+const typingFile = path.join(__dirname, "..", "typings.d.ts");
 rewriteFile(typingFile, ".d.ts", {
     match: /\/\/\/\s+<reference\s+path=['"]\..*["']\s+\/>/g,
     replaces: [

@@ -1,11 +1,11 @@
 {
   "name": "@base/tool",
-  "version": "1.0.471",
+  "version": "1.0.523",
   "description": "Commandline tool for base project",
   "main": "index.js",
   "types": "index.d.ts",
   "scripts": {
-    "build": "node ./build/index.js"
+    "build": "npm version patch && node ./build/index.js "
   },
   "author": "Uncle Hung",
   "maintainers": [

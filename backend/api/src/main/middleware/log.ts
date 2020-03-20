@@ -1,16 +1,23 @@
 import { IMiddlewareChainable } from "@app/interface";
 import { NextFunction, Response, Request } from "express";
 
-interface ILogMiddleware extends IMiddlewareChainable{}
+interface ILogMiddleware extends IMiddlewareChainable{
+    trace(tracing: boolean): Omit<ILogMiddleware, "trace">;
+}
 
 export class LogMiddleware implements ILogMiddleware{
     private logger: ILogger;
     constructor(){
-        this.logger = getDependency<ILogger>(LOGGER_SERVICE);
+        let logger = getDependency<ILogger>(LOGGER_SERVICE);
+        this.logger = logger.expand();
+    }
+    trace(tracing: boolean): Pick<ILogMiddleware, "toMiddleware"> {
+        this.logger.trace(tracing);
+        return this;
     }
     toMiddleware(): (req: Request, res: Response, next: NextFunction) => void {
         return (req, res, next) => {
-            logger.pushLog({
+            this.logger.pushLog({
                 level: "info",
                 message: {
                     delimiter: " ",

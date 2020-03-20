@@ -39,7 +39,7 @@ export class Server implements IServer {
         this.event = new EventEmitter();
         this.logger = _logger;
         this.event.once("LISTEN", (data: IListenOption) => {
-            this.logger.pushInfo("Starting listen from queue " + this.queueName, this.logTag);
+            console.info("Starting listen from queue " + this.queueName);
             this.listenInBack(data);
         });
     }
@@ -62,29 +62,29 @@ export class Server implements IServer {
                     });
                     self.event.emit("REQUEST", request);
                 }).then(ok => {
-                    this.logger.pushInfo(JSON.stringify(ok), this.logTag);
+                    console.info(JSON.stringify(ok));
                 });
             });
         }).catch((err: Error) => {
             if(err.name === "WRONG_QUEUE_OPTIONS"){
                 return this.listenInBack(options, true).then(() => {
-                    this.logger.pushSilly(err.message, "communication");
+                    console.log(err.message);
                     return true;
                 });
             }
             else {
-                this.logger.pushError(err, this.logTag);
+                console.error(err.message);
             }
         });
     }
     publish() {
-        this.logger.pushSilly("publish", "Rabbitmq[Server]");
+        console.log("publish");
     }
     listen(options: IListenOption) {
         this.event.emit("LISTEN", options);
     }
     sendBack(dataBack, msg: Message) {
-        this.logger.pushInfo("Ready to send result back to client " + msg.properties.correlationId, this.logTag);
+        console.info("Ready to send result back to client " + msg.properties.correlationId);
         Communication.compress(Communication.ensureBodyString({
             to: msg.properties.replyTo,
             content: dataBack,
@@ -95,7 +95,7 @@ export class Server implements IServer {
     }
     waitForListenData(cb: (request: IRPCRequest) => void) {
         this.event.on("REQUEST", (request: IRPCRequest) => {
-            this.logger.pushInfo("Receive the request from client " + request.rawMessage.properties.correlationId, this.logTag);
+            console.info("Receive the request from client " + request.rawMessage.properties.correlationId);
             cb(request);
         });
     }

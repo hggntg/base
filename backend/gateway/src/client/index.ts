@@ -44,7 +44,7 @@ function retry(serviceRegistrySection: IServiceRegistrySection){
 }
 
 export function register(serviceRegistrySection: IServiceRegistrySection){
-    let serviceRegistry: IServiceRegistryAPIBody = Object.noMap<IServiceRegistryAPIBody>(serviceRegistrySection);
+    let serviceRegistry: IServiceRegistryAPIBody = Object.__base__flattenMap<IServiceRegistryAPIBody>(serviceRegistrySection);
     let scheme = serviceRegistry.scheme;
     let host = scheme + "://" + serviceRegistry.hostname;
     let registerApi = serviceRegistry.apis.register;

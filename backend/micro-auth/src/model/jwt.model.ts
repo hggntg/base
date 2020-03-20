@@ -1,22 +1,34 @@
-
 export interface IJwtObject {
     idt: string;
     prs: [];
     inf: {
         [key in string]: any
-    }
+    };
+    pub?: string;
+    opt?: string;
     iat?: number;
     exp?: number;
 }
 
 export interface IJwToken {
     id: string;
-    token: string
+    privateToken: string;
+    publicToken: string;
     exp: number
 };
 
+export interface ITokenPair {
+    publicToken: string;
+    privateToken: string;
+}
+
 export interface ILogoutToken {
     token: string;
+}
+
+export interface IOutputToken {
+    publicToken: string;
+    privateToken: string;
 }
 
 export class LogoutToken implements ILogoutToken {
@@ -31,10 +43,19 @@ export class JwtObject implements IJwtObject {
     //permissions
     @Property(Array, { required: true })
     prs: [];
+    //information
     @Property(Object)
     inf: { [x: string]: any; };
+    //public
+    @Property(String)
+    pub?: string;
+    //option
+    @Property(String)
+    opt?: string;
+    //issue at
     @Property(Number, { required: true })
     iat?: number;
+    //expire
     @Property(Number, { required: true })
     exp?: number;
 
@@ -45,8 +66,18 @@ export class JwToken implements IJwToken {
     id: string;
 
     @Property(String, { required: true })
-    token: string;
+    privateToken: string;
+    
+    @Property(String, { required: true })
+    publicToken: string;
 
     @Property(Number, { required: true })
     exp: number;
+}
+
+export class TokenPair implements ITokenPair {
+    @Property(String)
+    publicToken: string;    
+    @Property(String)
+    privateToken: string;
 }

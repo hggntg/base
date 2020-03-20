@@ -20,7 +20,3 @@ export default class Select extends mongoose.SchemaType{
         this.options = options.options || [];
     }
 }
-
-defineRealDataType(Select, "string");
-defineRealDataType(Select, "number");
-defineRealDataType(Select, "boolean");

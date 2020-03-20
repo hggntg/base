@@ -1,10 +1,35 @@
 addAlias("@app", __dirname);
 import { CustomTypes } from "@app/main/types";
-import mongoose from "mongoose";
+import mongoose, { mongo } from "mongoose";
+
+const mongooseObjectIdPrototype: IExtendBaseClass<mongoose.Types.ObjectId> = mongoose.Types.ObjectId.prototype;
+
+if("undefined" === typeof mongooseObjectIdPrototype.__base__clone){
+    mongooseObjectIdPrototype.__base__clone = function(this: mongoose.Types.ObjectId){
+        return mongoose.Types.ObjectId(this as any) as any;
+    }
+}
+if("undefined" === typeof mongooseObjectIdPrototype.__base__toJSON){
+    mongooseObjectIdPrototype.__base__toJSON = function(this: mongoose.Types.ObjectId): string {
+        return this.toString();
+    }
+}
+// TO DO: Add type for ObjectId
+const ObjectIdConstructor: any  = mongoose.Types.ObjectId;
+if("undefined" === typeof ObjectIdConstructor.__base__fromString){
+    ObjectIdConstructor.__base__fromString = function(input: string) {
+        let tempValue = mongoose.Types.ObjectId(input);
+        if(tempValue.equals(input)) return tempValue;
+        return null;
+    }
+}
+
 
 Object.values(CustomTypes).map((type) => {
     mongoose.Schema.Types[type.name] = type;
 });
+
+
 import { IQueryInput } from "@app/interface";
 export { CustomTypes };
 export * from "@app/main/database-context";

@@ -1,8 +1,8 @@
 {
     "compilerOptions": {
-        "target": "es5",
+        "target": "es2020",
         "module": "commonjs",
-        "lib": ["es6"],
+        "lib": ["es2020"],
         "declaration": true,
         "removeComments": true,
         "noImplicitReturns": true,
@@ -21,6 +21,9 @@
         }
     },
     "include": [
-        "src"
+        "src/*.ts",
+        "src/**/*.ts",
+        "src/*.json",
+        "src/**/*.json"
     ]
 }

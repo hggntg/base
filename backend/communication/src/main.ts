@@ -90,7 +90,7 @@ export class Communication implements ICommunication{
     }
     static checkAndAssertQueue(channel: Channel, queueName: string, options: Options.AssertQueue, usedToFail?: boolean): Promise<Replies.AssertQueue>{
         channel.on("error", (err) => {
-            this.logger.pushError(err.code, "RabbitMQ(Channel)");
+            console.error(err.code);
         });
         if(usedToFail){
             return channel.checkQueue(queueName).then((checkQueueResult) => {
@@ -101,7 +101,6 @@ export class Communication implements ICommunication{
             return channel.assertQueue(queueName, options).then((queueResult) => {
                 return queueResult;
             }).catch(e => {
-                this.logger.pushError(e.code, "communication");
                 let error = new Error("Warning: You assert to queue " + queueName + " with wrong queue options, current options is " + JSON.stringify(options));
                 error.name = "WRONG_QUEUE_OPTIONS";
                 return Promise.reject(error);
@@ -114,7 +113,7 @@ export class Communication implements ICommunication{
             connect(this.options).then(conn => {
                 this.conn = conn;
                 this.conn.on("error", (err) => {
-                    this.logger.pushError(err.code, "Rabbitmq(Connect)");
+                    console.error(err.code);
                 });
                 resolve(true);
             }).catch(err => {

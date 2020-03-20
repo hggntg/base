@@ -1,7 +1,7 @@
-import {
+import mongoose, {
 	ConnectionOptions, Document, HookSyncCallback, Aggregate, HookErrorCallback,
 	HookAsyncCallback, Model, Schema, Query, SchemaTypeOpts, ClientSession,
-	SchemaOptions, Connection, QueryCursor
+	SchemaOptions, Connection
 } from "mongoose";
 // import { Express } from "express";
 // import { Server } from "socket.io";
@@ -22,6 +22,7 @@ export interface ITrackingOption {
 }
 
 export interface IDatabaseContext {
+	trace(tracing: boolean): void;
 	list<K, T extends IBaseEntity<K>>(name: string): ICollection<K, T>;
 	saveChanges(): Promise<any>;
 	createConnection(): Promise<boolean>;
@@ -123,6 +124,7 @@ export interface IBaseRepository<K, T extends IBaseEntity<K>> extends IQueryable
 export interface IRepositoryRestCommand<K, T extends IBaseEntity<K>> extends IRepositoryAfterQueryable<K> { }
 
 export interface IUnitOfWork {
+	trace(tracing: boolean): void;
 	getContext(): IDatabaseContext;
 	list<K, T extends IBaseEntity<K>>(name: string): IBaseRepository<K, T>;
 	saveChanges(): Promise<any>;
@@ -146,7 +148,9 @@ export interface IDocumentChange {
 	data?: any;
 }
 
-export interface ICollection<K, T extends IBaseEntity<K>> extends IBaseClass<{ classImp: { new(): T } }>, IQueryable<K, IAfterQueryable<K>, IAfterQueryable<K>>, IInsertable<K>, IAggregatable<K> { }
+export interface ICollection<K, T extends IBaseEntity<K>> extends IBaseClass<{ classImp: { new(): T } }>, IQueryable<K, IAfterQueryable<K>, IAfterQueryable<K>>, IInsertable<K>, IAggregatable<K> {
+	initValue(input: Partial<{ classImp: { new(): T } }>)
+}
 export interface ICollectionRestCommand<T> extends IAfterQueryable<T> { }
 
 export interface IFakeSchemaFunction<T>{
@@ -183,7 +187,7 @@ export interface ForeignFieldOptionsWithBrigde<T> {
 
 export interface IEntitySchema<T> {
 	name: string;
-	definition?: EntitySchemaDefinition;
+	definition?: IEntitySchemaDefinition;
 	virutals?: ((schema: Schema) => void)[];
 	schemaOptions?: SchemaOptions;
 	model?: Model<Document>;
@@ -192,7 +196,7 @@ export interface IEntitySchema<T> {
 	indexes?: ((schema: Schema) => void)[];
 }
 
-export interface EntitySchemaDefinition {
+export interface IEntitySchemaDefinition {
 	[key: string]: SchemaTypeOpts<any>;
 }
 

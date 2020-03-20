@@ -57,7 +57,7 @@ export class Client implements IClient {
         if (this.channel) {
             return this.rpcCallInBack(rpcMessage, options, this.channel).then(status => {
                 if (status) {
-                    this.logger.pushDebug("Successfully preparing message for rpc request", this.logTag);
+                    console.debug("Successfully preparing message for rpc request");
                 }
                 callback();
             }).catch(err => {
@@ -66,17 +66,17 @@ export class Client implements IClient {
                         this.channel = channel;
                         return this.rpcCallInBack(rpcMessage, options, this.channel, true).then(status => {
                             if(status){
-                                this.logger.pushDebug("Successfully preparing message for rpc request", this.logTag);
+                                console.debug("Successfully preparing message for rpc request");
                             }
                             callback();
                         }).catch(e => {
-                            this.logger.pushError(e, this.logTag);
+                            console.error(e);
                             callback(); 
                         });
                     });
                 }
                 else {
-                    this.logger.pushError(err, this.logTag);
+                    console.error(err);
                     return callback();   
                 }
             });
@@ -87,7 +87,7 @@ export class Client implements IClient {
                 this.q.concurrency = this.concurrency;
                 return this.rpcCallInBack(rpcMessage, options, this.channel).then(status => {
                     if (status) {
-                        this.logger.pushDebug("Successfully preparing message for rpc request", this.logTag);
+                        console.debug("Successfully preparing message for rpc request");
                     }
                     callback();
                 }).catch(err => {
@@ -96,17 +96,17 @@ export class Client implements IClient {
                             this.channel = channel;
                             return this.rpcCallInBack(rpcMessage, options, this.channel, true).then(status => {
                                 if(status){
-                                    this.logger.pushDebug("Successfully preparing message for rpc request", this.logTag);
+                                    console.debug("Successfully preparing message for rpc request");
                                 }
                                 callback();
                             }).catch(e => {
-                                this.logger.pushError(e, this.logTag);
+                                console.error(e);
                                 callback(); 
                             });
                         });
                     }
                     else {
-                        this.logger.pushError(err, this.logTag);
+                        console.error(err);
                         return callback();   
                     }
                 });
@@ -145,7 +145,7 @@ export class Client implements IClient {
             context.holdById(outerId);
             try {
                 return await Communication.checkAndAssertQueue(channel, resultQueue, { exclusive: true, autoDelete: true }, usedToFail).then((q) => {
-                    this.logger.pushDebug("Ready to receive result", this.logTag);
+                    console.debug("Ready to receive result");
                     channel.prefetch(1);
                     context.cloneById(outerId);
                     context.flush(outerId, true);
@@ -168,18 +168,18 @@ export class Client implements IClient {
                     }, { noAck: true });
                 }).then((ok) => {
                     context.set("consumerTag", ok.consumerTag);
-                    this.logger.pushDebug("Send request to " + rpcMessage.queueName, this.logTag);
+                    console.debug("Send request to " + rpcMessage.queueName);
                     let consumerTag = ok.consumerTag;
                     let flag = 0;
                     let watcher = setTimeout((consumerTag: string, correlationId: string, options: IRPCOption) => {
                         if (flag++ < options.retry) {
                             watcher.refresh();
-                            this.logger.pushDebug("Request " + correlationId + " retries " + flag + " time(s)", this.logTag);
+                            console.debug("Request " + correlationId + " retries " + flag + " time(s)");
                         }
                         else {
                             if (consumerTag) {
                                 channel.cancel(consumerTag).then(() => {
-                                    this.logger.pushError("Request " + correlationId + " reached the timeout", this.logTag);
+                                    console.error("Request " + correlationId + " reached the timeout");
                                 });
                             }
                         }

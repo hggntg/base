@@ -15,9 +15,9 @@ export class QueryParamInput implements IQueryParamInput{
     pageSize?: number;
     @Property(Number)
     pageIndex?: number;
-    @Property(Object)
-    sort?: any;
-    @Property(Object)
+    @Property(String)
+    sort?: string;
+    @Property(PropertyTypes.Any)
     filter?: any;
     @Property(String)
     fields?: string;

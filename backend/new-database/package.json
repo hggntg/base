@@ -1,0 +1,31 @@
+{
+	"name": "@base/database",
+	"version": "1.0.443",
+	"description": "Database use mongoose",
+	"scripts": {
+		"dev": "ts-node src/main/adapter",
+		"test": "nodemon --exec ts-node test/index.ts"
+	},
+	"author": "Uncle Hung",
+	"maintainers": [
+		"Uncle Hung"
+	],
+	"license": "ISC",
+	"dependencies": {
+		"@types/mongoose": "^5.5.32",
+		"express": "^4.17.1",
+		"mongoose": "^5.7.12",
+		"node-cache": "^5.1.0",
+		"object-path": "^0.11.4"
+	},
+	"devDependencies": {
+		"@types/express": "^4.17.2",
+		"@types/node": "^12.12.28",
+		"@types/object-path": "^0.11.0",
+		"inversify": "^5.0.1",
+		"reflect-metadata": "^0.1.13"
+	},
+	"main": "index.js",
+	"types": "index.d.ts",
+	"baseDependencies": []
+}
