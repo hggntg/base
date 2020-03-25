@@ -1,6 +1,6 @@
 {
 	"name": "@base/micro-auth",
-	"version": "1.0.84",
+	"version": "1.0.86",
 	"description": "",
 	"main": "index.js",
 	"types": "index.d.ts",

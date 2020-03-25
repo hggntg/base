@@ -1,6 +1,6 @@
 {
 	"name": "@base-plugins/database",
-	"version": "1.0.350",
+	"version": "1.0.355",
 	"description": "Plugin for base project to add @base/database to @base/builder",
 	"main": "index.js",
 	"scripts": {
@@ -16,7 +16,7 @@
 		"@base/database"
 	],
 	"dependencies": {
-		"@base/database": "^1.0.465"
+		"@base/database": "^1.0.477"
 	},
 	"devDependencies": {
 		"@base/builder": "^1.0.141",

@@ -565,43 +565,42 @@ export class CollectionRestCommand<T> implements ICollectionRestCommand<T> {
 
 		return query.exec().then(docs => {
 			if (Array.isArray(docs)) {
-				let documents: Partial<T>[] = [];
+				let returnPromises = [];
 				docs.map(doc => {
 					data = generateSet(data, {}, {});
 					changeData = generateSet(changeData, {}, {});
 					let tempDocument = new model(removeId(doc.toObject())) as mongoose.Document;
 					tempDocument.isNew = false;
 					tempDocument._id = doc._id;
-					let returnDocument = tempDocument.toObject();
 					if (data) {
 						if (data["$set"]) {
 							let keys = Object.keys(data["$set"]);
 							Object.values(data["$set"]).map((value, index) => {
-								objectPath.set(returnDocument, keys[index], value);
+								tempDocument.set(keys[index], value);
 							});
 						}
 						if (data["$pull"]) {
 							let keys = Object.keys(data["$pull"]);
 							Object.values(data["$pull"]).map((value: [], index) => {
-								let currentValue = objectPath.get(returnDocument, keys[index]);
+								let currentValue = tempDocument.get(keys[index]);
 								value["$in"].map(v => {
 									let index = currentValue.indexOf(v);
 									if (index >= 0) currentValue.splice(index, 1);
 								});
-								objectPath.set(returnDocument, keys[index], currentValue);
+								tempDocument.set(keys[index], currentValue);
 							});
 						}
 						if (data["$addToSet"]) {
 							let keys = Object.keys(data["$addToSet"]);
 							Object.values(data["$addToSet"]).map((value: [], index) => {
-								let currentValue = objectPath.get(returnDocument, keys[index]);
+								let currentValue = tempDocument.get(keys[index]);
 								value.map(v => {
 									let index = currentValue.indexOf(v);
 									if (index < 0) {
 										currentValue.push(v);
 									}
 								});
-								objectPath.set(returnDocument, keys[index], currentValue);
+								tempDocument.set(keys[index], currentValue);
 							});
 						}
 					}
@@ -623,9 +622,35 @@ export class CollectionRestCommand<T> implements ICollectionRestCommand<T> {
 					
 					this.setChanges("UPDATE", doc, changeData);
 					// delete returnDocument._id;
-					documents.push(returnDocument as Partial<T>);
+					let removedFields: TRemovedFieldType[] = generateRemovedFields<any, T>([], getClass(this.entity), tempDocument);
+					returnPromises.push(tempDocument.execPopulate().then(doc => {
+						removedFields.map(removedField => {
+							if (removedField.type === "one-to-one") {
+								if (removedField.load === "lazy") {
+									tempDocument.set(removedField.name, { _id: doc[removedField.name], id: doc[removedField.name] });
+								}
+								else {
+									if (!tempDocument[removedField.name]) {
+										tempDocument.set(removedField.name, doc[removedField.name]);
+									}
+									else {
+										if (typeof doc[removedField.name].toObject === "function") {
+											tempDocument.set(removedField.name, doc[removedField.name].toObject());
+										}
+										else {
+											tempDocument.set(removedField.name, doc[removedField.name]);
+										}
+									}
+								}
+							}
+							tempDocument.set(removedField.localField, undefined);
+						});
+						return tempDocument.toObject() as Partial<T>;
+					}));
 				});
-				return documents;
+				return Promise.all(returnPromises).then((returnDocuments) => {
+					return returnDocuments;
+				});
 			}
 			else {
 				if (docs) {
@@ -635,36 +660,35 @@ export class CollectionRestCommand<T> implements ICollectionRestCommand<T> {
 					let tempDocument = new model(removeId(doc.toObject())) as mongoose.Document;
 					tempDocument.isNew = false;
 					tempDocument._id = doc._id;
-					let returnDocument = tempDocument.toObject();
 					if (data) {
 						if (data["$set"]) {
 							let keys = Object.keys(data["$set"]);
 							Object.values(data["$set"]).map((value, index) => {
-								objectPath.set(returnDocument, keys[index], value);
+								tempDocument.set(keys[index], value);
 							});
 						}
 						if (data["$pull"]) {
 							let keys = Object.keys(data["$pull"]);
 							Object.values(data["$pull"]).map((value: [], index) => {
-								let currentValue = objectPath.get(returnDocument, keys[index]);
+								let currentValue = tempDocument.get(keys[index]);
 								value["$in"].map(v => {
 									let index = currentValue.indexOf(v);
 									if (index >= 0) currentValue.splice(index, 1);
 								});
-								objectPath.set(returnDocument, keys[index], currentValue);
+								tempDocument.set(keys[index], currentValue);
 							});
 						}
 						if (data["$addToSet"]) {
 							let keys = Object.keys(data["$addToSet"]);
 							Object.values(data["$addToSet"]).map((value: [], index) => {
-								let currentValue = objectPath.get(returnDocument, keys[index]);
+								let currentValue = tempDocument.get(keys[index]);
 								value.map(v => {
 									let index = currentValue.indexOf(v);
 									if (index < 0) {
 										currentValue.push(v);
 									}
 								});
-								objectPath.set(returnDocument, keys[index], currentValue);
+								tempDocument.set(keys[index], currentValue);
 							});
 						}
 					}
@@ -685,8 +709,31 @@ export class CollectionRestCommand<T> implements ICollectionRestCommand<T> {
 					});
 					
 					this.setChanges("UPDATE", doc, changeData);
-					// delete returnDocument._id;
-					return returnDocument as Partial<T>;
+					let removedFields: TRemovedFieldType[] = generateRemovedFields<any, T>([], getClass(this.entity), tempDocument);
+					return tempDocument.execPopulate().then(doc => {
+						removedFields.map(removedField => {
+							if (removedField.type === "one-to-one") {
+								if (removedField.load === "lazy") {
+									tempDocument.set(removedField.name, { _id: doc[removedField.name], id: doc[removedField.name] });
+								}
+								else {
+									if (!tempDocument[removedField.name]) {
+										tempDocument.set(removedField.name, doc[removedField.name]);
+									}
+									else {
+										if (typeof doc[removedField.name].toObject === "function") {
+											tempDocument.set(removedField.name, doc[removedField.name].toObject());
+										}
+										else {
+											tempDocument.set(removedField.name, doc[removedField.name]);
+										}
+									}
+								}
+							}
+							tempDocument.set(removedField.localField, undefined);
+						});
+						return tempDocument.toObject() as Partial<T>;
+					});
 				}
 				else {
 					return docs;
@@ -978,7 +1025,7 @@ export class Collection<K, T extends IBaseEntity<K>> implements ICollection<K, T
 			newDoc._id = document._id;
 			newDoc.isNew = false;
 			let namespaceContext = this.setChanges(document);
-			let removedFields: TRemovedFieldType[] = generateRemovedFields<K, T>([], getClass(this.entity), document);
+			let removedFields: TRemovedFieldType[] = generateRemovedFields<K, T>([], getClass(this.entity), newDoc);
 			return newDoc.execPopulate().then(doc => {
 				removedFields.map(removedField => {
 					if (removedField.type === "one-to-one") {
@@ -1049,11 +1096,12 @@ export class Collection<K, T extends IBaseEntity<K>> implements ICollection<K, T
 			let entitySchema = getEntitySchema(entity);
 			docs.map((doc, index) => {
 				let document = new model(doc);
+				let newDoc = new model(removeId(document.toObject()));
+				newDoc._id = document._id;
+				newDoc.isNew = false;
 				let namespaceContext = this.setChanges(document);
-				let removedFields: TRemovedFieldType[] = generateRemovedFields<K, T>([], getClass(this.entity), document);
-				let newDocPromise = document.execPopulate().then(doc => {
-					let newDoc: mongoose.Document = new model(removeId(document.toObject()));
-					newDoc.isNew = false;
+				let removedFields: TRemovedFieldType[] = generateRemovedFields<K, T>([], getClass(this.entity), newDoc);
+				let newDocPromise = newDoc.execPopulate().then(doc => {
 					removedFields.map(removedField => {
 						if (removedField.type === "one-to-one") {
 							if (removedField.load === "lazy") {

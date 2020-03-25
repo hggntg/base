@@ -137,16 +137,16 @@ export class MicroAuth implements IBaseClass<IMicroAuth>, IMicroAuthMethod {
                     maxAge: 60 * 60 * 1000,
                     updateAgeOnGet: this.autoRefresh,
                     dispose: function (key: string, value: ITokenPair) {
-                        that.logger.pushSilly(`${key} ---- ${value.privateToken}`, "auth");
+                        that.logger.pushInfo(`${key} ---- ${value.privateToken}`, "auth");
                         if (key && value) {
-                            that.logger.pushDebug(`Removing token ${value.privateToken}`, "auth");
+                            that.logger.pushInfo(`Removing token ${value.privateToken}`, "auth");
                             that.localDb.delete(`${that.storePath}/${key}`);
                             that.localDb.save();
                         }
                     }
                 });
                 try {
-                    this.logger.pushDebug("Restoring tokens in store", "auth");
+                    this.logger.pushInfo("Restoring tokens in store", "auth");
                     let data: { [key: string]: IJwToken } = {};
                     try {
                         data = this.localDb.getData(this.storePath);
@@ -157,7 +157,7 @@ export class MicroAuth implements IBaseClass<IMicroAuth>, IMicroAuthMethod {
                     let current = (+new Date());
                     let removedIndexes = [];
                     let keys = Object.keys(data);
-                    this.logger.pushDebug(JSON.stringify(data), "auth");
+                    this.logger.pushInfo(JSON.stringify(data), "auth");
                     Object.values(data).map((jwToken: IJwToken, index) => {
                         let expire = jwToken.exp;
                         if (expire <= current) {
@@ -165,15 +165,15 @@ export class MicroAuth implements IBaseClass<IMicroAuth>, IMicroAuthMethod {
                         }
                         else {
                             let newExp = (expire - current + 1);
-                            this.logger.pushDebug(JSON.stringify(jwToken), "auth");
+                            this.logger.pushInfo(JSON.stringify(jwToken), "auth");
                             this.cache.set(jwToken.id, { privateToken: jwToken.privateToken, publicToken: jwToken.publicToken }, newExp);
                         }
                     });
                     removedIndexes.map(index => {
-                        this.logger.pushDebug("Removing expired token " + data[keys[index]].privateToken, "auth");
+                        this.logger.pushInfo("Removing expired token " + data[keys[index]].privateToken, "auth");
                         delete data[keys[index]];
                     });
-                    this.logger.pushDebug(JSON.stringify(this.cache.values()), "auth");
+                    this.logger.pushInfo(JSON.stringify(this.cache.values()), "auth");
                     this.localDb.push(this.storePath, data, true);
                 }
                 catch (e) {
@@ -211,7 +211,7 @@ export class MicroAuth implements IBaseClass<IMicroAuth>, IMicroAuthMethod {
                     info.pub = publicToken;
                 }
                 privateToken = jwt.sign(info, secret || this.secret, options);
-                this.logger.pushDebug(`Create token ${privateToken}`, "auth");
+                this.logger.pushInfo(`Create token ${privateToken}`, "auth");
                 let cacheMaxAge = expiresIn * 1000;
                 this.cache.set(idt, { privateToken: privateToken, publicToken: publicToken }, cacheMaxAge);
                 let exp = +Date.now() + expiresIn * 1000;
