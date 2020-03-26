@@ -19,9 +19,7 @@ if ("undefined" === typeof global["Context"]){
         getType(): IClassType {
             throw new Error("Method not implemented.");
         }
-        initValue(input: Partial<IContextProperty>): void {
-            throw new Error("Method not implemented.");
-        }
+
         held?: boolean;
         flushed?: boolean;
         private _type?: any;
@@ -79,33 +77,60 @@ if ("undefined" === typeof global["createHooks"]){
             let parent = namespace.getById(triggerId);
             if (parent) {
                 let current = namespace.getById(asyncId);
-                if(!current){
+                if (!current) {
                     current = new Context({
-                        value   : {},
-                        type    : type,
+                        value: {},
+                        type: type,
                         resource: resource,
-                        manual  : false,
-                        prev    : null
+                        manual: false,
+                        prev: null
                     });
                 }
-                current.value = parent ? parent.value : {};
+                current.value = parent.value || {};
                 current.manual = false;
                 current.prev = triggerId;
-                current.held = parent ? parent.held : false;
+                current.held = parent.held || false;
+                current.resourceId = parent.resourceId || undefined;
+                let hasParentResource = true;
+                if(!current.resourceId && current.resourceId !== 0) {
+                    current.resourceId = namespace.currentValueIndex++;   
+                    parent.resourceId = current.resourceId;   
+                    hasParentResource = false;
+                }
+                if(!namespace.valueContexts[current.resourceId]) {
+                    namespace.valueContexts[current.resourceId] = {
+                        sharedHolders: [asyncId],
+                        value: {}
+                    }
+                }
+                else {
+                    namespace.valueContexts[current.resourceId].sharedHolders.push(asyncId);
+                }
+                if(!hasParentResource && parent){
+                    namespace.valueContexts[current.resourceId].sharedHolders.push(triggerId);
+                }
                 namespace.setById(asyncId, current);
-                if(!parent.children){
+                if (!parent.children) {
                     parent.children = [];
                 }
                 parent.children.push(asyncId);
                 namespace.setById(triggerId, parent);
             }
         }
-    
+
         function destroy(asyncId) {
+            namespace.flush(asyncId, true);
+        }
+
+        function after(asyncId) {
             namespace.flush(asyncId);
         }
-    
-        const asyncHook = asyncHooks.createHook({ init, destroy });
+
+        function promiseResolve(asyncId) {
+            namespace.flush(asyncId);
+        }
+
+        const asyncHook = asyncHooks.createHook({ init, destroy, after, promiseResolve });
     
         asyncHook.enable();
     }
@@ -138,9 +163,33 @@ if("undefined" === typeof global["Namespace"]){
     
         constructor() {
             this.context = {};
+            setInterval(() => {
+                this.clearValueContext();
+            }, 5000);
         }
-    
-        cloneById(sourceId: number){
+        currentValueIndex: number = 0;
+        valueContexts: { 
+            [key: string]: { 
+                value: any; 
+                sharedHolders: number[];
+            };
+        } = {};
+        private clearValueContext(){
+            let keys = Object.keys(this.valueContexts);
+            let start = Number(keys[0]);
+            for(let i = start; i <= this.currentValueIndex; i++){
+                let valueContext = this.valueContexts[i.toString()];
+                if(valueContext){
+                    let valueKeys = Object.keys(valueContext.value || {});
+                    if(valueKeys.length === 0){
+                        valueContext.sharedHolders.map(sharedHolder => {
+                            this.flush(sharedHolder, true);
+                        });
+                    }
+                }
+            }
+        }
+        cloneById(sourceId: number) {
             let source = this.getById(sourceId);
             let destValue = Object.__base__clone(source.value);
             let dest = new Context({
@@ -151,14 +200,15 @@ if("undefined" === typeof global["Namespace"]){
                 prev: null,
                 value: destValue,
                 type: source.type,
-                resource: source.resource ? Object.__base__clone(source.resource) : undefined
+                resource: source.resource ? Object.__base__clone(source.resource) : undefined,
+                resourceId: source.resourceId
             });
             this.setById(asyncHooks.triggerAsyncId(), dest);
         }
-    
-        holdById(id: number){
+
+        holdById(id: number) {
             let current = this.getById(id);
-            if(current){
+            if (current) {
                 current.held = true;
                 this.setById(id, current);
             }
@@ -204,162 +254,195 @@ if("undefined" === typeof global["Namespace"]){
             return raws;
         }
     
-        run(func: Function) : Promise<void>{
+        run(func: Function): Promise<void> {
             let asyncId = asyncHooks.executionAsyncId();
             let triggerId = asyncHooks.triggerAsyncId();
             let parent = this.getById(triggerId);
+            while(!parent && triggerId > 0){
+                triggerId--;
+                parent = this.getById(triggerId);
+            }
             if (parent) {
                 // Here we keep passing the context from 
                 // the triggerId to the new asyncId
                 let current = this.getById(asyncId);
-                if(!current){
+                if (!current) {
                     current = new Context({
-                        value   : {},
-                        manual  : false,
-                        prev    : null
+                        value: {},
+                        manual: false,
+                        prev: null
                     });
                 }
-                current.value = parent ? parent.value : {};
+                current.value = parent.value || {};
                 current.manual = true;
                 current.prev = triggerId;
-                current.held = parent ? parent.held : false;
+                current.held = parent.held || false;
+                current.resourceId = parent.resourceId;
+                if (current.resourceId || current.resourceId === 0) this.valueContexts[current.resourceId].sharedHolders.push(asyncId);
+                else {
+                    current.resourceId = this.currentValueIndex++;
+                    parent.resourceId = current.resourceId;
+                    this.valueContexts[current.resourceId] = {
+                        sharedHolders: [triggerId, asyncId],
+                        value: {}
+                    }
+                }
                 this.setById(asyncId, current);
-                if(!parent.children){
+                if (!parent.children) {
                     parent.children = [];
                 }
                 parent.children.push(asyncId);
                 this.setById(triggerId, parent);
             }
-            else{
+            else {
                 let current = this.getById(asyncId);
-                if(!current){
+                if (!current) {
                     current = new Context({
-                        value   : {},
-                        manual  : false,
-                        prev    : null
+                        value: {},
+                        manual: false,
+                        prev: null
                     });
                 }
                 current.value = {};
                 current.manual = true;
+                if (!current.resourceId && current.resourceId !== 0) {
+                    current.resourceId = this.currentValueIndex;
+                    this.valueContexts[this.currentValueIndex++] = {
+                        value: {},
+                        sharedHolders: [asyncId]
+                    };
+                }
                 this.setById(asyncId, current);
             }
-            if(func instanceof AsyncFunction){
+            if (func instanceof AsyncFunction) {
                 return func();
             }
-            else{
+            else {
                 return new Promise((resolve, reject) => {
-                    try{
+                    try {
                         func();
                         resolve();
                     }
-                    catch(e){
+                    catch (e) {
                         reject(e);
                     }
                 });
             }
         }
-    
+
         getById(id: number): IContext {
             return this.context[id];
         }
         setById(id: number, value: IContext): void {
+            if(!value.resourceId && value.resourceId !== 0){
+                value.resourceId = this.currentValueIndex++;
+            }
+            if(this.valueContexts[value.resourceId]){
+                this.valueContexts[value.resourceId].value = value.value;
+            }
+            else {
+                this.valueContexts[value.resourceId] = {
+                    sharedHolders: [id],
+                    value: value.value
+                }
+            }
             this.context[id] = value;
+
         }
-        removeById(id: number, key){
-            if(this.context[id] && this.context[id]["value"]) {
-                delete this.context[id]["value"][key];
+        removeById(id: number, key = undefined) {
+            let current = this.context[id];
+            if(current){
+                if(current.value){
+                    delete current.value[key];
+                }
+                if(current.resourceId || current.resourceId === 0) {
+                    if(this.valueContexts[current.resourceId]){
+                        delete this.valueContexts[current.resourceId].value[key];
+                    }
+                }
             }
         }
     
         set(key, value) {
             const eid = asyncHooks.executionAsyncId();
-            if(!this.context[eid]){
+            if (!this.context[eid]) {
                 this.context[eid] = new Context({
-                    value   : {},
-                    manual  : true,
-                    prev    : asyncHooks.triggerAsyncId()
+                    value: {},
+                    manual: true,
+                    prev: asyncHooks.triggerAsyncId()
                 });
             }
-            this.context[eid].manual = true;
-            this.context[eid]["value"][key] = value;
+            let current = this.context[eid];
+            current.manual = true;
+            if (!current.resourceId && current.resourceId !== 0) {
+                let parent = this.context[current.prev];
+                current.resourceId = parent ? parent.resourceId : undefined;
+                if (!current.resourceId && current.resourceId !== 0) {
+                    current.resourceId = this.currentValueIndex++;
+                }
+            }
+            if (this.valueContexts[current.resourceId]) {
+                if (!this.valueContexts[current.resourceId].sharedHolders.includes(eid)) this.valueContexts[current.resourceId].sharedHolders.push(eid);
+                this.valueContexts[current.resourceId].value[key] = value;
+            }
+            else {
+                this.valueContexts[current.resourceId] = {
+                    sharedHolders: [eid],
+                    value: {}
+                }
+                this.valueContexts[current.resourceId].value[key] = value;
+            }
+
+            this.context[eid]["value"] = this.valueContexts[current.resourceId].value;
         }
-    
+
         get<T>(key): T {
             const eid = asyncHooks.executionAsyncId();
-            if(this.context[eid] && this.context[eid]["value"]){
-                return this.context[eid]["value"][key] as T;
-            }
-            else{
+            let current = this.getById(eid);
+            if(current){
+                if(current.value){
+                    return current.value[key] as T;
+                }
                 return null;
             }
+            return null;
         }
     
-        remove(key){
+        remove(key) {
             const eid = asyncHooks.executionAsyncId();
-            if(this.context[eid] && this.context[eid]["value"]) {
-                delete this.context[eid]["value"][key];
+            let current = this.getById(eid);
+            if(current){
+                if(current.value){
+                    delete current.value[key];
+                }
+                if(current.resourceId || current.resourceId === 0){
+                    if(this.valueContexts[current.resourceId]){
+                        delete this.valueContexts[current.resourceId].value[key];
+                    }
+                }
             }
+            this.setById(eid, current);
         }
     
-        flush(id, force = false){
-            let current = this.context[id];
-            if(current){
-                if(!current.held || (current.held && current.flushed && force) || force){
-                    let parent = current.prev !== null ? this.context[current.prev] : null;
-                    let currentIsFlushed = false;
-                    if(current.children){
-                        let children = current.children;
-                        let childrenLength = children.length;
-                        for(let i = 0; i < childrenLength; i++){
-                            let currentChild = this.context[children[i]];
-                            if(!currentChild){
-                                children.splice(i, 1);
-                                i--;
-                                childrenLength--;
+        flush(id, force = false) {
+            let current = this.getById(id);
+            if(current && force){
+                if(current.resourceId || current.resourceId === 0) {
+                    if(this.valueContexts[current.resourceId]){
+                        this.valueContexts[current.resourceId].sharedHolders.map((sharedHolder, i, arr) => {
+                            if(sharedHolder === id){
+                                arr.splice(i, 1);
                             }
-                            else if(!currentChild.held || (currentChild.held && force)){
-                                delete this.context[children[i]];
-                                children.splice(i, 1);
-                                i--;
-                                childrenLength--;
-                            }
-                        }
-                        if(children.length === 0){
-                            delete this.context[id];
-                            currentIsFlushed = true;
-                        }
-                        else{
-                            current.children = children;
-                            current.flushed = true;
-                            this.context[id] = current;
-                        }
-                    }
-                    if(currentIsFlushed){
-                        if(parent && parent.children){
-                            let children = parent.children;
-                            let childrenLength = children.length;
-                            for(let i = 0; i < childrenLength; i++){
-                                let child = this.context[children[i]];
-                                if(child && !child.manual){
-                                    delete this.context[children[i]];
-                                    children.splice(i, 1);
-                                    i--;
-                                }
-                            }
-                            parent.children = children;
-                            if(parent.children.length === 0){
-                                delete this.context[current.prev];
-                            }
-                            else{
-                                this.context[current.prev] = parent;
-                            }
+                        });
+                        if(this.valueContexts[current.resourceId].sharedHolders.length === 0){
+                            delete this.valueContexts[current.resourceId];
                         }
                     }
                 }
-                else{
-                    current.flushed = true;
-                    this.context[id] = current;
-                }
+                (current.children || []).map(childId => {
+                    this.flush(childId, force);
+                });
+                delete this.context[id];
             }
         }
     

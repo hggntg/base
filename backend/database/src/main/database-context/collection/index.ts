@@ -708,7 +708,7 @@ export class CollectionRestCommand<T> implements ICollectionRestCommand<T> {
 						}
 					});
 					
-					this.setChanges("UPDATE", doc, changeData);
+z
 					let removedFields: TRemovedFieldType[] = generateRemovedFields<any, T>([], getClass(this.entity), tempDocument);
 					return tempDocument.execPopulate().then(doc => {
 						removedFields.map(removedField => {
