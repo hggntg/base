@@ -8,14 +8,18 @@ import {
 	IEntitySchema,
 	ITrackingOption
 } from "@app/interface";
-import mongoose from "mongoose";
+import mongoose, { connection } from "mongoose";
 import { getDbContextMetadata } from "@app/main/database-context/decorator";
 import { DBCONTEXT_KEY, SCHEMA_KEY } from "@app/infrastructure/constant";
 import { getEntitySchema, Entity, Field, Id, ForeignField } from "@app/main/entity";
 import { generateSchema, mapSchemaMiddleware, DbContextSession } from "@app/main/internal";
 import { CustomTypes } from "@app/main/types";
+import { ICache, Cache } from "@app/main/database-context/collection/cache";
+import { IEventStore, EVENT_STORE_SERVICE, EventStore, IMetadata } from "../event-store";
 
 export const DATABASE_CONTEXT_SERVICE = "IDatabaseContext";
+
+const cache: ICache = new Cache();
 
 interface IDatabaseTracking<T extends IBaseEntity> {
 	id: mongoose.Types.ObjectId;
@@ -108,6 +112,7 @@ export class DatabaseContext implements IDatabaseContext {
 		let dbContextSession = this.getDbContextSession();
 		let session: mongoose.ClientSession = null;
 		let currentId: number = dbContext.context.getCurrentId();
+		const eventStore = getDependency<IEventStore>(EVENT_STORE_SERVICE, EventStore.name);
 		return dbContextSession.session.then(_session => {
 			session = _session;
 			session.startTransaction();
@@ -117,6 +122,7 @@ export class DatabaseContext implements IDatabaseContext {
 				for (let i = 0; i < documentLength; i++) {
 					let change = dbContextSession.documents[i];
 					let document = change.document;
+					let metadata = dbContextSession.metadatas[i];
 					let cmd = null;
 					if (change.type === "UPDATE") {
 						if (change.data) {
@@ -126,17 +132,40 @@ export class DatabaseContext implements IDatabaseContext {
 										reject(err);
 									}
 									else {
-										resolve(document);
+										if(dbContext.useEventStore){
+											eventStore.write(metadata)
+											.then(() => resolve(document))
+											.catch(e => reject(e));
+										}
+										else {
+											resolve(document);
+										}
 									}
 								});
 							})
 						}
 					}
 					else if (change.type === "REMOVE") {
-						cmd = document.remove();
+						if(dbContext.useEventStore){
+							cmd = document.remove().then(() => {
+								return eventStore.write(metadata);
+							});
+						}
+						else {
+							cmd = document.remove();
+						}
 					}
 					if (!cmd) {
-						cmd = document.save();
+						cmd = document.save().then((doc) => {
+							if(dbContext.useEventStore) {
+								return eventStore.write(metadata).then(() => {
+									return doc;
+								})
+							}
+							else {
+								return doc;
+							}
+						});
 					}
 					promiseList.push(cmd);
 				}
@@ -163,10 +192,12 @@ export class DatabaseContext implements IDatabaseContext {
 					session.endSession(function (err, result) {
 						dbContext.context.removeById(currentId, "documents");
 						dbContext.context.removeById(currentId, "session");
+						dbContext.context.removeById(currentId, "metadatas");
 						if (err) {
 							reject(err);
 						}
 						else {
+							if(dbContext.useCache) cache.clearAll();
 							resolve(result);
 						}
 					});
@@ -183,6 +214,7 @@ export class DatabaseContext implements IDatabaseContext {
 						session.endSession(function (error, result) {
 							dbContext.context.removeById(currentId, "documents");
 							dbContext.context.removeById(currentId, "session");
+							dbContext.context.removeById(currentId, "metadatas");
 							if (error) {
 								reject(error);
 							}
@@ -248,12 +280,44 @@ export class DatabaseContext implements IDatabaseContext {
 						
 						defineMetadata(SCHEMA_KEY, schemaEntity, getClass(entityClass));
 					});
-					return resolve(true);
+					let collections = [];
+					let dbname = connection.db.databaseName;
+					Object.values(connection.collections).map((collection) => {
+						collections.push(collection.name);
+					});
+					if(dbContext.useCache){
+						return cache.createConnection(dbContext.cacheOptions).then(() => {
+							cache.init(dbname, collections).then(() => {
+								resolve(true);
+							})
+						}).catch(e => {
+							resolve(true);
+						})
+					}
+					else {
+						return resolve(true);
+					}
 				}
 				catch (e) {
 					return reject(e);
 				}
 			});
+		}).then(() => {
+			if(dbContext.useEventStore){
+				let uriSegments = connectionInfo.uri.split("://");
+				let hostSegments = uriSegments[1].split("/");
+				let querySegments = hostSegments[1].split("?");
+				querySegments[0] += "-eventstore";
+	
+				hostSegments[1] = querySegments.join("?");
+				uriSegments[1] = hostSegments.join("/");
+				let eventStoreURI = uriSegments.join("://");
+				const eventStore = getDependency<IEventStore>(EVENT_STORE_SERVICE, EventStore.name);
+				return eventStore.start(eventStoreURI, connectionInfo.connectionOptions).then(() => {
+					return true;
+				})
+			}
+			return true;
 		});
 	}
 	enableTracking(option: ITrackingOption): Promise<boolean> {
@@ -283,6 +347,7 @@ export class DatabaseContext implements IDatabaseContext {
 		}
 		let dbContextSession: IDatabaseContextSession = new DbContextSession(session);
 		dbContextSession.documents = dbContext.context.get<Array<IDocumentChange>>("documents") || [];
+		dbContextSession.metadatas = dbContext.context.get<Array<IMetadata>>("metadatas") || [];
 		return dbContextSession;
 	}
 	protected logger: ILogger

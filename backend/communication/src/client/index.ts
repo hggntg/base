@@ -147,27 +147,25 @@ export class Client implements IClient {
                 return await Communication.checkAndAssertQueue(channel, resultQueue, { exclusive: true, autoDelete: true }, usedToFail).then((q) => {
                     console.debug("Ready to receive result");
                     channel.prefetch(1);
-                    context.cloneById(outerId);
-                    context.flush(outerId, true);
                     return channel.consume(q.queue, async function (msg) {
-                        let currentCorrelationId = context.get<string>("correlationId");
+                        let currentCorrelationId = context.getValueById<string>(outerId, "correlationId");
                         if (correlationId === currentCorrelationId) {
-                            let watcher = context.get<NodeJS.Timeout>("watcher");
+                            let watcher = context.getValueById<NodeJS.Timeout>(outerId, "watcher");
                             clearTimeout(watcher);
                             self.logger.pushDebug("Receive a result from " + q.queue, self.logTag);
                             msg.content = await Communication.decompress(msg.content);
                             let data = Communication.reverseBody(msg.content.toString());
                             self.event.emit(msg.properties.correlationId, { err: null, data: data.content });
-                            let consumerTag = context.get<string>("consumerTag");
+                            let consumerTag = context.getValueById<string>(outerId, "consumerTag");
                             if (consumerTag) {
                                 channel.cancel(consumerTag).then(() => { });
                             }
-                            context.flush(context.getCurrentId(), true);
+                            context.flush(outerId, true);
                             Namespace.destroy(correlationId);
                         }
                     }, { noAck: true });
                 }).then((ok) => {
-                    context.set("consumerTag", ok.consumerTag);
+                    context.setValueById(outerId, "consumerTag", ok.consumerTag);
                     console.debug("Send request to " + rpcMessage.queueName);
                     let consumerTag = ok.consumerTag;
                     let flag = 0;
@@ -184,7 +182,7 @@ export class Client implements IClient {
                             }
                         }
                     }, options.timeout, consumerTag, correlationId, options);
-                    context.set("watcher", watcher);
+                    context.setValueById(outerId, "watcher", watcher);
                     return ok;
                 });
             }

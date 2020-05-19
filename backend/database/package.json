@@ -1,6 +1,6 @@
 {
 	"name": "@base/database",
-	"version": "1.0.477",
+	"version": "1.0.519",
 	"description": "Database use mongoose",
 	"scripts": {
 		"dev": "ts-node src/main/adapter",
@@ -16,12 +16,14 @@
 		"express": "^4.17.1",
 		"mongoose": "^5.9.3",
 		"object-path": "^0.11.4",
+		"redis": "^3.0.2",
 		"sanitize-html": "^1.22.1"
 	},
 	"devDependencies": {
 		"@types/express": "^4.17.2",
-		"@types/node": "^12.12.29",
+		"@types/node": "^12.12.34",
 		"@types/object-path": "^0.11.0",
+		"@types/redis": "^2.8.17",
 		"inversify": "^5.0.1",
 		"reflect-metadata": "^0.1.13"
 	},

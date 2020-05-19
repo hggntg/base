@@ -7,6 +7,7 @@ export interface IServiceAction {
     param: string[];
     query: string[];
     headers: string[];
+    relatedServices: string[];
     body: string[];    
     response: string[];
     onFail: string;
@@ -43,6 +44,8 @@ export class ServiceAction implements IServiceAction {
     query: string[];
     @Property(PropertyArray(String))
     headers: string[];
+    @Property(PropertyArray(String))
+    relatedServices: string[];
     @Property(PropertyArray(String))
     body: string[];
     @Property(PropertyArray(String))

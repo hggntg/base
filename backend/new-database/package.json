@@ -1,6 +1,6 @@
 {
-	"name": "@base/database",
-	"version": "1.0.443",
+	"name": "@base/new-database",
+	"version": "0.0.12",
 	"description": "Database use mongoose",
 	"scripts": {
 		"dev": "ts-node src/main/adapter",
@@ -13,15 +13,11 @@
 	"license": "ISC",
 	"dependencies": {
 		"@types/mongoose": "^5.5.32",
-		"express": "^4.17.1",
 		"mongoose": "^5.7.12",
-		"node-cache": "^5.1.0",
-		"object-path": "^0.11.4"
+		"node-cache": "^5.1.0"
 	},
 	"devDependencies": {
-		"@types/express": "^4.17.2",
-		"@types/node": "^12.12.28",
-		"@types/object-path": "^0.11.0",
+		"@types/node": "^12.12.39",
 		"inversify": "^5.0.1",
 		"reflect-metadata": "^0.1.13"
 	},

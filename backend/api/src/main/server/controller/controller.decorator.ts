@@ -7,12 +7,6 @@ export function ControllerProperty<T extends IController>(classImp: { new(): T }
     return function (target: any, propertyKey: string) {
         Property(Object)(target, propertyKey);
         let apiZoneMetadata = Server.getAPIZoneMetadata(target);
-        if(!apiZoneMetadata){
-            apiZoneMetadata = {
-                classes: {},
-                context: null
-            }
-        }
         apiZoneMetadata.classes[propertyKey] = classImp;
         defineMetadata(SERVER_ZONE_KEY, apiZoneMetadata, getClass(target));
         let isDeleted = delete target[propertyKey];

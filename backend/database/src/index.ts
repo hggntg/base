@@ -1,6 +1,6 @@
 addAlias("@app", __dirname);
 import { CustomTypes } from "@app/main/types";
-import mongoose, { mongo } from "mongoose";
+import mongoose from "mongoose";
 
 const mongooseObjectIdPrototype: IExtendBaseClass<mongoose.Types.ObjectId> = mongoose.Types.ObjectId.prototype;
 
@@ -92,7 +92,7 @@ export class QueryInput implements IQueryInput {
         this.limit = eval(mappings.limit);
         this.select = eval(mappings.select) || undefined;
         this.sort = eval(mappings.sort) || undefined;
-        this.where = JSON.parse(eval(mappings.where) || {}) || undefined;
+        this.where = JSON.parse(eval(mappings.where) || "{}") || undefined;
         return input;
     }
 }

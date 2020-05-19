@@ -1,6 +1,6 @@
 {
 	"name": "@base/api",
-	"version": "1.0.333",
+	"version": "1.0.341",
 	"description": "",
 	"scripts": {
 		"test": "echo \"Error: no test specified\" && exit 1"
@@ -16,7 +16,7 @@
 		"uuid": "^3.3.2"
 	},
 	"devDependencies": {
-		"@types/node": "^12.12.29",
+		"@types/node": "^12.12.34",
 		"@types/swagger-ui-express": "^3.0.1",
 		"@types/uuid": "^3.4.4",
 		"inversify": "^5.0.1",

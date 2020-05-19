@@ -1443,6 +1443,22 @@ if("undefined" === typeof global["Namespace"]){
             this.context[eid]["value"] = this.valueContexts[current.resourceId].value;
         }
 
+        setValueById(id: number, key, value){
+            let current = this.getById(id);
+            if(!current.resourceId && current.resourceId !== 0){
+                current.resourceId = this.currentValueIndex++;
+            }
+            if(!this.valueContexts[current.resourceId]){
+                this.valueContexts[current.resourceId] = {
+                    sharedHolders: [id],
+                    value: {}
+                }
+            }
+            this.valueContexts[current.resourceId].value[key] = value;
+            current.value[key] = value;
+            this.context[id] = current;
+        }
+
         get<T>(key): T {
             const eid = asyncHooks.executionAsyncId();
             let current = this.getById(eid);
@@ -1450,7 +1466,16 @@ if("undefined" === typeof global["Namespace"]){
                 if(current.value){
                     return current.value[key] as T;
                 }
-                return null;
+            }
+            return null;
+        }
+
+        getValueById<T>(id: number, key): T {
+            const current = this.getById(id);
+            if(current) {
+                if(current.value){
+                    return current.value[key] as T;
+                }
             }
             return null;
         }

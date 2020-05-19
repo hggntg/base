@@ -1,6 +1,6 @@
 import * as objectPath from "object-path";
 import fs from "fs";
-import { IApp, IConfig as IBaseConfig, IAppProperty } from "@app/interface";
+import { IApp, IConfig as IBaseConfig, IAppProperty, IAppEvent } from "@app/interface";
 import { EventEmitter } from "events";
 import { join } from "path";
 
@@ -75,6 +75,13 @@ export class App implements IApp {
         });
         this.once("startAppDone", () => {
             console.info("Application is started");
+            this.report({
+                description: "Application is started",
+                event: "app.ready",
+                level: "green",
+                meta: {},
+                needToRestart: false
+            });
         });
     }
     loadConfig(path: string) {
@@ -154,6 +161,12 @@ export class App implements IApp {
             throw new Error(e);
         }
         return this;
+    }
+    report(event: IAppEvent) {
+        let needToRestart = event.needToRestart;
+        delete event.needToRestart;
+        if(typeof process.send === "function") process.send(event);
+        if(needToRestart) process.exit(0);
     }
     once(event: "preStartApp" | "startAppDone" | "appError", cb) {
         return this.event.once(event, cb);

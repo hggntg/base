@@ -165,7 +165,7 @@ export class Worker implements IWorker {
         }).catch(e => {
             if(e.name === "WRONG_QUEUE_OPTIONS"){
                 return this.assertQueue(jobQueue, options, onReceive, true).then(() => {
-                    console.log(e.message);
+                    console.info(e.message);
                     return true;
                 });
             }

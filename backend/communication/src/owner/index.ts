@@ -13,7 +13,7 @@ export class Owner implements IOwner {
         if (this.channel) {
             return this.sendJobInBack(task, callback).catch(e => {
                 if(e.name === "WRONG_QUEUE_OPTIONS"){
-                    console.log(e.message);
+                    console.info(e.message);
                     return this.conn.createChannel().then(channel => {
                         this.channel = channel;
                         return this.sendJobInBack(task, callback, true);
@@ -30,7 +30,7 @@ export class Owner implements IOwner {
                 this.q.concurrency = this.concurrency;
                 return this.sendJobInBack(task, callback).catch(e => {
                     if(e.name === "WRONG_QUEUE_OPTIONS"){
-                        console.log(e.message);
+                        console.info(e.message);
                         return this.conn.createChannel().then(channel => {
                             this.channel = channel;
                             return this.sendJobInBack(task, callback, true);
@@ -64,7 +64,8 @@ export class Owner implements IOwner {
                 from: task.jobQueue,
                 content: jobRequest
             })).then(sendingBuffer => {
-                this.channel.sendToQueue(task.jobQueue, sendingBuffer, { persistent: true, priority: priority });
+                let status = this.channel.sendToQueue(task.jobQueue, sendingBuffer, { persistent: true, priority: priority });
+                console.info("Pushing job to queue " + task.jobQueue + " is " + (status ? "successfull" : "failed"));
                 setTimeout(() => {
                     return callback();
                 }, 1);

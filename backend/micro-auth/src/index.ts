@@ -1,7 +1,7 @@
 import jwt from "jsonwebtoken";
 import LRU from "lru-cache";
 import * as uuid from "uuid";
-import { JwtObject, IJwToken, ITokenPair, IOutputToken } from "@app/model/jwt.model";
+import { JwtObject, IJwToken, ITokenPair, IOutputToken, IJwtObject } from "@app/model/jwt.model";
 import { JsonDB } from "node-json-db";
 import { Config } from "node-json-db/dist/lib/JsonDBConfig";
 import { createHash } from "crypto";
@@ -135,6 +135,7 @@ export class MicroAuth implements IBaseClass<IMicroAuth>, IMicroAuthMethod {
                 let that = this;
                 this.cache = new LRU<string, ITokenPair>({
                     maxAge: 60 * 60 * 1000,
+                    noDisposeOnSet: true,
                     updateAgeOnGet: this.autoRefresh,
                     dispose: function (key: string, value: ITokenPair) {
                         that.logger.pushInfo(`${key} ---- ${value.privateToken}`, "auth");
@@ -166,7 +167,7 @@ export class MicroAuth implements IBaseClass<IMicroAuth>, IMicroAuthMethod {
                         else {
                             let newExp = (expire - current + 1);
                             this.logger.pushInfo(JSON.stringify(jwToken), "auth");
-                            this.cache.set(jwToken.id, { privateToken: jwToken.privateToken, publicToken: jwToken.publicToken }, newExp);
+                            this.cache.set(jwToken.id, { privateToken: jwToken.privateToken, publicToken: jwToken.publicToken, secret: jwToken.secret, options: jwToken.options, info: jwToken.info }, newExp);
                         }
                     });
                     removedIndexes.map(index => {
@@ -212,15 +213,43 @@ export class MicroAuth implements IBaseClass<IMicroAuth>, IMicroAuthMethod {
                 }
                 privateToken = jwt.sign(info, secret || this.secret, options);
                 this.logger.pushInfo(`Create token ${privateToken}`, "auth");
+
                 let cacheMaxAge = expiresIn * 1000;
-                this.cache.set(idt, { privateToken: privateToken, publicToken: publicToken }, cacheMaxAge);
+                this.cache.set(idt, { privateToken: privateToken, publicToken: publicToken, secret: secret ||this.secret, options: options, info: info }, cacheMaxAge);
+
                 let exp = +Date.now() + expiresIn * 1000;
-                let jwToken: IJwToken = { id: idt, privateToken: privateToken, publicToken: publicToken, exp: exp };
+                let jwToken: IJwToken = { id: idt, privateToken: privateToken, publicToken: publicToken, exp: exp, secret: secret || this.secret, options: options, info: info };
+
                 this.localDb.push(this.storePath + "/" + jwToken.id, jwToken);
             }
             else {
                 privateToken = tokenPair.privateToken;
                 publicToken = tokenPair.publicToken;
+                if(this.autoRefresh){
+                    let jwToken: IJwToken = this.localDb.getData(this.storePath + "/" + idt);
+
+                    let innerInfo = this.read(privateToken);
+                    let innerOptions: jwt.SignOptions = JSON.parse(Buffer.from(innerInfo.opt, "base64").toString("utf-8"));
+                    let innerExpiresIn = innerOptions.expiresIn as number;
+
+                    let timeLeft = +Date.now() - innerInfo.exp * 1000;
+                    let rateTimeLeft = (timeLeft / innerExpiresIn) * 100;
+                    if(rateTimeLeft <= 50){
+                        delete innerInfo.exp;
+                        delete innerInfo.iat;
+
+                        privateToken = jwt.sign(innerInfo, secret || this.secret, innerOptions);
+                        jwToken.privateToken = privateToken;
+                        tokenPair.privateToken = privateToken;
+                        
+                        let cacheMaxAge = innerExpiresIn * 1000;
+                        this.cache.set(idt, tokenPair, cacheMaxAge);
+                    }
+
+                    let exp = +Date.now() + innerExpiresIn * 1000;
+                    jwToken.exp = exp;
+                    this.localDb.push(this.storePath + "/" + jwToken.id, jwToken);
+                }
             }
         }
         else {
@@ -237,6 +266,40 @@ export class MicroAuth implements IBaseClass<IMicroAuth>, IMicroAuthMethod {
             idt = createHash("sha256").update(idt).digest("hex");
             let cachedTokenPair = this.cache.get(idt);
             if (cachedTokenPair) {
+                if(this.autoRefresh){
+                    let info: IJwtObject;
+                    let jwToken: IJwToken = this.localDb.getData(this.storePath + "/" + idt);
+                        
+                    let options: jwt.SignOptions = jwToken.options;
+                    let expiresIn = options.expiresIn as number;
+                    
+                    try {
+                        info = this.read(cachedTokenPair.privateToken, cachedTokenPair.secret);
+                    }
+                    catch(e){
+                        let privateToken = jwt.sign(info, cachedTokenPair.secret, options);
+                        info = this.read(privateToken, cachedTokenPair.secret);
+                    }
+
+                    let timeLeft = +Date.now() - info.exp * 1000;
+                    let rateTimeLeft = (timeLeft / expiresIn) * 100;
+
+                    if(rateTimeLeft <= 50){
+                        delete info.exp;
+                        delete info.iat;
+
+                        let privateToken = jwt.sign(info, cachedTokenPair.secret, options);
+                        jwToken.privateToken = privateToken;
+                        cachedTokenPair.privateToken = privateToken;
+
+                        let cacheMaxAge = expiresIn * 1000;
+                        this.cache.set(idt, cachedTokenPair, cacheMaxAge);
+                    }
+
+                    let exp = +Date.now() + expiresIn * 1000;
+                    jwToken.exp = exp;
+                    this.localDb.push(this.storePath + "/" + jwToken.id, jwToken)
+                }
                 return cachedTokenPair.publicToken;
             }
             else {
@@ -254,6 +317,41 @@ export class MicroAuth implements IBaseClass<IMicroAuth>, IMicroAuthMethod {
                 let idt = decode(token);
                 let cachedTokenPair = this.cache.get(idt);
                 if (cachedTokenPair) {
+                    if(this.autoRefresh){
+                        let info: IJwtObject;
+                        let jwToken: IJwToken = this.localDb.getData(this.storePath + "/" + idt);
+
+                        let options: jwt.SignOptions = jwToken.options;
+                        let expiresIn = options.expiresIn as number;
+                        
+                        try {
+                            info = this.read(cachedTokenPair.privateToken, cachedTokenPair.secret);
+                        }
+                        catch(e){
+                            let privateToken = jwt.sign(info, cachedTokenPair.secret, options);
+                            info = this.read(privateToken, cachedTokenPair.secret);
+                        }
+    
+
+                        let timeLeft = +Date.now() - info.exp * 1000;
+                        let rateTimeLeft = (timeLeft / expiresIn) * 100;
+
+                        if(rateTimeLeft <= 50){
+                            delete info.exp;
+                            delete info.iat;
+    
+                            let privateToken = jwt.sign(info, cachedTokenPair.secret, options);
+                            jwToken.privateToken = privateToken;
+                            cachedTokenPair.privateToken = privateToken;
+
+                            let cacheMaxAge = expiresIn * 1000;
+                            this.cache.set(idt, cachedTokenPair, cacheMaxAge);
+                        }
+
+                        let exp = +Date.now() + expiresIn * 1000;
+                        jwToken.exp = exp;
+                        this.localDb.push(this.storePath + "/" + jwToken.id, jwToken);
+                    }
                     return cachedTokenPair.privateToken;
                 }
                 else {
@@ -275,9 +373,41 @@ export class MicroAuth implements IBaseClass<IMicroAuth>, IMicroAuthMethod {
                 let idt = decode(token);
                 let cachedTokenPair = this.cache.get(idt);
                 if (cachedTokenPair) {
-                    let privateToken = cachedTokenPair.privateToken;
-                    let decodedObject = this.read(privateToken, secret);
-                    return decodedObject;
+                    let info: IJwtObject;
+                    if(this.autoRefresh){
+                        let jwToken: IJwToken = this.localDb.getData(this.storePath + "/" + idt);
+                        
+                        let options: jwt.SignOptions = jwToken.options;
+                        let expiresIn = options.expiresIn as number;
+                        
+                        try {
+                            info = this.read(cachedTokenPair.privateToken, cachedTokenPair.secret);
+                        }
+                        catch(e){
+                            let privateToken = jwt.sign(info, cachedTokenPair.secret, options);
+                            info = this.read(privateToken, cachedTokenPair.secret);
+                        }
+
+                        let timeLeft = +Date.now() - info.exp * 1000;
+                        let rateTimeLeft = (timeLeft / expiresIn) * 100;
+
+                        if(rateTimeLeft <= 50){
+                            delete info.exp;
+                            delete info.iat;
+                            
+                            let privateToken = jwt.sign(info, cachedTokenPair.secret, options);
+                            jwToken.privateToken = privateToken;
+                            cachedTokenPair.privateToken = privateToken;
+
+                            let cacheMaxAge = expiresIn * 1000;
+                            this.cache.set(idt, cachedTokenPair, cacheMaxAge);
+                        }
+
+                        let exp = +Date.now() + expiresIn * 1000;
+                        jwToken.exp = exp;
+                        this.localDb.push(this.storePath + "/" + jwToken.id, jwToken);
+                    }
+                    return info;
                 }
                 else {
                     return null;
@@ -354,6 +484,7 @@ export class MicroAuth implements IBaseClass<IMicroAuth>, IMicroAuthMethod {
             if (!token) {
                 let error = new BaseError(403, 403, "Have no permission");
                 res.status(error.code).json({
+                    code: error.code,
                     message: error.message,
                     status: error.name
                 });
@@ -380,6 +511,7 @@ export class MicroAuth implements IBaseClass<IMicroAuth>, IMicroAuthMethod {
                     else {
                         let error = new BaseError(401, 401, "Token Invalid");
                         res.status(error.code).json({
+                            code: error.code,
                             message: error.message,
                             status: error.name
                         });
@@ -389,6 +521,7 @@ export class MicroAuth implements IBaseClass<IMicroAuth>, IMicroAuthMethod {
                     console.error(e);
                     let error = new BaseError(400, 400, e.message);
                     res.status(error.code).json({
+                        code: error.code,
                         message: error.message,
                         status: error.name
                     });
@@ -399,11 +532,3 @@ export class MicroAuth implements IBaseClass<IMicroAuth>, IMicroAuthMethod {
 }
 
 export * from "@app/model/jwt.model";
-
-// //public
-// const token = Buffer.from(tokenUUID, "utf-8").toString("base64");
-// caches[tokenUUID] = input;
-// console.timeEnd("Encode");
-
-// console.log(token);
-// console.log(caches);

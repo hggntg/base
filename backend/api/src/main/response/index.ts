@@ -67,10 +67,11 @@ const HttpResponseCode: { [key: string]: ResponseBody } = {
     GatewayTimeout: { code: 504, status: "gateway timeout" }
 };
 
-function generateResponse(code: number, message: string, type: "error" | "success" = "success", body?: ResponseResult | ErrorBodyInput): ResponseBody {
+function generateResponse(code: number, specificCode: number, message: string, type: "error" | "success" = "success", body?: ResponseResult | ErrorBodyInput): ResponseBody {
     let httpCode = HttpCode[code.toString()];
-    let httpResponseCode = Object.__base__clone<any>(HttpResponseCode[httpCode]);
+    let httpResponseCode = Object.__base__clone<ResponseBody>(HttpResponseCode[httpCode]);
     httpResponseCode.message = message;
+    httpResponseCode.code = specificCode;
     if (body) {
         if(type === "success"){
             let resultBody = body as ResponseResult;
@@ -91,30 +92,36 @@ function generateResponse(code: number, message: string, type: "error" | "succes
 }
 
 export class ResponseTemplate {
-    static success(code: number, message: string, body?: ResponseResult): ResponseBody {
+    static success(code: number, message: string, body?: ResponseResult): ResponseBody;
+    static success(code: number, specificCode: number, message: string, body?: ResponseResult): ResponseBody;
+    static success(arg0: number, arg1: string | number, arg2: string | ResponseResult, arg3?: ResponseResult): ResponseBody {
+        let code = arg0;
+        let message = typeof arg1 === "string" ? arg1 as string : arg2 as string; 
+        let specificCode = typeof arg1 === "number" ? arg1 as number : code;
+        let body = (arg2 && typeof arg2 === "object") ? arg2 as ResponseResult : ((arg3 && typeof arg3 === "object") ? arg3 as ResponseResult : undefined);
         if (code >= 200 && code < 400) {
-            return generateResponse(code, message, "success", body);
+            return generateResponse(code, specificCode, message, "success", body);
         }
         else {
-            return generateResponse(500, "Internal server error", "error");
+            return generateResponse(500, specificCode, "Internal server error", "error");
         }
     }
     static error(errorInput: IBaseError | Error): ResponseBody {
         let error = handleError(errorInput);
         if (error.code >= 400) {
             if(process.env["NODE_ENV"] !== "production"){
-                return generateResponse(error.code, error.message, "error", {stack: error.stack});
+                return generateResponse(error.code, error.specificCode, error.message, "error", {stack: error.stack});
             }
             else{
-                return generateResponse(error.code, error.message, "error");
+                return generateResponse(error.code, error.specificCode, error.message, "error");
             }
         }
         else {
             if(process.env["NODE_ENV"] !== "production"){
-                return generateResponse(error.code, error.message, "error", {stack: error.stack});
+                return generateResponse(error.code, error.specificCode, error.message, "error", {stack: error.stack});
             }
             else{
-                return generateResponse(error.code, error.message, "error");
+                return generateResponse(error.code, error.specificCode, error.message, "error");
             }
         }
     }

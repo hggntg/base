@@ -46,12 +46,6 @@ export namespace Server {
     export function APIZone() {
         return function (target: Object) {
             let apiMetadata = Server.getAPIZoneMetadata(target);
-            if (!apiMetadata) {
-                apiMetadata = {
-                    classes: {},
-                    context: null
-                }
-            }
             defineMetadata(SERVER_ZONE_KEY, apiMetadata, getClass(target));
         }
     }
@@ -147,6 +141,7 @@ export namespace Server {
         }
         constructor() {
             this.zoneRoot = express();
+            this.zoneRoot.set("etag", false);
         }
     }
 
@@ -294,6 +289,7 @@ export namespace Server {
         }
         constructor() {
             this.serverRoot = express();
+            this.serverRoot.set("etag", false);
             this.httpServerInstance = http.createServer(this.serverRoot);
             this.logger = getDependency<ILogger>(LOGGER_SERVICE);
             this.tracing = true;
@@ -323,6 +319,12 @@ export namespace Server {
     export function getAPIZoneMetadata(target: any): IAPIZoneMetadata {
         let classImp = getClass(target);
         let apiZoneMetadata: IAPIZoneMetadata = getMetadata(SERVER_ZONE_KEY, classImp);
+        if(!apiZoneMetadata){
+            apiZoneMetadata = {
+                classes: {},
+                context: null
+            }
+        }
         return apiZoneMetadata;
     }
     export function getAPIMetadata(target: any): IAPIMetadata {

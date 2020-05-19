@@ -3,6 +3,7 @@ import mongoose, {
 	HookAsyncCallback, Model, Schema, Query, SchemaTypeOpts, ClientSession,
 	SchemaOptions, Connection
 } from "mongoose";
+import { IMetadata } from "./main/event-store";
 // import { Express } from "express";
 // import { Server } from "socket.io";
 
@@ -33,6 +34,7 @@ export interface IDatabaseContext {
 export interface IDatabaseContextSession {
 	session: Promise<ClientSession>;
 	documents: Array<IDocumentChange>;
+	metadatas: Array<IMetadata>;
 }
 
 export interface IWherable<K, T, Z> {
@@ -300,6 +302,13 @@ export interface IDbContextMetadata {
 	classes: {
 		[key: string]: { new(): IBaseEntity };
 	};
+	useEventStore?: boolean;
+	useCache?: boolean;
+	cacheOptions?: {
+		port: number;
+		host: string;
+		password: string
+	}
 	tracker?: any;
 }
 
@@ -332,3 +341,13 @@ export interface IRepositoryQuery {
 }
 
 export type TEntityForeignField<T> = (ForeignFieldOptions<T> & { name: string; localField: string, hide: "all" | string[] }) | (ForeignFieldOptionsWithBrigde<T>  & { name: string; localField: string, hide?: "all" | string[] });
+
+export interface DatabaseConnectionOptions extends mongoose.ConnectionOptions {
+	useEventStore?: boolean; 
+	useCache?: boolean;
+	cacheOptions?: {
+		host: string;
+		port: number;
+		password: string;
+	}
+}

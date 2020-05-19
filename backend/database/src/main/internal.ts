@@ -2,13 +2,17 @@ import mongoose, { Schema } from "mongoose";
 import { IDatabaseContextSession, IDocumentChange, IEntitySchema, IFakePreAggregate, IFakePreDocument, IFakePreModel, IFakePreQuery, IFakePlugin } from "@app/interface";
 import { ensureNew } from "@app/infrastructure/utilities";
 import { EntitySchema } from "@app/main/entity";
+import { IMetadata } from "./event-store";
 
 export class DbContextSession implements IDatabaseContextSession{
 	session: Promise<mongoose.ClientSession>;
-	documents: Array<IDocumentChange>;
-	constructor(_session: Promise<mongoose.ClientSession>, _documents: Array<IDocumentChange> = []){
+    documents: Array<IDocumentChange>;
+    metadatas: Array<IMetadata>;
+    
+	constructor(_session: Promise<mongoose.ClientSession>, _documents: Array<IDocumentChange> = [], _metadatas: Array<IMetadata> = []){
 		this.session = _session;
-		this.documents = _documents;
+        this.documents = _documents;
+        this.metadatas = _metadatas;
 	}
 }
 

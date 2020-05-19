@@ -1,6 +1,6 @@
 {
 	"name": "@base/gateway",
-	"version": "1.0.28",
+	"version": "1.0.31",
 	"description": "",
 	"main": "index.js",
 	"scripts": {
@@ -12,7 +12,7 @@
 		"@base/builder"
 	],
 	"devDependencies": {
-		"@types/node": "^13.9.0",
+		"@types/node": "^13.9.8",
 		"inversify": "^5.0.1",
 		"reflect-metadata": "^0.1.13"
 	},

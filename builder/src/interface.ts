@@ -9,13 +9,22 @@ export interface IAppProperty{
     appName: string;
 }
 
+export interface IAppEvent {
+    event: string;
+    description: string;
+    level: "green" | "red";
+    meta: any;
+    needToRestart: boolean;
+}
+
 export interface IApp extends IBaseClass<IAppProperty>{
     config: IConfig;
     context: INamespaceStatic;
     type: "Worker" | "API";
     loadConfig(path: string);
     serveAs(type: "Worker" | "API");
-	use(plugin: Promise<boolean>, preStartApp: boolean): IApp;
+    use(plugin: Promise<boolean>, preStartApp: boolean): IApp;
+    report(event: IAppEvent);
 	once(event: "preStartApp" | "startAppDone", cb);
 	start();
 }

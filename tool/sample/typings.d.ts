@@ -304,12 +304,14 @@ interface INamespace extends IBaseClass<INamespace>{
     }
     run(func: Function) : Promise<void>;
     set(key, value): void;
+    setValueById(id: number, key, value): void;
     getById(id: number): IContext;
     setById(id: number, value: IContext): void;
     removeById(id: number, key?): void;
     holdById(id: number): void;
     cloneById(sourceId: number  ): void;
     get<T>(key): T;
+    getValueById<T>(id: number, key): T;
     flush(id: number, force?: boolean): void;
     remove(key): void;
     dispose(): void; 

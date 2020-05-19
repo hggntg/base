@@ -35,6 +35,7 @@ function generateRouteExecution(this: IController, property) {
                         let error = Resp.error(err);
                         if(!res.headersSent){
                             res.status(error.code).json({
+                                code: error.code,
                                 status: error.status,
                                 message: error.message,
                                 error: error.error || undefined
@@ -58,6 +59,7 @@ function generateRouteExecution(this: IController, property) {
                         let error = Resp.error(err);
                         if(!res.headersSent){
                             res.status(error.code).json({
+                                code: error.code,
                                 status: error.status,
                                 message: error.message,
                                 error: error.error || undefined
@@ -76,6 +78,7 @@ function generateRouteExecution(this: IController, property) {
                                         let error = Resp.error(err);
                                         if(!res.headersSent){
                                             res.status(error.code).json({
+                                                code: error.code,
                                                 status: error.status,
                                                 message: error.message,
                                                 error: error.error || undefined
@@ -99,6 +102,7 @@ function generateRouteExecution(this: IController, property) {
                                         let error = Resp.error(err);
                                         if(!res.headersSent){
                                             res.status(error.code).json({
+                                                code: error.code,
                                                 status: error.status,
                                                 message: error.message,
                                                 error: error.error || undefined
@@ -109,7 +113,6 @@ function generateRouteExecution(this: IController, property) {
                                 else {
                                     let value = responseValue as ResponseBody;
                                     let body = Object.__base__clone<any>(value);
-                                    delete body.code;
                                     res.status(value.code).json(body);
                                 }
                             }
@@ -124,6 +127,7 @@ function generateRouteExecution(this: IController, property) {
                         let error = Resp.error(e);
                         if(!res.headersSent){
                             res.status(error.code).json({
+                                code: error.code,
                                 status: error.status,
                                 message: error.message,
                                 error: error.error || undefined
@@ -147,6 +151,7 @@ function generateRouteExecution(this: IController, property) {
             let error = Resp.error(e);
             if(!res.headersSent){
                 res.status(error.code).json({
+                    code: error.code,
                     status: error.status,
                     message: error.message,
                     error: error.error || undefined
@@ -174,6 +179,7 @@ export class ControllerImp implements IController {
     protected logger: ILogger;
     constructor() {
         this.subApp = express();
+        this.subApp.set("etag", false);
         this.logger = getDependency<ILogger>(LOGGER_SERVICE);
         this.register();
     }

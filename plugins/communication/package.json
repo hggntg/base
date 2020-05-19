@@ -1,6 +1,6 @@
 {
 	"name": "@base-plugins/communication",
-	"version": "1.0.128",
+	"version": "1.0.138",
 	"description": "Plugin for base project to add @base/communication to @base/builder",
 	"main": "index.js",
 	"types": "index.d.ts",
@@ -17,11 +17,11 @@
 		"@base/communication"
 	],
 	"dependencies": {
-		"@base/communication": "^1.0.152"
+		"@base/communication": "^1.0.158"
 	},
 	"devDependencies": {
-		"@base/builder": "^1.0.141",
-		"@types/node": "^12.12.29",
+		"@base/builder": "^1.0.147",
+		"@types/node": "^12.12.34",
 		"inversify": "^5.0.1",
 		"reflect-metadata": "^0.1.13"
 	}

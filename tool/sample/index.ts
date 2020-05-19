@@ -11,9 +11,8 @@ extendClass(Main, App);
 
 export const app: IMain = getDependency<IMain>(APP_SERVICE);
 
-app.initValue({
+app.init({
     appName: "your-app-name",
-    logTag: "your-log-tag",
     root: __dirname,
     aliases: {
         "app": __dirname
@@ -24,4 +23,4 @@ let configPath: string = path.join(process.cwd(), ".env");
 app.loadConfig(configPath);
 
 app.start();
-app.log("Hello I'm base project");
+console.log("Hello I'm base project");

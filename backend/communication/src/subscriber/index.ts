@@ -17,7 +17,7 @@ export class Subscriber implements ISubscriber{
             this.conn.createChannel().then(channel => {
                 channel.assertExchange(this.exchangeName, "fanout", { durable: false });
                 channel.assertQueue("", { exclusive: true }).then(q => {
-                    console.log("[*] Waiting for messages in " + q.queue);
+                    console.info("[*] Waiting for messages in " + q.queue);
                     channel.bindQueue(q.queue, this.exchangeName, "");
                     channel.consume(q.queue, (msg) => {
                         this.event.emit("data", { err: null, data: Communication.reverseBody(msg.content.toString()) });

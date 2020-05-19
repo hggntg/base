@@ -68,7 +68,7 @@ export class Server implements IServer {
         }).catch((err: Error) => {
             if(err.name === "WRONG_QUEUE_OPTIONS"){
                 return this.listenInBack(options, true).then(() => {
-                    console.log(err.message);
+                    console.info(err.message);
                     return true;
                 });
             }
@@ -78,7 +78,7 @@ export class Server implements IServer {
         });
     }
     publish() {
-        console.log("publish");
+        console.info("publish");
     }
     listen(options: IListenOption) {
         this.event.emit("LISTEN", options);

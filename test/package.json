@@ -1,0 +1,27 @@
+{
+	"name": "test",
+	"version": "1.0.0",
+	"description": "",
+	"main": "index.js",
+	"scripts": {
+		"test": "echo \"Error: no test specified\" && exit 1"
+	},
+	"author": "",
+	"license": "ISC",
+	"baseDependencies": [
+		"@base/builder",
+		"@base/new-database"
+	],
+	"dependencies": {
+		"@base/builder": "^1.0.147",
+		"@base/new-database": "0.0.12"
+	},
+	"devDependencies": {
+		"@types/node": "^14.0.1",
+		"@types/webpack": "^4.41.13",
+		"inversify": "^5.0.1",
+		"reflect-metadata": "^0.1.13",
+		"ts-loader": "^7.0.4",
+		"typescript": "^3.9.2"
+	}
+}

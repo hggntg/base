@@ -1,3 +1,5 @@
+import jwt from "jsonwebtoken";
+
 export interface IJwtObject {
     idt: string;
     prs: [];
@@ -14,12 +16,18 @@ export interface IJwToken {
     id: string;
     privateToken: string;
     publicToken: string;
+    secret: string;
+    info: IJwtObject;
+    options: jwt.SignOptions;
     exp: number
 };
 
 export interface ITokenPair {
     publicToken: string;
     privateToken: string;
+    secret: string;
+    info: IJwtObject;
+    options: jwt.SignOptions;
 }
 
 export interface ILogoutToken {
@@ -71,8 +79,16 @@ export class JwToken implements IJwToken {
     @Property(String, { required: true })
     publicToken: string;
 
+    @Property(String)
+    secret: string;
+
+    @Property(PropertyTypes.Any)
+    options: jwt.SignOptions;
+
     @Property(Number, { required: true })
     exp: number;
+    @Property(JwtObject)
+    info: IJwtObject;
 }
 
 export class TokenPair implements ITokenPair {
@@ -80,4 +96,10 @@ export class TokenPair implements ITokenPair {
     publicToken: string;    
     @Property(String)
     privateToken: string;
+    @Property(String)
+    secret: string;
+    @Property(PropertyTypes.Any)
+    options: jwt.SignOptions;
+    @Property(JwtObject)
+    info: IJwtObject;
 }
