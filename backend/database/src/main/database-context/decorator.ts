@@ -5,9 +5,7 @@ import { IDbContextMetadata, ICollection, IBaseEntity, DatabaseConnectionOptions
 export function DBContext(uri: string, connectionOptions: DatabaseConnectionOptions) {
 	return function (target: object) {
 		let dbContext: IDbContextMetadata = getDbContextMetadata(target);
-		if (!dbContext) {
-			dbContext = new DbContextMetadata();
-		}
+		if (!dbContext) dbContext = new DbContextMetadata();
 		connectionOptions.useNewUrlParser = true;
 		connectionOptions.useCreateIndex = true;
 		connectionOptions.useFindAndModify = false;

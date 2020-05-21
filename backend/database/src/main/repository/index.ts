@@ -15,9 +15,7 @@ export class RepositoryRestCommandForOne<K, T extends IBaseEntity<K>> implements
 			namespace.remove("repository-query");
 			return repositoryQuery;
 		}
-		else {
-			throw new Error("DbContext change detector not exists");
-		}
+		else throw new Error("DbContext change detector not exists");
 	}
 	update(data: K): Promise<Partial<K>> {
 		try {
@@ -65,9 +63,7 @@ export class RepositoryRestCommandForOne<K, T extends IBaseEntity<K>> implements
 				if (query) return query["remove"]();
 				else throw new Error("DbContext change detector not exists")
 			}
-			else {
-				throw new Error("DbContext change detector not exists");
-			}
+			else throw new Error("DbContext change detector not exists");
 		}
 		catch (e) {
 			throw e;

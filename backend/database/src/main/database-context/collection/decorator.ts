@@ -6,22 +6,14 @@ import { getEntityUIList, getEntityUI } from "@app/main/entity";
 
 export function DCollection<K, T extends IBaseEntity<K>>(classImp: {new() : T}){
 	return function(target: object, propertyKey: string){
-		Property(Object);
+		Property(classImp);
 		let dbContextMetadata: IDbContextMetadata = getDbContextMetadata(target);
 		let collectionMetadata: ICollectionMetadata = getCollectionMetadata(classImp);
 		let entityUIList: IEntityUIList = getEntityUIList(target);
-		if(!dbContextMetadata){
-			dbContextMetadata = new DbContextMetadata();
-		}
-		if(!collectionMetadata){
-			collectionMetadata = new CollectionMetadata();
-		}
-		if (!dbContextMetadata.classes) {
-			dbContextMetadata.classes = {};
-		}
-		if(!collectionMetadata.dbContextClass){
-			collectionMetadata.dbContextClass = getClass(target);
-		}
+		if(!dbContextMetadata) dbContextMetadata = new DbContextMetadata();
+		if(!collectionMetadata) collectionMetadata = new CollectionMetadata();
+		if (!dbContextMetadata.classes) dbContextMetadata.classes = {};
+		if(!collectionMetadata.dbContextClass) collectionMetadata.dbContextClass = getClass(target);
 		dbContextMetadata.classes[propertyKey] = classImp;
 
 		let entityUI = getEntityUI(getClass(classImp));
@@ -36,9 +28,7 @@ export function DCollection<K, T extends IBaseEntity<K>>(classImp: {new() : T}){
 			newVal.initValue({classImp: classImp});
 			let constantName = `Collection<${classImp.name}>`;
 			let isExists = checkConstant(COLLECTION_SERVICE, constantName);
-			if(!isExists){
-				registerConstant(COLLECTION_SERVICE, newVal, constantName);
-			}
+			if(!isExists) registerConstant(COLLECTION_SERVICE, newVal, constantName);
 			Object.defineProperty(target, propertyKey, {
 				configurable: true,
 				enumerable: true,

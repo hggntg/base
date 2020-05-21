@@ -64,9 +64,7 @@ export class Cache implements ICache {
                         let values = replies[1];
                         let keys = [];
                         values.map((reply, index) => {
-                            if(index % 2 === 0){
-                                keys.push(reply);
-                            }
+                            if(index % 2 === 0) keys.push(reply);
                         });     
                         if(keys.length > 0)  resolve(Cache.client.hdel(collectionHash, keys));
                         else resolve(true);
@@ -142,9 +140,7 @@ export class Cache implements ICache {
         let keys = Cache.queryHashList[collectionHash];
         if(keys){
             delete Cache.queryHashList[collectionHash];
-            if(keys.length > 0){
-                return Cache.client.hdel(collectionHash, keys)
-            }
+            if(keys.length > 0) return Cache.client.hdel(collectionHash, keys)
             return true;
         }
         return true;

@@ -128,18 +128,14 @@ export class DatabaseContext implements IDatabaseContext {
 						if (change.data) {
 							cmd = new Promise((resolve, reject) => {
 								document.updateOne(change.data, (err, raw) => {
-									if (err) {
-										reject(err);
-									}
+									if (err) reject(err);
 									else {
 										if(dbContext.useEventStore){
 											eventStore.write(metadata)
 											.then(() => resolve(document))
 											.catch(e => reject(e));
 										}
-										else {
-											resolve(document);
-										}
+										else resolve(document);
 									}
 								});
 							})
@@ -151,9 +147,7 @@ export class DatabaseContext implements IDatabaseContext {
 								return eventStore.write(metadata);
 							});
 						}
-						else {
-							cmd = document.remove();
-						}
+						else cmd = document.remove();
 					}
 					if (!cmd) {
 						cmd = document.save().then((doc) => {
@@ -162,25 +156,17 @@ export class DatabaseContext implements IDatabaseContext {
 									return doc;
 								})
 							}
-							else {
-								return doc;
-							}
+							else return doc;
 						});
 					}
 					promiseList.push(cmd);
 				}
 				return Promise.all(promiseList).catch(err => {
 					if(err.name === 'MongoError'){
-						if(err.code === 11000){
-							throw new BaseError(409, 11000, "Duplicate document");
-						}
-						else {
-							throw new BaseError(500, err.code, err.message);
-						}
+						if(err.code === 11000) throw new BaseError(409, 11000, "Duplicate document");
+						else throw new BaseError(500, err.code, err.message);
 					}
-					else{
-						throw err;
-					}
+					else throw err;
 				});
 			}
 			catch (e) {
@@ -193,9 +179,7 @@ export class DatabaseContext implements IDatabaseContext {
 						dbContext.context.removeById(currentId, "documents");
 						dbContext.context.removeById(currentId, "session");
 						dbContext.context.removeById(currentId, "metadatas");
-						if (err) {
-							reject(err);
-						}
+						if (err) reject(err);
 						else {
 							if(dbContext.useCache) cache.clearAll();
 							resolve(result);
@@ -215,12 +199,8 @@ export class DatabaseContext implements IDatabaseContext {
 							dbContext.context.removeById(currentId, "documents");
 							dbContext.context.removeById(currentId, "session");
 							dbContext.context.removeById(currentId, "metadatas");
-							if (error) {
-								reject(error);
-							}
-							else {
-								reject(err)
-							}
+							if (error) reject(error);
+							else reject(err);
 						});
 					});
 				});
@@ -334,17 +314,13 @@ export class DatabaseContext implements IDatabaseContext {
 					mongoose.plugin(plugin);
 				});
 			}
-			else {
-				mongoose.plugin(plugins);
-			}
+			else mongoose.plugin(plugins);
 		}
 	}
 	private getDbContextSession(): IDatabaseContextSession {
 		let dbContext: IDbContextMetadata = getDbContextMetadata(this);
 		let session = dbContext.context.get<Promise<mongoose.ClientSession>>("session");
-		if (!session) {
-			session = dbContext.connection.startSession();
-		}
+		if (!session) session = dbContext.connection.startSession();
 		let dbContextSession: IDatabaseContextSession = new DbContextSession(session);
 		dbContextSession.documents = dbContext.context.get<Array<IDocumentChange>>("documents") || [];
 		dbContextSession.metadatas = dbContext.context.get<Array<IMetadata>>("metadatas") || [];

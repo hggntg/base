@@ -37,9 +37,7 @@ function generateRemovedFields<K, T>(selected: any[], classImp: { new(): T }, ro
 				name = bridge.name + "_" + name;
 			}
 			let index = selecetedPaths.indexOf(name);
-			if (index >= 0) {
-				root.populate(selected[index]);
-			}
+			if (index >= 0) root.populate(selected[index]);
 			else {
 				if ((<any>foreignField).bridgeEntity) {
 					let refInstance = getDependency(BASE_ENTITY_SERVICE, foreignField.relatedEntity.name);
@@ -62,9 +60,7 @@ function generateRemovedFields<K, T>(selected: any[], classImp: { new(): T }, ro
 						relatedEntity: foreignField.relatedEntity
 					};
 				}
-				else {
-					root.populate(name);
-				}
+				else root.populate(name);
 			}
 		}
 		if (!removedField) removedField = { type: foreignField.type, localField: foreignField.localField, name: foreignField.name, load: foreignField.load, relatedEntity: foreignField.relatedEntity };
@@ -99,44 +95,32 @@ function toSinglePromise<K, T>(classImp: { new(): T }, type: "query" | "document
 											id: refDocument._id
 										});
 									}
-									else {
-										document[removedField.name].push(refDocument);
-									}
+									else document[removedField.name].push(refDocument);
 								});
 								delete document[localField];
 							}
 						}
 						else {
 							if (removedField.load === "lazy") {
-								if (removedField.type === "one-to-one") {
-									document[removedField.name] = { _id: document[removedField.localField], id: document[removedField.localField] };
-								}
+								if (removedField.type === "one-to-one")document[removedField.name] = { _id: document[removedField.localField], id: document[removedField.localField] };
 								else {
 									if (document[removedField.name] && Array.isArray(document[removedField.name])) {
 										document[removedField.name] = document[removedField.name].map(doc => {
-											if (doc && doc._id) {
-												doc = { _id: doc._id, id: doc._id };
-											}
-											else {
-												doc = { _id: doc, id: doc };
-											}
+											if (doc && doc._id) doc = { _id: doc._id, id: doc._id };
+											else doc = { _id: doc, id: doc };
 											return doc;
 										})
 									}
 								}
 							}
-							if (removedField.type === "one-to-one") {
-								delete document[removedField.localField];
-							}
+							if (removedField.type === "one-to-one") delete document[removedField.localField];
 						}
 						if (document[removedField.name]) {
 							let refInstance = getDependency<IBaseEntity>(BASE_ENTITY_SERVICE, removedField.relatedEntity.name);
 							let refRemovedFields: TRemovedFieldType[] = generateRemovedFields<K, T>([], getClass(refInstance));
 							if (removedField.type === "one-to-one") {
 								refRemovedFields.map((refRemovedField) => {
-									if (refRemovedField.type === "one-to-one") {
-										delete document[removedField.name][refRemovedField.localField];
-									}
+									if (refRemovedField.type === "one-to-one") delete document[removedField.name][refRemovedField.localField];
 								});
 							}
 							else {
@@ -156,9 +140,7 @@ function toSinglePromise<K, T>(classImp: { new(): T }, type: "query" | "document
 					document = removeMongooseField(document);
 					resolve(document as Partial<K>);
 				}
-				else {
-					resolve(null);
-				}
+				else resolve(null);
 			}).catch(err => {
 				reject(err);
 			});
@@ -170,45 +152,31 @@ function toSinglePromise<K, T>(classImp: { new(): T }, type: "query" | "document
 				let document = doc.toObject();
 				removedFields.map((removedField) => {
 					if (removedField.load === "lazy") {
-						if (removedField.type === "one-to-one") {
-							document[removedField.name] = { _id: document[removedField.localField], id: document[removedField.localField] };
-						}
-						else {
-							if (document[removedField.name] && Array.isArray(document[removedField.name])) {
-								document[removedField.name] = document[removedField.name].map(doc => {
-									if (doc && doc._id) {
-										doc = { _id: doc._id, id: doc._id };
-									}
-									else {
-										doc = { _id: doc, id: doc };
-									}
-									return doc;
-								})
-							}
+						if (removedField.type === "one-to-one") document[removedField.name] = { _id: document[removedField.localField], id: document[removedField.localField] };
+						else if (document[removedField.name] && Array.isArray(document[removedField.name])) {
+							document[removedField.name] = document[removedField.name].map(doc => {
+								if (doc && doc._id) doc = { _id: doc._id, id: doc._id };
+								else doc = { _id: doc, id: doc };
+								return doc;
+							})
 						}
 					}
-					if (removedField.type === "one-to-one") {
-						delete document[removedField.localField];
-					}
+					if (removedField.type === "one-to-one") delete document[removedField.localField];
 					if (document[removedField.name]) {
 						let refInstance = getDependency<IBaseEntity>(BASE_ENTITY_SERVICE, removedField.relatedEntity.name);
 						let refRemovedFields: TRemovedFieldType[] = generateRemovedFields<K, T>([], getClass(refInstance));
 						if (removedField.type === "one-to-one") {
 							refRemovedFields.map((refRemovedField) => {
-								if (refRemovedField.type === "one-to-one") {
-									delete document[removedField.name][refRemovedField.localField];
-								}
+								if (refRemovedField.type === "one-to-one") delete document[removedField.name][refRemovedField.localField];
 							});
 						}
 						else {
 							refRemovedFields.map((refRemovedField) => {
-								if (refRemovedField.type === "one-to-one") {
-									if (Array.isArray(document[removedField.name])) {
-										document[removedField.name] = document[removedField.name].map(doc => {
-											delete doc[refRemovedField.localField];
-											return doc;
-										})
-									}
+								if (refRemovedField.type === "one-to-one" && Array.isArray(document[removedField.name])) {
+									document[removedField.name] = document[removedField.name].map(doc => {
+										delete doc[refRemovedField.localField];
+										return doc;
+									})
 								}
 							});
 						}
@@ -217,9 +185,7 @@ function toSinglePromise<K, T>(classImp: { new(): T }, type: "query" | "document
 				document = removeMongooseField(document);
 				resolve(document as Partial<K>);
 			}
-			else {
-				resolve(null);
-			}
+			else resolve(null);
 		}
 	});
 }
@@ -251,54 +217,38 @@ function toListPromise<K, T>(classImp: { new(): T }, type: "query" | "aggregate"
 											id: refDocument._id
 										});
 									}
-									else {
-										document[removedField.name].push(refDocument);
-									}
+									else document[removedField.name].push(refDocument);
 								});
 								delete document[localField];
 							}
 						}
 						else {
 							if (removedField.load === "lazy") {
-								if (removedField.type === "one-to-one") {
-									document[removedField.name] = { _id: document[removedField.localField], id: document[removedField.localField] };
-								}
-								else {
-									if (document[removedField.name] && Array.isArray(document[removedField.name])) {
-										document[removedField.name] = document[removedField.name].map(doc => {
-											if (doc && doc._id) {
-												doc = { _id: doc._id, id: doc._id };
-											}
-											else {
-												doc = { _id: doc, id: doc };
-											}
-										})
-									}
+								if (removedField.type === "one-to-one") document[removedField.name] = { _id: document[removedField.localField], id: document[removedField.localField] };
+								else if (document[removedField.name] && Array.isArray(document[removedField.name])) {
+									document[removedField.name] = document[removedField.name].map(doc => {
+										if (doc && doc._id) doc = { _id: doc._id, id: doc._id };
+										else doc = { _id: doc, id: doc };
+									})
 								}
 							}
-							if (removedField.type === "one-to-one") {
-								delete document[removedField.localField];
-							}
+							if (removedField.type === "one-to-one") delete document[removedField.localField];
 						}
 						if (document[removedField.name]) {
 							let refInstance = getDependency<IBaseEntity>(BASE_ENTITY_SERVICE, removedField.relatedEntity.name)
 							let refRemovedFields: TRemovedFieldType[] = generateRemovedFields<K, T>([], getClass(refInstance));
 							if (removedField.type === "one-to-one") {
 								refRemovedFields.map((refRemovedField) => {
-									if (refRemovedField.type === "one-to-one") {
-										delete document[removedField.name][refRemovedField.localField];
-									}
+									if (refRemovedField.type === "one-to-one") delete document[removedField.name][refRemovedField.localField];
 								});
 							}
 							else {
 								refRemovedFields.map((refRemovedField) => {
-									if (refRemovedField.type === "one-to-one") {
-										if (Array.isArray(document[removedField.name])) {
-											document[removedField.name] = document[removedField.name].map(doc => {
-												delete doc[refRemovedField.localField];
-												return doc;
-											})
-										}
+									if (refRemovedField.type === "one-to-one" && Array.isArray(document[removedField.name])) {
+										document[removedField.name] = document[removedField.name].map(doc => {
+											delete doc[refRemovedField.localField];
+											return doc;
+										})
 									}
 								});
 							}
@@ -339,9 +289,7 @@ function removeMongooseField(doc) {
 		let docKeyLength = docKeys.length;
 		for (let i = 0; i < docKeyLength; i++) {
 			let key = docKeys[i];
-			if (typeof cloneDoc[key] === "object" && !(cloneDoc[key] instanceof mongoose.Types.ObjectId)) {
-				cloneDoc[key] = removeMongooseField(cloneDoc[key]);
-			}
+			if (typeof cloneDoc[key] === "object" && !(cloneDoc[key] instanceof mongoose.Types.ObjectId)) cloneDoc[key] = removeMongooseField(cloneDoc[key]);
 		}
 	}
 	return cloneDoc;
@@ -358,9 +306,7 @@ function removeId(doc) {
 		let docKeyLength = docKeys.length;
 		for (let i = 0; i < docKeyLength; i++) {
 			let key = docKeys[i];
-			if (typeof cloneDoc[key] === "object" && !(cloneDoc[key] instanceof mongoose.Types.ObjectId)) {
-				cloneDoc[key] = removeId(cloneDoc[key]);
-			}
+			if (typeof cloneDoc[key] === "object" && !(cloneDoc[key] instanceof mongoose.Types.ObjectId)) cloneDoc[key] = removeId(cloneDoc[key]);
 		}
 	}
 	return cloneDoc;
@@ -377,11 +323,7 @@ function replaceSearchKeys(input: object, key: string, replaceKey) {
 				i--;
 				delete input[key];
 			}
-			else {
-				if (typeof input[keys[i]] === "object") {
-					input[keys[i]] = replaceSearchKeys(input[keys[i]], key, replaceKey);
-				}
-			}
+			else if (typeof input[keys[i]] === "object") input[keys[i]] = replaceSearchKeys(input[keys[i]], key, replaceKey);
 		}
 	}
 	return input;
@@ -394,12 +336,8 @@ function parseSelect<T>(classImp: { new(): T }, selected?: string) {
 	foreignFields.map(foreignField => {
 		hides[foreignField.name] = { includes: [], excludes: [] };
 		(foreignField.hide as string[]).map(hideField => {
-			if (hideField.indexOf("-") === 0) {
-				hides[foreignField.name].excludes.push(hideField.substring(1, hideField.length));
-			}
-			else {
-				hides[foreignField.name].includes.push(hideField);
-			}
+			if (hideField.indexOf("-") === 0) hides[foreignField.name].excludes.push(hideField.substring(1, hideField.length));
+			else hides[foreignField.name].includes.push(hideField);
 		});
 		if (hides[foreignField.name].excludes.length === 0) hides[foreignField.name].excludes = undefined;
 		if (hides[foreignField.name].includes.length === 0) hides[foreignField.name].includes = undefined;
@@ -417,9 +355,7 @@ function parseSelect<T>(classImp: { new(): T }, selected?: string) {
 				let innerSelect = select.substring(dotIndex + 1, select.length);
 				rootSelects[rootSelect].push(innerSelect);
 			}
-			else {
-				selectedObject.push(select);
-			}
+			else selectedObject.push(select);
 		});
 		let rootSelectKeys = Object.keys(rootSelects);
 		foreignFields.map((foreignField) => {
@@ -432,16 +368,8 @@ function parseSelect<T>(classImp: { new(): T }, selected?: string) {
 					select: ""
 				}
 				rootSelects[foreignField.name].map(innerSelect => {
-					if (hides[foreignField.name].includes) {
-						if (hides[foreignField.name].includes.includes(innerSelect)) {
-							selectObject.select += "-" + innerSelect + " ";
-						}
-					}
-					else if (hides[foreignField.name].excludes) {
-						if (hides[foreignField.name].excludes.includes(innerSelect)) {
-							selectObject.select += innerSelect + " ";
-						}
-					}
+					if (hides[foreignField.name].includes && hides[foreignField.name].includes.includes(innerSelect)) selectObject.select += "-" + innerSelect + " ";
+					else if (hides[foreignField.name].excludes && hides[foreignField.name].excludes.includes(innerSelect)) selectObject.select += innerSelect + " ";
 				});
 				selectObject.select = selectObject.select.trimRight();
 				if (selectObject.select) selectedObject.push(selectObject);
@@ -470,9 +398,7 @@ function parseSelect<T>(classImp: { new(): T }, selected?: string) {
 				selectObject.select = hide.includes.join(" -");
 				selectObject.select = "-" + selectObject.select;
 			}
-			else if (hide.excludes) {
-				selectObject.select = hide.excludes.join(" ");
-			}
+			else if (hide.excludes) selectObject.select = hide.excludes.join(" ");
 			if (selectObject.select) selectedObject.push(selectObject);
 		});
 	}
@@ -509,9 +435,7 @@ export class CollectionRestCommand<T> implements ICollectionRestCommand<T> {
 				namespace.set("metadatas", metadatas);
 			}
 		}
-		else {
-			throw new Error("DbContext change detector not exists");
-		}
+		else throw new Error("DbContext change detector not exists");
 	}
 	private returnCount(): Promise<number> {
 		let namespace = this.dbContext.context;
@@ -523,14 +447,9 @@ export class CollectionRestCommand<T> implements ICollectionRestCommand<T> {
 				else queryCommand = this.model.find();
 				return queryCommand.countDocuments().then(length => Promise.resolve(length)).catch(e => Promise.reject(e));
 			}
-			else {
-				return Promise.resolve(1);
-			}
+			else return Promise.resolve(1);
 		}
-		else {
-			return Promise.reject(new Error("DbContext change detector not exists"));
-		}
-		return null;
+		else return Promise.reject(new Error("DbContext change detector not exists"));
 	}
 	private returnQuery(): mongoose.Query<any> {
 		let namespace = this.dbContext.context;
@@ -540,9 +459,7 @@ export class CollectionRestCommand<T> implements ICollectionRestCommand<T> {
 			if (query.multi) {
 				if (query.where) queryCommand = this.model.find(query.where);
 				else queryCommand = this.model.find();
-				if (!query.limit) {
-					if (!query.multi) query.limit = 1;
-				}
+				if (!query.limit && !query.multi) query.limit = 1;
 				if (query.skip) queryCommand = queryCommand.skip(query.skip);
 				if (query.limit) queryCommand = queryCommand.limit(query.limit);
 				if (query.sort) queryCommand = queryCommand.sort(query.sort);
@@ -554,14 +471,11 @@ export class CollectionRestCommand<T> implements ICollectionRestCommand<T> {
 			namespace.set("query", query);
 			return queryCommand;
 		}
-		else {
-			throw new Error("DbContext change detector not exists");
-		}
-		return null;
+		else throw new Error("DbContext change detector not exists");
 	}
 	update(data: T) {
 		let query: mongoose.Query<any> = this.returnQuery();
-		// this.dbContext.context.remove("query");
+		this.dbContext.context.remove("query");
 		let model = this.model;
 		let entity = this.entity;
 		let entitySchema = getEntitySchema(entity);
@@ -571,9 +485,7 @@ export class CollectionRestCommand<T> implements ICollectionRestCommand<T> {
 		foreignFields.map((foreignField) => {
 			changeData = replaceSearchKeys(changeData as any, foreignField.name, foreignField.localField) as any;
 			if (changeData[foreignField.localField] && typeof changeData[foreignField.localField] === "object" && !Array.isArray(changeData[foreignField.localField])) {
-				if (changeData[foreignField.localField]._id) {
-					changeData[foreignField.localField] = changeData[foreignField.localField]._id;
-				}
+				if (changeData[foreignField.localField]._id) changeData[foreignField.localField] = changeData[foreignField.localField]._id;
 			}
 		});
 
@@ -623,12 +535,8 @@ export class CollectionRestCommand<T> implements ICollectionRestCommand<T> {
 							let preDocumentMiddleware = middleware as IFakePreDocument<typeof entity>;
 							if (preDocumentMiddleware.hook === "save") {
 								(<HookSyncCallback<Document & typeof entity>>preDocumentMiddleware.arg0).apply(tempDocument, [(err) => {
-									if (err) {
-										throw err;
-									}
-									else {
-										return;
-									}
+									if (err) throw err;
+									else return;
 								}]);
 							}
 						}
@@ -640,20 +548,12 @@ export class CollectionRestCommand<T> implements ICollectionRestCommand<T> {
 					returnPromises.push(tempDocument.execPopulate().then(doc => {
 						removedFields.map(removedField => {
 							if (removedField.type === "one-to-one") {
-								if (removedField.load === "lazy") {
-									tempDocument.set(removedField.name, { _id: doc[removedField.name], id: doc[removedField.name] });
-								}
+								if (removedField.load === "lazy") tempDocument.set(removedField.name, { _id: doc[removedField.name], id: doc[removedField.name] });
 								else {
-									if (!tempDocument[removedField.name]) {
-										tempDocument.set(removedField.name, doc[removedField.name]);
-									}
+									if (!tempDocument[removedField.name]) tempDocument.set(removedField.name, doc[removedField.name]);
 									else {
-										if (typeof doc[removedField.name].toObject === "function") {
-											tempDocument.set(removedField.name, doc[removedField.name].toObject());
-										}
-										else {
-											tempDocument.set(removedField.name, doc[removedField.name]);
-										}
+										if (typeof doc[removedField.name].toObject === "function") tempDocument.set(removedField.name, doc[removedField.name].toObject());
+										else tempDocument.set(removedField.name, doc[removedField.name]);
 									}
 								}
 							}
@@ -699,9 +599,7 @@ export class CollectionRestCommand<T> implements ICollectionRestCommand<T> {
 								let currentValue = tempDocument.get(keys[index]);
 								value.map(v => {
 									let index = currentValue.indexOf(v);
-									if (index < 0) {
-										currentValue.push(v);
-									}
+									if (index < 0) currentValue.push(v);
 								});
 								tempDocument.set(keys[index], currentValue);
 							});
@@ -712,12 +610,8 @@ export class CollectionRestCommand<T> implements ICollectionRestCommand<T> {
 							let preDocumentMiddleware = middleware as IFakePreDocument<typeof entity>;
 							if (preDocumentMiddleware.hook === "save") {
 								(<HookSyncCallback<Document & typeof entity>>preDocumentMiddleware.arg0).apply(tempDocument, [(err) => {
-									if (err) {
-										throw err;
-									}
-									else {
-										return;
-									}
+									if (err) throw err;
+									else return;
 								}]);
 							}
 						}
@@ -727,20 +621,12 @@ export class CollectionRestCommand<T> implements ICollectionRestCommand<T> {
 					return tempDocument.execPopulate().then(doc => {
 						removedFields.map(removedField => {
 							if (removedField.type === "one-to-one") {
-								if (removedField.load === "lazy") {
-									tempDocument.set(removedField.name, { _id: doc[removedField.name], id: doc[removedField.name] });
-								}
+								if (removedField.load === "lazy") tempDocument.set(removedField.name, { _id: doc[removedField.name], id: doc[removedField.name] });
 								else {
-									if (!tempDocument[removedField.name]) {
-										tempDocument.set(removedField.name, doc[removedField.name]);
-									}
+									if (!tempDocument[removedField.name]) tempDocument.set(removedField.name, doc[removedField.name]);
 									else {
-										if (typeof doc[removedField.name].toObject === "function") {
-											tempDocument.set(removedField.name, doc[removedField.name].toObject());
-										}
-										else {
-											tempDocument.set(removedField.name, doc[removedField.name]);
-										}
+										if (typeof doc[removedField.name].toObject === "function") tempDocument.set(removedField.name, doc[removedField.name].toObject());
+										else tempDocument.set(removedField.name, doc[removedField.name]);
 									}
 								}
 							}
@@ -758,7 +644,7 @@ export class CollectionRestCommand<T> implements ICollectionRestCommand<T> {
 	}
 	remove(): Promise<Partial<T> | Partial<T>[]> {
 		let query: mongoose.Query<any> = this.returnQuery();
-		// this.dbContext.context.remove("query");
+		this.dbContext.context.remove("query");
 		return query.exec().then(docs => {
 			if (Array.isArray(docs)) {
 				docs = docs.map(doc => {
@@ -775,29 +661,25 @@ export class CollectionRestCommand<T> implements ICollectionRestCommand<T> {
 					docs.id = docs._id;
 					return docs as Partial<T>;
 				}
-				else {
-					return docs;
-				}
+				else return docs;
 			}
 		})
 	}
 	count?(): Promise<number> {
 		let query = this.returnQuery();
 		query = query.countDocuments();
-		// this.dbContext.context.remove("query");
+		this.dbContext.context.remove("query");
 		return query.exec().then(length => Promise.resolve(length)).catch(e => Promise.reject(e));
 	}
 	select?(what?: string): Promise<IQueryResult<T>> {
 		let query = this.returnQuery();
-		// let queryInput = Object.__base__clone<IDocumentQuery>(this.dbContext.context.get<IDocumentQuery>("query"));
-		// this.dbContext.context.remove("query");
+		let queryInput = Object.__base__clone<IDocumentQuery>(this.dbContext.context.get<IDocumentQuery>("query"));
+		this.dbContext.context.remove("query");
 		let cachedResult: Promise<any>;
 		if(this.dbContext.useCache) cachedResult = cache.get(this.model.db.name, this.model.collection.name, query);
 		else cachedResult = Promise.resolve();
 		return cachedResult.then(value => {
-			if(value){
-				return value;
-			}
+			if(value) return value;
 			else {
 				return this.returnCount().then(total => {
 					let selected = parseSelect(this.classImp, what);
@@ -812,53 +694,49 @@ export class CollectionRestCommand<T> implements ICollectionRestCommand<T> {
 						}
 					}
 		
-					// if (queryInput.multi) {
-					// 	let parsedQuery = toListPromise<T, IBaseEntity<T>>(this.classImp, "query", query, selected || []);
-					// 	return parsedQuery.then(value => {
-					// 		let queryResult: IQueryResult<T> = {
-					// 			end: false,
-					// 			numOfRecords: queryInput.limit,
-					// 			value: [],
-					// 			page: Math.ceil(queryInput.skip / queryInput.limit),
-					// 			total: total
-					// 		}
-					// 		if (value) {
-					// 			queryResult.value = value;
-					// 			if ((value.length < queryResult.numOfRecords) || (value.length * queryResult.page === queryResult.total)) {
-					// 				queryResult.end = true;
-					// 			}
-					// 		}
-					// 		else {
-					// 			queryResult.end = true;
-					// 		}
-					// 		if(this.dbContext.useCache) cache.set(this.model.db.name, this.model.collection.name, query, queryResult);
-					// 		return queryResult;
-					// 	}).catch(e => Promise.reject(e));
-					// }
-					// else {
-					// 	let parsedQuery = toSinglePromise<T, IBaseEntity<T>>(this.classImp, "query", query, selected);
-					// 	return parsedQuery.then(value => {
-					// 		let queryResult: IQueryResult<T> = {
-					// 			end: false,
-					// 			numOfRecords: queryInput.limit,
-					// 			value: [],
-					// 			page: Math.ceil(queryInput.skip / queryInput.limit),
-					// 			total: total
-					// 		}
-					// 		queryResult.value = [value];
-					// 		if (value) {
-					// 			queryResult.value = [value];
-					// 			queryResult.numOfRecords = 1;
-					// 			queryResult.page = 1;
-					// 		}
-					// 		else {
-					// 			queryResult.value = [];
-					// 			queryResult.end = true;
-					// 		}
-					// 		if(this.dbContext.useCache) cache.set(this.model.db.name, this.model.collection.name, query, queryResult);
-					// 		return queryResult;
-					// 	}).catch(e => Promise.reject(e));
-					// }
+					if (queryInput.multi) {
+						let parsedQuery = toListPromise<T, IBaseEntity<T>>(this.classImp, "query", query, selected || []);
+						return parsedQuery.then(value => {
+							let queryResult: IQueryResult<T> = {
+								end: false,
+								numOfRecords: queryInput.limit,
+								value: [],
+								page: Math.ceil(queryInput.skip / queryInput.limit),
+								total: total
+							}
+							if (value) {
+								queryResult.value = value;
+								if ((value.length < queryResult.numOfRecords) || (value.length * queryResult.page === queryResult.total)) queryResult.end = true;
+							}
+							else queryResult.end = true;
+							if(this.dbContext.useCache) cache.set(this.model.db.name, this.model.collection.name, query, queryResult);
+							return queryResult;
+						}).catch(e => Promise.reject(e));
+					}
+					else {
+						let parsedQuery = toSinglePromise<T, IBaseEntity<T>>(this.classImp, "query", query, selected);
+						return parsedQuery.then(value => {
+							let queryResult: IQueryResult<T> = {
+								end: false,
+								numOfRecords: queryInput.limit,
+								value: [],
+								page: Math.ceil(queryInput.skip / queryInput.limit),
+								total: total
+							}
+							queryResult.value = [value];
+							if (value) {
+								queryResult.value = [value];
+								queryResult.numOfRecords = 1;
+								queryResult.page = 1;
+							}
+							else {
+								queryResult.value = [];
+								queryResult.end = true;
+							}
+							if(this.dbContext.useCache) cache.set(this.model.db.name, this.model.collection.name, query, queryResult);
+							return queryResult;
+						}).catch(e => Promise.reject(e));
+					}
 				});
 			}
 		});
@@ -886,20 +764,12 @@ function stepPromise(document, hooks) {
 	hooks.splice(0, 1);
 	return new Promise((resolve, reject) => {
 		hook.apply(document, [(err) => {
-			if (err) {
-				reject(err);
-			}
-			else {
-				resolve(document);
-			}
+			if (err) reject(err);
+			else resolve(document);
 		}]);
 	}).then((newDoc) => {
-		if (hooks.length > 0) {
-			return stepPromise(newDoc, hooks);
-		}
-		else {
-			return newDoc;
-		}
+		if (hooks.length > 0) return stepPromise(newDoc, hooks);
+		else return newDoc;
 	}).catch(e => {
 		return Promise.reject(e);
 	});
@@ -939,10 +809,7 @@ export class Collection<K, T extends IBaseEntity<K>> implements ICollection<K, T
 			if (inputQuery.where) query.where = inputQuery.where;
 			namespace.set("query", query);
 		}
-		else {
-			throw new Error("DbContext change detector not exists");
-		}
-		return null;
+		else throw new Error("DbContext change detector not exists");
 	}
 	private setChanges(document: mongoose.Document, contextId?: number, documentId?: number, data?: any) {
 		let namespace = this.dbContext.context;
@@ -1002,10 +869,7 @@ export class Collection<K, T extends IBaseEntity<K>> implements ICollection<K, T
 				}
 			}
 		}
-		else {
-			throw new Error("DbContext change detector not exists");
-		}
-		return null;
+		else throw new Error("DbContext change detector not exists");
 	}
 	private get model(): mongoose.Model<any> {
 		return this.entity.getInstance();
@@ -1054,9 +918,7 @@ export class Collection<K, T extends IBaseEntity<K>> implements ICollection<K, T
 		return this as any;
 	}
 	sort?<Q extends TQueryable<K>>(conditions: any): Pick<Q, Exclude<keyof Q, "sort">> {
-		if (conditions) {
-			this.setQuery({ sort: conditions });
-		}
+		if (conditions) this.setQuery({ sort: conditions });
 		return this as any;
 	}
 	aggregate(pipelines: any[], options: IAggregateOption = {
@@ -1085,20 +947,12 @@ export class Collection<K, T extends IBaseEntity<K>> implements ICollection<K, T
 				if(this.dbContext.useCache) cache.setMaybeClear(model.db.name, model.collection.name);
 				removedFields.map(removedField => {
 					if (removedField.type === "one-to-one") {
-						if (removedField.load === "lazy") {
-							newDoc.set(removedField.name, { _id: doc[removedField.name], id: doc[removedField.name] });
-						}
+						if (removedField.load === "lazy") newDoc.set(removedField.name, { _id: doc[removedField.name], id: doc[removedField.name] });
 						else {
-							if (!newDoc[removedField.name]) {
-								newDoc.set(removedField.name, doc[removedField.name]);
-							}
+							if (!newDoc[removedField.name]) newDoc.set(removedField.name, doc[removedField.name]);
 							else {
-								if (typeof doc[removedField.name].toObject === "function") {
-									newDoc.set(removedField.name, doc[removedField.name].toObject());
-								}
-								else {
-									newDoc.set(removedField.name, doc[removedField.name]);
-								}
+								if (typeof doc[removedField.name].toObject === "function") newDoc.set(removedField.name, doc[removedField.name].toObject());
+								else newDoc.set(removedField.name, doc[removedField.name]);
 							}
 						}
 					}
@@ -1108,9 +962,7 @@ export class Collection<K, T extends IBaseEntity<K>> implements ICollection<K, T
 				entitySchema.middleware.map(middleware => {
 					if (middleware.type === "preDocument") {
 						let preDocumentMiddleware = middleware as IFakePreDocument<typeof entity>;
-						if (preDocumentMiddleware.hook === "save") {
-							hooks.push((<HookSyncCallback<Document & typeof entity>>preDocumentMiddleware.arg0));
-						}
+						if (preDocumentMiddleware.hook === "save") hooks.push((<HookSyncCallback<Document & typeof entity>>preDocumentMiddleware.arg0));
 					}
 				});
 				if (hooks.length > 0) {
@@ -1119,12 +971,8 @@ export class Collection<K, T extends IBaseEntity<K>> implements ICollection<K, T
 						let documentKeys = Object.keys(newDocument);
 						Object.values(newDocument).map((value, index) => {
 							let key = documentKeys[index];
-							if (value && (<any>value).id && (<any>value)._id) {
-								document[key] = (<any>value)._id;
-							}
-							else {
-								document[key] = value;
-							}
+							if (value && (<any>value).id && (<any>value)._id) document[key] = (<any>value)._id;
+							else document[key] = value;
 						});
 						this.setChanges(document, namespaceContext.contextId, namespaceContext.documentId);
 						return newDocument;
@@ -1160,20 +1008,12 @@ export class Collection<K, T extends IBaseEntity<K>> implements ICollection<K, T
 				let newDocPromise = newDoc.execPopulate().then(doc => {
 					removedFields.map(removedField => {
 						if (removedField.type === "one-to-one") {
-							if (removedField.load === "lazy") {
-								newDoc.set(removedField.name, { _id: doc[removedField.name], id: doc[removedField.name] });
-							}
+							if (removedField.load === "lazy") newDoc.set(removedField.name, { _id: doc[removedField.name], id: doc[removedField.name] });
 							else {
-								if (!newDoc[removedField.name]) {
-									newDoc.set(removedField.name, doc[removedField.name]);
-								}
+								if (!newDoc[removedField.name]) newDoc.set(removedField.name, doc[removedField.name]);
 								else {
-									if (typeof doc[removedField.name].toObject === "function") {
-										newDoc.set(removedField.name, doc[removedField.name].toObject());
-									}
-									else {
-										newDoc.set(removedField.name, doc[removedField.name]);
-									}
+									if (typeof doc[removedField.name].toObject === "function") newDoc.set(removedField.name, doc[removedField.name].toObject());
+									else newDoc.set(removedField.name, doc[removedField.name]);
 								}
 							}
 						}
@@ -1183,9 +1023,7 @@ export class Collection<K, T extends IBaseEntity<K>> implements ICollection<K, T
 					entitySchema.middleware.map(middleware => {
 						if (middleware.type === "preDocument") {
 							let preDocumentMiddleware = middleware as IFakePreDocument<typeof entity>;
-							if (preDocumentMiddleware.hook === "save") {
-								hooks.push((<HookSyncCallback<Document & typeof entity>>preDocumentMiddleware.arg0));
-							}
+							if (preDocumentMiddleware.hook === "save") hooks.push((<HookSyncCallback<Document & typeof entity>>preDocumentMiddleware.arg0));
 						}
 					});
 					if (hooks.length > 0) {
@@ -1194,12 +1032,8 @@ export class Collection<K, T extends IBaseEntity<K>> implements ICollection<K, T
 							let documentKeys = Object.keys(newDocument);
 							Object.values(newDocument).map((value, index) => {
 								let key = documentKeys[index];
-								if (value && (<any>value).id && (<any>value)._id) {
-									document[key] = (<any>value)._id;
-								}
-								else {
-									document[key] = value;
-								}
+								if (value && (<any>value).id && (<any>value)._id) document[key] = (<any>value)._id;
+								else document[key] = value;
 							});
 							this.setChanges(document, namespaceContext.contextId, namespaceContext.documentId);
 							return newDocument;
