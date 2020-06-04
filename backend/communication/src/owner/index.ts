@@ -60,6 +60,10 @@ export class Owner implements IOwner {
                 method: task.ownerJobRequest.method,
                 args: task.ownerJobRequest.args
             };
+            delete task.ownerJobRequest.args;
+            delete task.ownerJobRequest.method;
+            delete task.ownerJobRequest.priority;
+            jobRequest = {...jobRequest, ...(task.ownerJobRequest || {})}
             Communication.compress(Communication.ensureBodyString({
                 from: task.jobQueue,
                 content: jobRequest

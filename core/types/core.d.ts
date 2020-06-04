@@ -54,7 +54,7 @@ declare function wrapInTryCatch<T>(fn: Function): T;
 interface IBaseConstructor<T> {
     isInstance(input: any): boolean;
     asInstance(input: any): T;
-    has(key: string | number): boolean;
+    has(input: any, key: string | number): boolean;
 }
 
 interface ISystem {

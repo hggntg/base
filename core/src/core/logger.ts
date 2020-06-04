@@ -281,6 +281,17 @@ if("undefined" === typeof global["logger"]){
 }
 
 if("undefined" === typeof global["generateLog"]) {
+    function convertFunction(input){
+        Object.keys(input || {}).map(k => {
+            if(typeof input[k] === "function"){
+                input[k] = `[Function ${input[k].name}]`;
+            }
+            else if(typeof input[k] === "object"){
+                input[k] = convertFunction(input[k]);
+            }
+        });
+        return input;
+    }
     global["generateLog"] = function(): string{
         let length = arguments.length;
         let outputMessage = [];
@@ -306,8 +317,10 @@ if("undefined" === typeof global["generateLog"]) {
                 outputMessage.push(arguments[key].stack);
             }
             else if(typeof arguments[key] === "object"){
-                if(typeof arguments[key].toString === "function" && !Array.isArray(arguments[key]) && arguments[key].toString() !== "[object Object]") outputMessage.push(arguments[key].toString());
-                else outputMessage.push(JSON.__base__circularStringify(arguments[key]));    
+                // let arg = Object.__base__clone(arguments[key]);
+                let  arg = arguments[key];
+                if(typeof arg.toString === "function" && !Array.isArray(arg) && arg.toString() !== "[object Object]") outputMessage.push(arg.toString());
+                else outputMessage.push(JSON.__base__circularStringify(arg));    
             }
             else {
                 outputMessage.push(arguments[key]);

@@ -45,25 +45,25 @@ if ("undefined" === typeof global["DynamicProperty"]) {
 }
 
 if ("undefined" === typeof global["PropertyArray"]) {
-    global["PropertyArray"] = function PropertyArray(type: { new(...args: any[]): any } | PropertyTypeLiteral | PropertyTypeList): PropertyType {
+    global["PropertyArray"] = function PropertyArray(type: { new(...args: any[]): any } | PropertyTypeLiteral | PropertyTypeList): PropertyTypeList {
         return {
             type: "list",
             value: type
-        } as PropertyType
+        } as PropertyTypeList
     }
 }
 
 if ("undefined" === typeof global["PropertyMap"]) {
-    global["PropertyMap"] = function PropertyMap(type: { new(...args: any[]): any }): PropertyType {
+    global["PropertyMap"] = function PropertyMap(type: { new(...args: any[]): any }): PropertyTypeMap {
         return {
             type: "map",
             value: type
-        } as PropertyType;
+        } as PropertyTypeMap;
     }
 }
 
 if ("undefined" === typeof global["PropertyLiteral"]) {
-    global["PropertyLiteral"] = function PropertyLiteral(type: PropertyTypeValue, ...moreType: PropertyTypeValue[]) {
+    global["PropertyLiteral"] = function PropertyLiteral(type: PropertyTypeValue, ...moreType: PropertyTypeValue[]): PropertyTypeLiteral {
         moreType.unshift(type);
         let literalProperty: PropertyTypeLiteral = {
             type: "literal",

@@ -379,25 +379,25 @@ if ("undefined" === typeof global["DynamicProperty"]) {
 }
 
 if ("undefined" === typeof global["PropertyArray"]) {
-    global["PropertyArray"] = function PropertyArray(type: { new(...args: any[]): any } | PropertyTypeLiteral | PropertyTypeList): PropertyType {
+    global["PropertyArray"] = function PropertyArray(type: { new(...args: any[]): any } | PropertyTypeLiteral | PropertyTypeList): PropertyTypeList {
         return {
             type: "list",
             value: type
-        } as PropertyType
+        } as PropertyTypeList
     }
 }
 
 if ("undefined" === typeof global["PropertyMap"]) {
-    global["PropertyMap"] = function PropertyMap(type: { new(...args: any[]): any }): PropertyType {
+    global["PropertyMap"] = function PropertyMap(type: { new(...args: any[]): any }): PropertyTypeMap {
         return {
             type: "map",
             value: type
-        } as PropertyType;
+        } as PropertyTypeMap;
     }
 }
 
 if ("undefined" === typeof global["PropertyLiteral"]) {
-    global["PropertyLiteral"] = function PropertyLiteral(type: PropertyTypeValue, ...moreType: PropertyTypeValue[]) {
+    global["PropertyLiteral"] = function PropertyLiteral(type: PropertyTypeValue, ...moreType: PropertyTypeValue[]): PropertyTypeLiteral {
         moreType.unshift(type);
         let literalProperty: PropertyTypeLiteral = {
             type: "literal",
@@ -1806,6 +1806,17 @@ if("undefined" === typeof global["logger"]){
 }
 
 if("undefined" === typeof global["generateLog"]) {
+    function convertFunction(input){
+        Object.keys(input || {}).map(k => {
+            if(typeof input[k] === "function"){
+                input[k] = `[Function ${input[k].name}]`;
+            }
+            else if(typeof input[k] === "object"){
+                input[k] = convertFunction(input[k]);
+            }
+        });
+        return input;
+    }
     global["generateLog"] = function(): string{
         let length = arguments.length;
         let outputMessage = [];
@@ -1831,8 +1842,10 @@ if("undefined" === typeof global["generateLog"]) {
                 outputMessage.push(arguments[key].stack);
             }
             else if(typeof arguments[key] === "object"){
-                if(typeof arguments[key].toString === "function" && !Array.isArray(arguments[key]) && arguments[key].toString() !== "[object Object]") outputMessage.push(arguments[key].toString());
-                else outputMessage.push(JSON.__base__circularStringify(arguments[key]));    
+                // let arg = Object.__base__clone(arguments[key]);
+                let  arg = arguments[key];
+                if(typeof arg.toString === "function" && !Array.isArray(arg) && arg.toString() !== "[object Object]") outputMessage.push(arg.toString());
+                else outputMessage.push(JSON.__base__circularStringify(arg));    
             }
             else {
                 outputMessage.push(arguments[key]);
@@ -1845,6 +1858,8 @@ if("undefined" === typeof global["generateLog"]) {
 if("undefined" === typeof global["ErrorLevel"]){
     class ErrorLevel implements IErrorLevel {
         level: TErrorLevel;
+        static RED: IErrorLevel;
+        static GREEN: IErrorLevel;
         static isInstance(input: any): boolean {
             if(input && input.level === "red" || input.level === "green"){
                 return true;
@@ -2079,16 +2094,15 @@ if("undefined" === typeof JSON.__base__circularStringify){
                         cache = {};
                         cache["root"] = value;
                     }
-                    if(parentKey) cache[parentKey] = value;
                     let jsons = [];
                     if(typeof value.__base__toJSON === "function"){
                         let jsonValue = value.__base__toJSON();
                         if(jsonValue) jsons.push(`${jsonValue}`);
                     }
-                    else if(Array.isArray(value)){
-                        let jsonValue = Array.__base__toJSON(value);
-                        jsons.push(`${jsonValue}`);
-                    }
+                    // else if(Array.isArray(value)){
+                    //     let jsonValue = Array.__base__toJSON(value);
+                    //     jsons.push(`${jsonValue}`);
+                    // }
                     else if(typeof value.toJSON === "function"){
                         let jsonValue = value.toJSON();
                         if(jsonValue) jsons.push(`${jsonValue}`);
@@ -2100,35 +2114,57 @@ if("undefined" === typeof JSON.__base__circularStringify){
                     else {
                         let keys = Object.keys(value), cacheKeys = Object.keys(cache), cacheKeyLength = cacheKeys.length;
                         let innerJSONs = [];
-                        Object.values(value).map((v, i) => {
+                        Object.values(value).map((v, vIndex) => {
+                            if(typeof v === "object") {
+                                let key = parentKey ? `${parentKey}.${keys[vIndex]}` : `${keys[vIndex]}`;
+                                if(!cache[key] && !Object.values(cache).includes(v)) cache[key] = v;
+                            }
+                        });
+                        Object.values(value).map((v, vIndex) => {
                             if(typeof v === "object"){
                                 let isCircular = false, root = cache["root"], circularKey: string = "root";
-                                let delimiter = Object.__base__getDelimiter(cacheKeys[i]);
-                                for(let i = 0; i < cacheKeyLength - 1; i++){
-                                    if(cacheKeys[i] === "root" && v === root){
-                                        isCircular = true;
-                                        break;
-                                    }
-                                    else if(parentKey && parentKey.toString().indexOf(cacheKeys[i]) === 0 && v === Object.__base__valueAt(root, cacheKeys[i], delimiter)){
-                                        isCircular = true;
-                                        circularKey += "." + cacheKeys[i];
-                                        break;
+                                let delimiter = Object.__base__getDelimiter(keys[vIndex]);
+                                if(parentKey){
+                                    for(let i = 0; i < cacheKeyLength; i++){       
+                                        if(cacheKeys[i] === "root" && v === root){
+                                            isCircular = true;
+                                            break;
+                                        }
+                                        else if(v === Object.__base__valueAt(root, cacheKeys[i], delimiter)){
+                                            isCircular = true;
+                                            circularKey += "." + cacheKeys[i];
+                                            break;
+                                        }
                                     }
                                 }
                                 if(!isCircular){
-                                    let key = parentKey ? `${parentKey}.${keys[i]}` : `${keys[i]}`, jsonValue = JSON["__base___circularStringify"](v, cache, key);
-                                    if(Array.isArray(value)) innerJSONs.push(`\"${jsonValue}"`);   
-                                    else innerJSONs.push(`\"${keys[i]}\":${jsonValue}`);   
+                                    let key = parentKey ? `${parentKey}.${keys[vIndex]}` : `${keys[vIndex]}`, jsonValue = JSON["__base___circularStringify"](v, cache, key);
+                                    if(Array.isArray(value)) innerJSONs.push(`\"${jsonValue}\"`);   
+                                    else innerJSONs.push(`\"${keys[vIndex]}\":${jsonValue}`);   
                                 }
-                                else innerJSONs.push(`\"${keys[i]}\":\"${JSON.__base__circularToken.toString()}[${circularKey}]\"`); 
+                                else {
+                                    if(Array.isArray(value)) innerJSONs.push(`\"${JSON.__base__circularToken.toString()}[${circularKey}]\"`); 
+                                    else innerJSONs.push(`\"${keys[vIndex]}\":\"${JSON.__base__circularToken.toString()}[${circularKey}]\"`); 
+                                }
                             }
                             else {
                                 let jsonValue = v;
                                 if(typeof v === "string") jsonValue = `\"${jsonValue}\"`;
-                                innerJSONs.push(`\"${keys[i]}\":${jsonValue}`);
+                                else if(typeof v === "function"){
+                                    jsonValue = `{}`;
+                                    // let funcString = v.toString();
+                                    // let funcHead = funcString.match(/(function\s+\(.+\)|.*)/g)[0];
+                                    // let funcBody = funcString.replace(funcHead, "");
+                                    // funcBody = funcBody.replace("{", "");
+                                    // let last = funcBody.lastIndexOf("}");
+                                    // funcBody = funcBody.substring(0, last);
+                                    // jsonValue = `[Function ${v.name},Head ${funcHead},Body ${funcBody.replace(/\n/g, "")}{{END_OF_FUNCTION_BODY}}]`;
+                                }
+                                innerJSONs.push(`\"${keys[vIndex]}\":${jsonValue}`);
                             }
                         });
-                        jsons.push(`{${innerJSONs.join(",")}}`);
+                        if(Array.isArray(value)) jsons.push(`[${innerJSONs.join(",")}]`);
+                        else jsons.push(`{${innerJSONs.join(",")}}`);
                     }
                     jsonString = `${jsons.join(",")}`;
                 }
@@ -2155,41 +2191,72 @@ if("undefined" === typeof JSON.__base__circularParse){
             let circularToken = JSON.__base__circularToken.toString();
             let temp;
             let specials = [];
+            let functions = []
+
             if(typeof value === "string"){
+                // let functionJSONs = value.match(/Function .*,Head .*,Body .*[^({{END_OF_FUNCTION_BODY}})]/g) || [];
+                // functionJSONs.map((functionJSON, i) => {
+                //     let functionSegment = []
+                //     let headIndex = functionJSON.indexOf(",Head");
+                //     let bodyIndex = functionJSON.indexOf(",Body");
+                //     functionSegment.push(
+                //         functionJSON.substring(0, headIndex),
+                //         functionJSON.substring((headIndex + 6), bodyIndex),
+                //         functionJSON.substring((bodyIndex + 6), functionJSON.length)
+                //     )
+                //     functionSegment[0] = functionSegment[0].replace("Function ", "");
+                //     functionSegment[1] = functionSegment[1].replace("function ", "").replace("(", "").replace(")", "");
+                //     functionSegment[1] = functionSegment[1].replace(/\s/g, "");
+                //     let newFunctionParams = functionSegment[1].split(",");
+                //     newFunctionParams.push(functionSegment[2].replace("{{END_OF_FUNCTION_BODY}}]", ""));
+                //     let func = new Function(newFunctionParams);
+                //     Object.defineProperty(func, "name", {value: functionSegment[0]});
+                //     let index = functions.push(func) - 1;
+                //     value = value.replace("[" + functionJSON, `"functions[${index}]"`); 
+                // });
+
                 let specialJSONs = value.match(/[A-Za-z0-9]+\(.[^\)]*\)/g) || [];
                 if(specialJSONs.length > 0){
                     specialJSONs.map((specialJSON, i) => {
                         let className = specialJSON.substring(0, specialJSON.indexOf("("));
+                        let needToReplace = false;
                         if(global[className]){
                             if(global[className] && typeof global[className].__base__fromJSON === "function"){
                                 specials.push(global[className].__base__fromJSON(specialJSON));
+                                needToReplace = true;
                             }
-                            else {
+                            else if(specialJSON !== circularToken){
                                 specials.push(`"${specialJSON}`);
+                                needToReplace = true;
                             }
                         }
-                        else {
+                        else if(specialJSON !== circularToken){
                             specials.push(`"${specialJSON}`);
+                            needToReplace = true;
                         }
-                        value = value.replace(specialJSON,`"` + Symbol.for(`${parentKey ? parentKey : ""}${i}`).toString() + `"`);
+                        if(needToReplace) {
+                            value = value.replace(specialJSON, Symbol.for(`${parentKey ? parentKey : ""}${i}`).toString());
+                        }
                     });
                 }
-                system.log(value);
                 temp = JSON.parse(value);
             }
             else temp = value;
-
             if(!cache) {
                 cache = {};
                 cache["root"] = temp;
             }
-            else cache[parentKey] = temp;
+
             let keys = Object.keys(temp);
+            let mappings = [];
+
             Object.values(temp).map((v, i) => {
                 if(v){
                     if(typeof v === "object"){
                         let key = parentKey ? `${parentKey}.${keys[i]}` : `root.${keys[i]}`;
-                        temp[keys[i]] = JSON["__base___circularParse"](v, cache, key);
+                        cache[key] = v;
+                        mappings.push(keys[i]);
+                        mappings.push(v);
                     }
                     else if(typeof v === "string" && v.indexOf(circularToken) === 0) {
                         let key = v.replace(circularToken, "").replace(/[\[\]]/g, "");
@@ -2200,7 +2267,15 @@ if("undefined" === typeof JSON.__base__circularParse){
             });
             specials.map((special, i) => {
                 Object.__base__replace(temp, Symbol.for((parentKey ? parentKey : "") + i.toString()).toString(), special);
-            })
+            });
+            let mappingLength = mappings.length;
+            for(let i = 0; i < mappingLength; i += 2){
+                let key = parentKey ? `${parentKey}.${mappings[i]}` : `root.${mappings[i]}`;
+                temp[mappings[i]] = JSON["__base___circularParse"](mappings[i+1], cache, key);
+            }
+            // functions.map((f, fIndex) => {
+                
+            // });
             return temp;
         }
     });
@@ -2229,22 +2304,83 @@ if ("undefined" === typeof Object.__base__replace) {
     }
 }
 if ("undefined" === typeof Object.__base__clone) {
+    Object.defineProperty(Object, "__base___clone", {
+        writable: false,
+        configurable: false,
+        value: function(source: any, cache = [], destCache = [], parentKey = ""){
+            let dest;
+            if(typeof source !== "undefined" && source !== null){
+                if(cache.length === 0){
+                    cache.push(source)
+                    destCache.push("root");
+                }
+                if (typeof source === "object" && typeof source.__base__clone === "function"){
+                    dest = source.__base__clone();
+                }
+                else {
+                    if(Array.isArray(source)) dest = [];
+                    else dest = {};
+                    let keys = Object.keys(source);
+                    Object.values(source).map((value, index) => {
+                        if (value && typeof value === "object") {
+                            let key = parentKey ? `${parentKey}.${keys[index]}` : "root." + keys[index];
+                            cache.push(value);
+                            destCache.push(key);
+                        }
+                    });
+                    Object.values(source).map((value, index) => {
+                        if (value && typeof value === "object") {
+                            let matchIndex = cache.indexOf(value);
+                            let key = parentKey ? `${parentKey}.${keys[index]}` : "root." + keys[index];
+                            if(matchIndex >= 0 && destCache[matchIndex] !== key) {
+                                dest[keys[index]] = destCache[matchIndex];
+                            }
+                            else {
+                                if(typeof value["__base__clone"] === "function") dest[keys[index]] = value["__base__clone"]();
+                                else dest[keys[index]] = Object["__base___clone"](value, cache, destCache, key);
+                            }
+                        }
+                        else {
+                            dest[keys[index]] = value;
+                        }
+                    });
+                }
+            }
+            return dest
+        }
+    });
+    Object.defineProperty(Object, "__base__after__clone", {
+        writable: false,
+        configurable: false,
+        value: function(source: any, cache, parentKey = "root"){
+            if(typeof source !== "undefined" && source !== null){
+                if(!cache) cache = { root: source };
+                Object.keys(source).map(key => {
+                    if(typeof source[key] === "object"){
+                        let tempKey = `${parentKey}.${key}`;
+                        cache[tempKey] = source[key];
+                    }
+                });
+                Object.keys(source).map(key => {
+                    if(typeof source[key] === "object"){
+                        let tempKey = `${parentKey}.${key}`;
+                        cache[tempKey] = source[key];
+                        source[key] = Object["__base__after__clone"](source[key], cache, tempKey);
+                    }
+                    else if(typeof source[key] === "string"){
+                        let cacheValue = cache[source[key]];
+                        if(cacheValue) source[key] = cacheValue;
+                    }
+                });
+            } 
+            return source;
+        }
+    });
     Object.__base__clone = function <T>(source: any): T {
         let dest;
         if (source) {
-            if (typeof source === "object" && typeof source.__base__clone === "function") dest = source.__base__clone();
-            else if(Array.isArray(source)) dest = Array.__base__clone(source);
-            else {
-                dest = {};
-                let keys = Object.keys(source);
-                Object.values(source).map((value, index) => {
-                    if (value && typeof value === "object") {
-                        if(Array.isArray(value)) dest[keys[index]] = Array.__base__clone(value);
-                        else dest[keys[index]] = Object.__base__clone(value);
-                    }
-                    else dest[keys[index]] = value;
-                });
-            }
+            dest = Object["__base___clone"](source);
+            dest = Object["__base__after__clone"](dest);   
         }
         else dest = null;
         return dest as T;
@@ -2344,12 +2480,9 @@ if ("undefined" === typeof Object.__base__flattenMap) {
 // =================================================== Array =============================================
 if ("undefined" === typeof Array.__base__clone) {
     Array.__base__clone = function<T>(this: ArrayConstructor, source: Array<T>): Array<T> {
-        let temp = source.slice(0);
+        let temp = (source || []).slice(0);
         return temp.map(t => {
-            if (typeof t === "object") {
-                if(Array.isArray(t)) return Array.__base__clone(t) as any;
-                else return Object.__base__clone(t);
-            }
+            if (typeof t === "object") return Object.__base__clone(t);
             else return t;
         });
     }

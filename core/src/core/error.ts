@@ -1,6 +1,8 @@
 if("undefined" === typeof global["ErrorLevel"]){
     class ErrorLevel implements IErrorLevel {
         level: TErrorLevel;
+        static RED: IErrorLevel;
+        static GREEN: IErrorLevel;
         static isInstance(input: any): boolean {
             if(input && input.level === "red" || input.level === "green"){
                 return true;

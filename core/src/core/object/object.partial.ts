@@ -18,22 +18,83 @@ if ("undefined" === typeof Object.__base__replace) {
     }
 }
 if ("undefined" === typeof Object.__base__clone) {
+    Object.defineProperty(Object, "__base___clone", {
+        writable: false,
+        configurable: false,
+        value: function(source: any, cache = [], destCache = [], parentKey = ""){
+            let dest;
+            if(typeof source !== "undefined" && source !== null){
+                if(cache.length === 0){
+                    cache.push(source)
+                    destCache.push("root");
+                }
+                if (typeof source === "object" && typeof source.__base__clone === "function"){
+                    dest = source.__base__clone();
+                }
+                else {
+                    if(Array.isArray(source)) dest = [];
+                    else dest = {};
+                    let keys = Object.keys(source);
+                    Object.values(source).map((value, index) => {
+                        if (value && typeof value === "object") {
+                            let key = parentKey ? `${parentKey}.${keys[index]}` : "root." + keys[index];
+                            cache.push(value);
+                            destCache.push(key);
+                        }
+                    });
+                    Object.values(source).map((value, index) => {
+                        if (value && typeof value === "object") {
+                            let matchIndex = cache.indexOf(value);
+                            let key = parentKey ? `${parentKey}.${keys[index]}` : "root." + keys[index];
+                            if(matchIndex >= 0 && destCache[matchIndex] !== key) {
+                                dest[keys[index]] = destCache[matchIndex];
+                            }
+                            else {
+                                if(typeof value["__base__clone"] === "function") dest[keys[index]] = value["__base__clone"]();
+                                else dest[keys[index]] = Object["__base___clone"](value, cache, destCache, key);
+                            }
+                        }
+                        else {
+                            dest[keys[index]] = value;
+                        }
+                    });
+                }
+            }
+            return dest
+        }
+    });
+    Object.defineProperty(Object, "__base__after__clone", {
+        writable: false,
+        configurable: false,
+        value: function(source: any, cache, parentKey = "root"){
+            if(typeof source !== "undefined" && source !== null){
+                if(!cache) cache = { root: source };
+                Object.keys(source).map(key => {
+                    if(typeof source[key] === "object"){
+                        let tempKey = `${parentKey}.${key}`;
+                        cache[tempKey] = source[key];
+                    }
+                });
+                Object.keys(source).map(key => {
+                    if(typeof source[key] === "object"){
+                        let tempKey = `${parentKey}.${key}`;
+                        cache[tempKey] = source[key];
+                        source[key] = Object["__base__after__clone"](source[key], cache, tempKey);
+                    }
+                    else if(typeof source[key] === "string"){
+                        let cacheValue = cache[source[key]];
+                        if(cacheValue) source[key] = cacheValue;
+                    }
+                });
+            } 
+            return source;
+        }
+    });
     Object.__base__clone = function <T>(source: any): T {
         let dest;
         if (source) {
-            if (typeof source === "object" && typeof source.__base__clone === "function") dest = source.__base__clone();
-            else if(Array.isArray(source)) dest = Array.__base__clone(source);
-            else {
-                dest = {};
-                let keys = Object.keys(source);
-                Object.values(source).map((value, index) => {
-                    if (value && typeof value === "object") {
-                        if(Array.isArray(value)) dest[keys[index]] = Array.__base__clone(value);
-                        else dest[keys[index]] = Object.__base__clone(value);
-                    }
-                    else dest[keys[index]] = value;
-                });
-            }
+            dest = Object["__base___clone"](source);
+            dest = Object["__base__after__clone"](dest);   
         }
         else dest = null;
         return dest as T;
@@ -133,12 +194,9 @@ if ("undefined" === typeof Object.__base__flattenMap) {
 // =================================================== Array =============================================
 if ("undefined" === typeof Array.__base__clone) {
     Array.__base__clone = function<T>(this: ArrayConstructor, source: Array<T>): Array<T> {
-        let temp = source.slice(0);
+        let temp = (source || []).slice(0);
         return temp.map(t => {
-            if (typeof t === "object") {
-                if(Array.isArray(t)) return Array.__base__clone(t) as any;
-                else return Object.__base__clone(t);
-            }
+            if (typeof t === "object") return Object.__base__clone(t);
             else return t;
         });
     }
